@@ -1,0 +1,97 @@
+/**
+ * Per-theme color overrides. Selected via `data-theme="<name>"` on <html>
+ * (set by hooks/useTheme.ts / components/ThemeSwitcher.tsx).
+ *
+ * To add a new theme: copy a block, change the selector name, edit values.
+ * Nothing outside this file needs to change — components only ever
+ * reference the semantic --color-* names below via Tailwind token classes.
+ */
+
+/* ---- Light (default) ---------------------------------------------------
+ * Also the fallback when no data-theme attribute is present yet (first
+ * paint, before the no-FOUC script in app/layout.tsx runs).
+ */
+:root,
+[data-theme="light"] {
+  --color-bg: oklch(0.99 0 0);
+  --color-surface: oklch(1 0 0);
+  --color-surface-hover: oklch(0.97 0 0);
+  --color-border: oklch(0.88 0 0);
+  --color-border-subtle: oklch(0.93 0 0);
+
+  --color-text: oklch(0.18 0 0);
+  --color-text-muted: oklch(0.45 0 0);
+  --color-text-inverse: oklch(0.99 0 0);
+
+  --color-accent: oklch(0.42 0.09 258);
+  --color-accent-hover: oklch(0.36 0.09 258);
+  --color-accent-text: oklch(0.99 0 0);
+
+  --color-danger: oklch(0.55 0.19 25);
+  --color-danger-hover: oklch(0.48 0.19 25);
+  --color-danger-text: oklch(0.99 0 0);
+
+  --color-success: oklch(0.55 0.13 150);
+  --color-warning: oklch(0.75 0.15 80);
+
+  --color-focus-ring: oklch(0.42 0.09 258);
+
+  --shadow-color: 220 15% 10%;
+}
+
+/* ---- Dark ---------------------------------------------------------------
+ * Mirrors the light palette's roles, not its literal values — dark themes
+ * need their own contrast tuning, not an inverted light theme.
+ */
+[data-theme="dark"] {
+  --color-bg: oklch(0.16 0 0);
+  --color-surface: oklch(0.21 0 0);
+  --color-surface-hover: oklch(0.26 0 0);
+  --color-border: oklch(0.32 0 0);
+  --color-border-subtle: oklch(0.27 0 0);
+
+  --color-text: oklch(0.96 0 0);
+  --color-text-muted: oklch(0.7 0 0);
+  --color-text-inverse: oklch(0.16 0 0);
+
+  --color-accent: oklch(0.72 0.1 258);
+  --color-accent-hover: oklch(0.78 0.1 258);
+  --color-accent-text: oklch(0.16 0 0);
+
+  --color-danger: oklch(0.65 0.19 25);
+  --color-danger-hover: oklch(0.7 0.19 25);
+  --color-danger-text: oklch(0.16 0 0);
+
+  --color-success: oklch(0.65 0.13 150);
+  --color-warning: oklch(0.8 0.15 80);
+
+  --color-focus-ring: oklch(0.72 0.1 258);
+
+  --shadow-color: 0 0% 0%;
+}
+
+/* System-preference fallback for the pre-hydration instant on a first-ever
+ * visit with no stored preference yet (the inline script still wins once it
+ * runs; this only covers the earliest possible paint). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-bg: oklch(0.16 0 0);
+    --color-surface: oklch(0.21 0 0);
+    --color-surface-hover: oklch(0.26 0 0);
+    --color-border: oklch(0.32 0 0);
+    --color-border-subtle: oklch(0.27 0 0);
+    --color-text: oklch(0.96 0 0);
+    --color-text-muted: oklch(0.7 0 0);
+    --color-text-inverse: oklch(0.16 0 0);
+    --color-accent: oklch(0.72 0.1 258);
+    --color-accent-hover: oklch(0.78 0.1 258);
+    --color-accent-text: oklch(0.16 0 0);
+    --color-danger: oklch(0.65 0.19 25);
+    --color-danger-hover: oklch(0.7 0.19 25);
+    --color-danger-text: oklch(0.16 0 0);
+    --color-success: oklch(0.65 0.13 150);
+    --color-warning: oklch(0.8 0.15 80);
+    --color-focus-ring: oklch(0.72 0.1 258);
+    --shadow-color: 0 0% 0%;
+  }
+}

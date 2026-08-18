@@ -1,0 +1,54 @@
+/**
+ * THE design system — single source of truth for every visual value in the app.
+ *
+ * Rules:
+ * 1. Every color/spacing/radius/shadow/font value the app uses is declared here
+ *    (or in themes.css for per-theme overrides) — nowhere else.
+ * 2. Components reference these via Tailwind's semantic token classes
+ *    (bg-surface, text-muted, rounded-card, ...), never raw hex/px/Tailwind
+ *    palette utilities. See eslint.config.mjs for the enforced rule.
+ * 3. A full redesign happens by editing this file and themes.css only.
+ *
+ * These are BASE values (theme-independent): radius, shadow shape, font
+ * stacks, and the type scale. Per-theme color values live in themes.css.
+ */
+
+:root {
+  /* ---- Radius --------------------------------------------------------- */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-card: 0.75rem;
+  --radius-full: 9999px;
+
+  /* ---- Shadow (color-independent shape; tinted per-theme via themes.css) */
+  --shadow-color: 220 15% 10%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06);
+  --shadow-md: 0 4px 12px hsl(var(--shadow-color) / 0.08);
+  --shadow-lg: 0 12px 32px hsl(var(--shadow-color) / 0.12);
+  --shadow-card: 0 1px 3px hsl(var(--shadow-color) / 0.08);
+
+  /* ---- Font families ---------------------------------------------------
+   * --font-geist-sans / --font-geist-mono are injected by next/font in
+   * app/layout.tsx. Aliasing them here means a font swap only touches
+   * layout.tsx (loader) + this line (mapping) — never a component.
+   */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* ---- Type scale (semantic sizes, distinct from Tailwind's numeric
+   * text-sm/text-lg utilities — used for the handful of recurring roles
+   * primitives compose with: page titles, section headings, body, captions) */
+  --font-size-display: 2.25rem;
+  --line-height-display: 2.5rem;
+  --font-size-heading: 1.25rem;
+  --line-height-heading: 1.75rem;
+  --font-size-body: 1rem;
+  --line-height-body: 1.5rem;
+  --font-size-small: 0.875rem;
+  --line-height-small: 1.25rem;
+
+  /* ---- Focus ring width (shape token, color comes from themes.css) ---- */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}

@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+@import "../styles/themes.css";
+
+/**
+ * Maps design tokens (styles/tokens.css, styles/themes.css) into Tailwind's
+ * theme so semantic classes exist: bg-surface, text-muted, border-subtle,
+ * rounded-card, shadow-card, font-sans, text-display, etc.
+ *
+ * `@theme inline` (not plain `@theme`) because these alias *existing*
+ * variables defined elsewhere rather than declaring new literal values —
+ * required for the cascade (light/dark overrides) to resolve correctly.
+ */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-inverse: var(--color-text-inverse);
+
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-text: var(--color-accent-text);
+
+  --color-danger: var(--color-danger);
+  --color-danger-hover: var(--color-danger-hover);
+  --color-danger-text: var(--color-danger-text);
+
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-focus-ring: var(--color-focus-ring);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-card: var(--radius-card);
+  --radius-full: var(--radius-full);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-card: var(--shadow-card);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --text-display: var(--font-size-display);
+  --text-display--line-height: var(--line-height-display);
+  --text-heading: var(--font-size-heading);
+  --text-heading--line-height: var(--line-height-heading);
+  --text-body: var(--font-size-body);
+  --text-body--line-height: var(--line-height-body);
+  --text-small: var(--font-size-small);
+  --text-small--line-height: var(--line-height-small);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+/* Consistent, token-driven focus ring for every interactive element instead
+   of the browser default outline (kept accessible, never removed outright). */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
