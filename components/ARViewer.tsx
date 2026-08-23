@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef, useImperativeHandle, useRef } from "react";
 import "@google/model-viewer";
 import { buildModelUrl } from "@/lib/models";
 
@@ -8,57 +9,64 @@ export interface ARViewerProps {
   usdzKey: string;
   scale: number;
   alt?: string;
+  className?: string;
 }
+
+export interface ARViewerHandle {
+  activateAR: () => void;
+}
+
+type ModelViewerElement = HTMLElement & { activateAR: () => Promise<void> };
 
 /**
  * CLAUDE.md rule 11 — this file imports "@google/model-viewer" for its
  * customElements.define() side effect, which needs `window`. Callers MUST
  * bring this in via `next/dynamic(() => import("@/components/ARViewer"), {
  * ssr: false })`, never a plain import — a plain import runs this during
- * SSR and breaks the build. (See app/(app)/models/[id]/page.tsx for the
- * correct usage.)
+ * SSR and breaks the build. (See components/ModelDetail.tsx.)
  *
  * Rule 8's exact config: ar, ar-modes="webxr scene-viewer quick-look",
  * src = GLB, ios-src = USDZ.
  *
- * Rule 10's fallback: model-viewer's own AR button is known to grey out
- * after a prior iOS AR session until Safari's cache is cleared, with no way
- * for the user to tell why. The plain link below is independent of that
- * button's internal state — Safari launches AR Quick Look for a direct
- * navigation to a URL serving `.usdz` (rule 2's Content-Type is what makes
- * that recognition work) even without the rel="ar" banner treatment, so it
- * still works when the button doesn't. On Android/desktop it's a harmless
- * direct link to the file.
- *
- * Rule 9: no ar-status handling here beyond nothing — iOS AR is native
- * Quick Look, the user leaves the page, and there is no in-AR callback to
- * build against.
+ * The primary "View in your room" CTA lives in ModelDetail, not here — the
+ * design (design/02-detail.png) puts it as a full-width bar below the
+ * secondary-actions row, outside the square viewer's own box, which the
+ * default ar-button slot (an absolutely-positioned overlay confined to the
+ * viewer's bounds) can't produce. So ModelDetail's button calls
+ * activateAR() — a public model-viewer method, not a hand-rolled anchor,
+ * rule 7 is still about not hand-rolling the iOS rel="ar" anchor itself,
+ * which this never touches. An empty slotted button suppresses model-viewer's
+ * own default corner AR icon so there's exactly one visible AR trigger.
  */
-export function ARViewer({ glbKey, usdzKey, scale, alt }: ARViewerProps) {
+export const ARViewer = forwardRef<ARViewerHandle, ARViewerProps>(function ARViewer(
+  { glbKey, usdzKey, scale, alt, className },
+  ref,
+) {
+  const viewerRef = useRef<ModelViewerElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    activateAR: () => void viewerRef.current?.activateAR(),
+  }));
+
   const glbUrl = buildModelUrl(glbKey);
   const usdzUrl = buildModelUrl(usdzKey);
   const scaleAttr = `${scale} ${scale} ${scale}`;
 
   return (
-    <div className="flex flex-col gap-3">
-      <model-viewer
-        src={glbUrl}
-        ios-src={usdzUrl}
-        ar
-        ar-modes="webxr scene-viewer quick-look"
-        camera-controls
-        auto-rotate
-        scale={scaleAttr}
-        alt={alt || "3D model"}
-        shadow-intensity="1"
-        className="aspect-square w-full rounded-card border border-border bg-surface"
-      />
-      <a
-        href={usdzUrl}
-        className="text-small text-text-muted underline underline-offset-2 hover:text-text"
-      >
-        AR button not responding? Tap here to open the model directly.
-      </a>
-    </div>
+    <model-viewer
+      ref={viewerRef}
+      src={glbUrl}
+      ios-src={usdzUrl}
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      camera-controls
+      auto-rotate
+      scale={scaleAttr}
+      alt={alt || "3D model"}
+      shadow-intensity="1"
+      className={className}
+    >
+      <button slot="ar-button" aria-hidden="true" tabIndex={-1} style={{ display: "none" }} />
+    </model-viewer>
   );
-}
+});
