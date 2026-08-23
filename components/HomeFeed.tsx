@@ -133,6 +133,11 @@ function ModelCard({ initialModel, onRetry }: { initialModel: ModelRow; onRetry:
   // shape rather than imposing a different one, so no object-fit/crop math
   // is needed. Column-height variation from that is masonry's whole point
   // (rule 37) — never normalized to a fixed ratio.
+  // EXPERIMENT (this turn only, pending a decision): dimensions as a chip
+  // on the image instead of a second line below the card — comparing
+  // against the prior two-line stack per request, not a final call yet.
+  const dims = model.status === "ready" ? formatDimensionsCm(model) : null;
+
   const content = (
     <div>
       <div className="relative overflow-hidden rounded-card">
@@ -143,13 +148,20 @@ function ModelCard({ initialModel, onRetry }: { initialModel: ModelRow; onRetry:
             <p className="text-small uppercase tracking-wide text-text-muted">Couldn&apos;t generate</p>
           </div>
         )}
+        {dims && (
+          <div className="absolute bottom-2 left-2 rounded-full bg-bg/80 px-2.5 py-1">
+            <p className="text-small uppercase tracking-wide text-text">{dims}</p>
+          </div>
+        )}
       </div>
       {/* Metadata sits OUTSIDE the rounded frame, directly on the page
           background — not overlaid on the photo, not inside a filled block
-          (rule 37). No bg-* class here on purpose. */}
+          (rule 37). No bg-* class here on purpose. Dimensions moved onto
+          the image (above) for this comparison, so only the name and any
+          non-ready status line remain here. */}
       <div className="flex flex-col gap-1 pt-2">
         <p className="text-body text-text">{model.title || "Untitled"}</p>
-        <StatusLine model={model} onRetry={onRetry} />
+        {model.status !== "ready" && <StatusLine model={model} onRetry={onRetry} />}
       </div>
     </div>
   );
@@ -163,12 +175,9 @@ function ModelCard({ initialModel, onRetry }: { initialModel: ModelRow; onRetry:
   );
 }
 
+// Only ever called for a non-ready model now — the ready case renders its
+// dimensions as an on-image chip instead (see ModelCard).
 function StatusLine({ model, onRetry }: { model: ModelRow; onRetry: (model: ModelRow) => void }) {
-  if (model.status === "ready") {
-    const dims = formatDimensionsCm(model);
-    return <p className="text-small uppercase tracking-wide text-text-muted">{dims}</p>;
-  }
-
   if (model.status === "failed") {
     return (
       <div className="flex flex-col gap-1">
