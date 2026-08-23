@@ -39,6 +39,8 @@ export interface Database {
           usdz_url: string | null;
           provider: string | null;
           provider_job_id: string | null;
+          usdz_provider_job_id: string | null;
+          idempotency_key: string | null;
           scale: number;
           error: string | null;
           created_at: string;
@@ -54,6 +56,8 @@ export interface Database {
           usdz_url?: string | null;
           provider?: string | null;
           provider_job_id?: string | null;
+          usdz_provider_job_id?: string | null;
+          idempotency_key?: string | null;
           scale?: number;
           error?: string | null;
           created_at?: string;
@@ -67,6 +71,10 @@ export interface Database {
     Functions: {
       consume_credit: {
         Args: { uid: string };
+        Returns: boolean;
+      };
+      refund_credit: {
+        Args: { model_id: string; failure_reason?: string | null };
         Returns: boolean;
       };
     };
