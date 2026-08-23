@@ -15,19 +15,19 @@
 
 :root {
   /* ---- Radius ----------------------------------------------------------
-   * 0 everywhere — buttons, cards, inputs, dialogs. Sharp corners are
-   * load-bearing to this product's design (design/*.png); a single rounded
-   * element reads as a mistake, not a style choice. --radius-full is the
-   * one deliberate exception: it's not a "corner" in the same sense — it's
-   * what makes a spinner (components/ui/Spinner.tsx) or an avatar a circle
-   * at all, a functional shape, not decorative rounding. Zeroing it would
-   * turn circular UI into broken-looking squares, which isn't what "no
-   * exceptions" was asking for.
+   * CLAUDE.md rule 37: cards are the one deliberately rounded surface
+   * (16px) — the original "0 everywhere, no exceptions" call is retired
+   * for cards specifically, not abandoned generally. Buttons/inputs/
+   * dialogs (--radius-sm/--radius-md) stay sharp. --radius-lg is a SEPARATE
+   * 18px value reserved for the floating bottom-nav buttons (rule 39) — not
+   * the card radius reused, a different surface with its own number.
+   * --radius-full remains the functional (not decorative) exception it
+   * always was: what makes a spinner or avatar an actual circle.
    */
   --radius-sm: 0;
   --radius-md: 0;
-  --radius-lg: 0;
-  --radius-card: 0;
+  --radius-lg: 1.125rem; /* 18px — bottom-nav buttons only (rule 39) */
+  --radius-card: 1rem; /* 16px — feed cards (rule 37) */
   --radius-full: 9999px;
 
   /* ---- Shadow (color-independent shape; tinted per-theme via themes.css) */

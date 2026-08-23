@@ -33,6 +33,7 @@
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
   --color-focus-ring: var(--color-focus-ring);
+  --color-nav-fill: var(--color-nav-fill);
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);

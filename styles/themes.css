@@ -63,5 +63,14 @@
    */
   --color-focus-ring: oklch(0.72 0.1 258);
 
+  /* CLAUDE.md rule 39 — floating bottom-nav button fill, lighter than
+   * --color-surface-hover (oklch 0.24, #1f1f1f) so the buttons read as
+   * distinct floating objects over the feed, not just another surface
+   * level. Exact value specified as #1c1c1c; oklch(0.2264 0 0) is that hex
+   * converted precisely (round-trips back to #1c1c1c exactly), kept in the
+   * same oklch form as every other token here rather than mixing formats.
+   */
+  --color-nav-fill: oklch(0.2264 0 0);
+
   --shadow-color: 0 0% 0%;
 }

@@ -219,3 +219,27 @@ Numbered so they can be referenced from code comments (e.g. "see rule 30").
     column had this gap for anon on that column specifically, in addition
     to the pre-existing gap on every older column. Check `anon` grants,
     not just `authenticated`, whenever auditing a table after this.
+
+## Design system
+
+37. **Card radius is 16px (`--radius-card`); every other radius token
+    (`--radius-sm`/`--radius-md`, buttons/inputs/dialogs) stays 0.** The
+    original "0 everywhere, no exceptions" call is retired *for cards
+    specifically* — feed cards are now the one deliberately rounded surface
+    in the product, not a crack in the sharp-corners rule. `--radius-lg`
+    (18px) is reserved for the floating bottom-nav buttons (rule 39) — a
+    second, different radius, not the card one reused. Never hardcode a
+    radius value in a component; always a `--radius-*` token.
+38. **The app header is a bare wordmark, top-left, directly on the page
+    background — no bar, fill, border, or shadow, nothing on its right
+    side.** It scrolls away with the content; it is not sticky/fixed. This
+    replaces the earlier "no app-name header ever" call — that rule is
+    retired, not just overridden per-screen.
+39. **Bottom navigation is three separate floating buttons, not a bar.**
+    56×56px, 18px radius (`--radius-lg`), `--color-nav-fill` background, no
+    border/shadow/blur, 12px gap between them, the group centered
+    horizontally and fixed 24px above the bottom safe area — never full
+    width, never touching an edge, feed scrolling visibly behind them.
+    Icons only, 24px, active `text-text` / inactive `text-text-muted`. The
+    scrollable feed needs bottom padding clearing the fixed group, or its
+    last row is permanently hidden under it.
