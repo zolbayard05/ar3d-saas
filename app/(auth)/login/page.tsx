@@ -62,6 +62,7 @@ export default function LoginPage() {
                 placeholder="dev password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                error={status === "error" ? (error ?? "Something went wrong") : undefined}
               />
               <Button type="submit" variant="secondary" loading={status === "sending"}>
                 Sign in with password (dev only)
