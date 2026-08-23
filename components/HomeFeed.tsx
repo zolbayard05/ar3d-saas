@@ -80,9 +80,19 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
         // CLAUDE.md rule 39: the floating nav sits over this scroll area, so
         // its last row needs bottom padding clearing the button group (24px
         // gap + 56px button height + the device safe area) plus breathing
-        // room, or it's permanently hidden underneath.
+        // room, or it's permanently hidden underneath. flex-1/min-h-0 are
+        // load-bearing, not decorative: without them this div isn't height-
+        // constrained by its flex-column parent (a flex item's default
+        // min-height is `auto`, i.e. its content size, so it can't shrink
+        // below the masonry grid's full height) — overflow-y-auto then never
+        // actually engages, the *page* grows past the viewport and scrolls
+        // instead, and the fixed nav (pinned to the viewport, not this div)
+        // ends up sitting over whatever card happens to reach its screen
+        // position rather than over this div's own reserved bottom padding.
+        // (LibraryFeed.tsx's equivalent div already has these — this was the
+        // one place that didn't.)
         <div
-          className="overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
         >
           <MasonryGrid models={models} onRetry={handleRetry} />

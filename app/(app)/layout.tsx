@@ -24,13 +24,25 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   // BottomNav is now `fixed` (rule 39) — out of normal flow regardless of
   // this wrapper's own display type, so it no longer occupies a row in this
-  // flex column the way the old full-width bar did. Left as flex/min-h-0/
-  // flex-1 deliberately: ModelDetail.tsx's own bottom-docked AR button
-  // relies on `main` being a bounded-height flex container to fill, and
-  // that page hides BottomNav entirely (see its own pathname check) so
-  // nothing there needs the new floating treatment anyway.
+  // flex column the way the old full-width bar did.
+  //
+  // `h-dvh`, not `min-h-dvh`: a min-height is a floor, not a ceiling, and
+  // gives this div nothing to actually cap against. Screens under this
+  // group (HomeFeed, LibraryFeed) have their own inner `flex-1 min-h-0
+  // overflow-y-auto` scroll container specifically so BottomNav's fixed
+  // overlay always sits over that container's own reserved bottom padding,
+  // never over card content — but that pattern only works if some ancestor
+  // in the chain is actually height-*constrained*. With `min-h-dvh`, this
+  // div (and `main`, and body) just grow to fit content instead, the inner
+  // div's `overflow-y-auto` never has anything to overflow *within itself*
+  // so it never engages, and the whole *page* scrolls instead — at which
+  // point BottomNav (fixed to the viewport) ends up sitting over whatever
+  // card happens to be at its screen position, not over blank padding.
+  // `h-dvh` gives every descendant in that chain a real ceiling to size
+  // against; content shorter than the viewport is fine (`overflow` is never
+  // set to `hidden` anywhere in this chain), it just leaves blank bg below.
   return (
-    <div className="flex min-h-dvh flex-col bg-bg">
+    <div className="flex h-dvh flex-col bg-bg">
       <main className="flex min-h-0 flex-1 flex-col">{children}</main>
       <BottomNav hasActiveJob={(activeJobs?.length ?? 0) > 0} />
     </div>
