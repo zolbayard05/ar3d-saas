@@ -27,7 +27,10 @@ const ARViewer = dynamic(() => import("@/components/ARViewer").then((m) => m.ARV
 });
 
 // design/02-detail.png. No app-name header (decision 3) — just back + share.
-// The three secondary actions (scale, original photo, download) are
+// The secondary actions (scale, original photo, download-as-GLB,
+// download-as-USDZ — download is split into two rather than one ambiguous
+// button, since GLB and USDZ serve different people: GLB for anything
+// generic, USDZ for someone specifically after their own iOS AR) are
 // icon+label only, muted, same visual register as everything else on the
 // page; the AR button is the one high-contrast, full-width, bottom-docked
 // element. That gap in weight is deliberate — Tripo's reference product
@@ -129,7 +132,15 @@ export function ModelDetail({ initialModel }: { initialModel: ModelRow }) {
               className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
             >
               <Download className="size-5" />
-              <span className="text-small uppercase tracking-wide">Download</span>
+              <span className="text-small uppercase tracking-wide">GLB</span>
+            </a>
+            <a
+              href={buildModelUrl(model.usdz_url as string)}
+              download
+              className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+            >
+              <Download className="size-5" />
+              <span className="text-small uppercase tracking-wide">USDZ</span>
             </a>
           </div>
 
