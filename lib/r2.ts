@@ -56,6 +56,7 @@ export function getModelsBucket(): string {
 export const MODEL_CONTENT_TYPES = {
   glb: "model/gltf-binary",
   usdz: "model/vnd.usdz+zip",
+  webp: "image/webp",
 } as const;
 
 // CLAUDE.md rule 3 — applies to every object written to the models bucket.

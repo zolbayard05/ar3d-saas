@@ -37,6 +37,7 @@ export interface Database {
           source_image_key: string;
           glb_url: string | null;
           usdz_url: string | null;
+          render_url: string | null;
           provider: string | null;
           provider_job_id: string | null;
           usdz_provider_job_id: string | null;
@@ -58,6 +59,7 @@ export interface Database {
           source_image_key: string;
           glb_url?: string | null;
           usdz_url?: string | null;
+          render_url?: string | null;
           provider?: string | null;
           provider_job_id?: string | null;
           usdz_provider_job_id?: string | null;

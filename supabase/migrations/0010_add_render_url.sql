@@ -1,0 +1,26 @@
+-- ============================================================================
+-- 0010_add_render_url.sql — server-rendered studio thumbnail
+--
+-- design/01-home-feed.png, design/06-feed-with-job.png: feed cards show the
+-- generated model itself, rendered on a dark studio backdrop — not the raw
+-- uploaded photo. lib/renderThumbnail.ts produces that image once the GLB
+-- is ready; this column is where it's stored (an R2 key, same convention as
+-- glb_url/usdz_url — see app/api/webhooks/tripo/route.ts).
+--
+-- Nullable, and meant to stay that way for rows where it's missing: like
+-- bbox extraction (0008), rendering is a best-effort quality pass that must
+-- never fail a paid generation — a null here just means the feed falls back
+-- to the source photo (rule already established in HomeFeed.tsx before this
+-- column existed).
+--
+-- No grant/revoke changes needed (checked per rule 36's own instruction to
+-- re-verify on every new column, not just take it on faith): authenticated's
+-- UPDATE on models is a column allowlist from 0004 (title, scale only) that
+-- a new column isn't added to automatically; authenticated's INSERT was
+-- revoked entirely in 0005; anon's INSERT/UPDATE/DELETE was revoked
+-- table-wide (not column-scoped) in 0009. All three already cover this
+-- column with no further statements — only service_role, which keeps its
+-- default full-table grant, can ever write it.
+-- ============================================================================
+
+alter table models add column if not exists render_url text;
