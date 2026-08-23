@@ -22,6 +22,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     .in("status", ["pending", "processing"])
     .limit(1);
 
+  // BottomNav is now `fixed` (rule 39) — out of normal flow regardless of
+  // this wrapper's own display type, so it no longer occupies a row in this
+  // flex column the way the old full-width bar did. Left as flex/min-h-0/
+  // flex-1 deliberately: ModelDetail.tsx's own bottom-docked AR button
+  // relies on `main` being a bounded-height flex container to fill, and
+  // that page hides BottomNav entirely (see its own pathname check) so
+  // nothing there needs the new floating treatment anyway.
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
       <main className="flex min-h-0 flex-1 flex-col">{children}</main>

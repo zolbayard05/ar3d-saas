@@ -7,10 +7,9 @@ export interface StatusStripProps {
   onView?: () => void;
 }
 
-// design/06-feed-with-job.png: the *only* thing that ever sits above the
-// feed, and only while a job is active (rule: no app-name header anywhere
-// — see CLAUDE.md's decision log). Wired to a real ticking elapsed time,
-// not the design's static "1:12".
+// design/06-feed-with-job.png: sits below the header (CLAUDE.md rule 38),
+// above the feed, only while a job is active. Wired to a real ticking
+// elapsed time, not the design's static "1:12".
 export function StatusStrip({ createdAt, onView }: StatusStripProps) {
   const elapsed = useElapsedTime(createdAt);
 

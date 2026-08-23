@@ -65,9 +65,14 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* CLAUDE.md rule 38 — bare wordmark, no bar/fill/border/shadow,
+          nothing on its right. Scrolls with the content below (it's inside
+          the same scroll container, not a separate sticky element). */}
+      <p className="shrink-0 px-2 pt-4 pb-3 text-body font-semibold text-text">AR3D</p>
+
       {activeJob && <StatusStrip createdAt={activeJob.created_at} />}
 
-      {retryError && <p className="px-4 py-2 text-small text-danger">{retryError}</p>}
+      {retryError && <p className="px-2 py-2 text-small text-danger">{retryError}</p>}
 
       {models.length === 0 ? (
         <EmptyState
@@ -76,7 +81,14 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
           description="Tap create to generate your first 3D model."
         />
       ) : (
-        <div className="columns-2 gap-px overflow-y-auto">
+        // CLAUDE.md rule 39: the floating nav sits over this scroll area, so
+        // its last row needs bottom padding clearing the button group (24px
+        // gap + 56px button height + the device safe area) plus breathing
+        // room, or it's permanently hidden underneath.
+        <div
+          className="columns-2 gap-2 overflow-y-auto px-2"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
+        >
           {models.map((model) => (
             <ModelCard key={model.id} initialModel={model} onRetry={handleRetry} />
           ))}
@@ -96,22 +108,28 @@ function ModelCard({ initialModel, onRetry }: { initialModel: ModelRow; onRetry:
   // never a reason to fail the generation).
   const thumbnailSrc = model.render_url ? buildModelUrl(model.render_url) : `/api/uploads/${model.source_image_key}`;
 
+  // CLAUDE.md rule 37: the image fills its own rounded frame edge to edge —
+  // no padding, no letterboxing, no card background showing behind it. A
+  // plain w-full <img> at its natural (unforced) aspect ratio already IS
+  // "cropped to the photo's own aspect ratio": the frame takes the image's
+  // shape rather than imposing a different one, so no object-fit/crop math
+  // is needed. Column-height variation from that is masonry's whole point
+  // (rule 37) — never normalized to a fixed ratio.
   const content = (
-    <div className="mb-px break-inside-avoid bg-surface">
-      <div className="relative w-full bg-surface-hover">
+    <div className="mb-2 break-inside-avoid">
+      <div className="relative overflow-hidden rounded-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={thumbnailSrc}
-          alt=""
-          className="block w-full"
-        />
+        <img src={thumbnailSrc} alt="" className="block w-full bg-surface-hover" />
         {model.status === "failed" && (
           <div className="absolute inset-0 flex items-center justify-center bg-bg/70">
             <p className="text-small uppercase tracking-wide text-text-muted">Couldn&apos;t generate</p>
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-1 p-3">
+      {/* Metadata sits OUTSIDE the rounded frame, directly on the page
+          background — not overlaid on the photo, not inside a filled block
+          (rule 37). No bg-* class here on purpose. */}
+      <div className="flex flex-col gap-1 pt-2">
         <p className="text-body text-text">{model.title || "Untitled"}</p>
         <StatusLine model={model} onRetry={onRetry} />
       </div>
