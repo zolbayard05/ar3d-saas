@@ -6,19 +6,16 @@ import { LayoutGrid, Plus, Columns2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface BottomNavProps {
-  /** Shows a badge dot on the create icon — an in-progress job exists (design/07). */
+  /** Shows a badge dot on the create icon — an in-progress job exists. */
   hasActiveJob?: boolean;
 }
 
-// CLAUDE.md rule 39: three separate floating rounded-square buttons, not a
-// merged bar — `href: null` marks library (no route yet, screens 07/08's own
-// porting turn); a dead-end icon that silently navigates nowhere useful is
-// worse than one that visibly does nothing, so it renders inert (dimmed,
-// unclickable) rather than aliasing to /dashboard.
+// CLAUDE.md rules 39/40: three separate floating rounded-square buttons,
+// not a merged bar, reused as-is on every screen — never a second variant.
 const ITEMS = [
   { href: "/dashboard", icon: LayoutGrid, label: "Feed" },
   { href: "/create", icon: Plus, label: "Create" },
-  { href: null, icon: Columns2, label: "Library" },
+  { href: "/library", icon: Columns2, label: "Library" },
 ] as const;
 
 export function BottomNav({ hasActiveJob }: BottomNavProps) {
@@ -41,21 +38,8 @@ export function BottomNav({ hasActiveJob }: BottomNavProps) {
       style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
     >
       {ITEMS.map(({ href, icon: Icon, label }, i) => {
-        const active = href !== null && pathname === href;
+        const active = pathname === href;
         const isCreate = label === "Create";
-        const icon = <Icon className={cn("size-6", active ? "text-text" : "text-text-muted")} />;
-
-        if (href === null) {
-          return (
-            <span
-              key={label}
-              aria-hidden="true"
-              className="pointer-events-auto flex size-14 items-center justify-center rounded-lg bg-nav-fill opacity-40"
-            >
-              {icon}
-            </span>
-          );
-        }
 
         return (
           <Link
@@ -65,7 +49,7 @@ export function BottomNav({ hasActiveJob }: BottomNavProps) {
             aria-current={active ? "page" : undefined}
             className="pointer-events-auto relative flex size-14 items-center justify-center rounded-lg bg-nav-fill"
           >
-            {icon}
+            <Icon className={cn("size-6", active ? "text-text" : "text-text-muted")} />
             {isCreate && hasActiveJob && (
               <span className="absolute right-2.5 top-2.5 size-1.5 bg-text" aria-hidden="true" />
             )}

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export function useCredits(userId: string) {
-  const [credits, setCredits] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+export function useCredits(userId: string, initialCredits: number | null = null) {
+  const [credits, setCredits] = useState<number | null>(initialCredits);
+  const [loading, setLoading] = useState(initialCredits === null);
 
   useEffect(() => {
     const supabase = createClient();
