@@ -4,30 +4,24 @@ Tracked here so they aren't rediscovered from scratch later. Not urgent
 enough to have blocked the phase that surfaced them — fix opportunistically
 or when they start actually hurting.
 
-## Hydration mismatch on `<html data-theme>`
+## ~~Hydration mismatch on `<html data-theme>`~~ — resolved
 
 **Found**: Phase 4, while browser-testing `/models/[id]` (unrelated to that
 work — surfaced incidentally in the console).
 
-**Symptom**: React logs `A tree hydrated but some attributes of the server
-rendered HTML didn't match the client properties`, pointing at
-`data-theme="dark"` on `<html>`.
+**Was**: `app/layout.tsx` had a no-FOUC inline script that set `data-theme`
+on `<html>` client-side from `localStorage`/system preference before
+hydration, correct in intent (avoids a flash of the wrong theme) but
+diverging from the server-rendered HTML in a way React flagged as a
+mismatch.
 
-**Cause (diagnosed, not yet fixed)**: `app/layout.tsx` has a no-FOUC inline
-script that runs before hydration and sets `data-theme` on `<html>`
-synchronously from `localStorage`/system preference (see
-`hooks/useTheme.ts`'s doc comment). That's deliberate — it's what prevents a
-flash of the wrong theme on load. But it means the *real* DOM has already
-diverged from the server-rendered HTML by the time React hydrates, and React
-flags that divergence as a mismatch even though it's intentional and correct.
-
-**Likely fix**: add `suppressHydrationWarning` to the `<html>` element in
-`app/layout.tsx` — the standard fix for this exact pattern (same one
-`next-themes` and similar libraries document). Scope it to `<html>` only, not
-broader, so it doesn't mask a real mismatch elsewhere.
-
-**Impact so far**: cosmetic console noise in dev; no observed effect on
-correctness or the production build.
+**Resolved by** the design port to a single dark theme (see CLAUDE.md):
+with no theme to choose between anymore, `data-theme="dark"` is now a
+static attribute on `<html>` in the server-rendered output itself — nothing
+sets it client-side, so there's nothing for the client and server to
+disagree about. `hooks/useTheme.ts` and `components/ThemeSwitcher.tsx` were
+removed as dead weight along with the light theme; this was a side effect
+of that change, not a targeted fix.
 
 ## `ARRenderer.onUpdateScene` null-reference spam in browsers without AR hardware
 

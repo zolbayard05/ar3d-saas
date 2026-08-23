@@ -56,6 +56,8 @@
   --text-body--line-height: var(--line-height-body);
   --text-small: var(--font-size-small);
   --text-small--line-height: var(--line-height-small);
+
+  --tracking-wide: var(--tracking-wide);
 }
 
 body {

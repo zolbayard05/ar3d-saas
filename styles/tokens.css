@@ -14,11 +14,20 @@
  */
 
 :root {
-  /* ---- Radius --------------------------------------------------------- */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-card: 0.75rem;
+  /* ---- Radius ----------------------------------------------------------
+   * 0 everywhere — buttons, cards, inputs, dialogs. Sharp corners are
+   * load-bearing to this product's design (design/*.png); a single rounded
+   * element reads as a mistake, not a style choice. --radius-full is the
+   * one deliberate exception: it's not a "corner" in the same sense — it's
+   * what makes a spinner (components/ui/Spinner.tsx) or an avatar a circle
+   * at all, a functional shape, not decorative rounding. Zeroing it would
+   * turn circular UI into broken-looking squares, which isn't what "no
+   * exceptions" was asking for.
+   */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-card: 0;
   --radius-full: 9999px;
 
   /* ---- Shadow (color-independent shape; tinted per-theme via themes.css) */
@@ -51,4 +60,19 @@
   /* ---- Focus ring width (shape token, color comes from themes.css) ---- */
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
+
+  /* ---- Letter-spacing ----------------------------------------------------
+   * This product's uppercase micro-labels (dimensions, nav, button text,
+   * status strips — design/*.png) are pervasively wide-tracked; that's part
+   * of the look, not incidental. Maps to Tailwind's tracking-wide utility
+   * via app/globals.css's @theme inline block, so components just use
+   * `tracking-wide`, no custom class.
+   *
+   * 0.08em was measured against Latin uppercase in the reference screens
+   * only. Cyrillic uppercase runs wider than Latin at the same tracking —
+   * if this product localizes into a Cyrillic-script language, this value
+   * needs re-measuring against real Cyrillic text, not assumed to carry
+   * over. Don't reuse this number for a Cyrillic variant without checking.
+   */
+  --tracking-wide: 0.08em;
 }

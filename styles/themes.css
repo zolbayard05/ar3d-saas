@@ -1,97 +1,67 @@
 /**
  * Per-theme color overrides. Selected via `data-theme="<name>"` on <html>
- * (set by hooks/useTheme.ts / components/ThemeSwitcher.tsx).
+ * (see app/layout.tsx, which sets it statically — see below).
  *
- * To add a new theme: copy a block, change the selector name, edit values.
- * Nothing outside this file needs to change — components only ever
- * reference the semantic --color-* names below via Tailwind token classes.
+ * This product is dark-only: a single, deliberate design decision (used in
+ * a dark room in the moment before opening AR — a light theme there is
+ * hostile), not a placeholder waiting for a light theme to be finished.
+ * There is no light theme, and no theme switcher — that UI/logic was
+ * removed as dead weight along with it.
+ *
+ * The data-theme *mechanism* itself is kept in place on purpose, even with
+ * only one theme: components only ever reference the semantic --color-*
+ * names below (never raw hex), so a full restyle — or a genuinely new
+ * theme, if one is ever needed — still happens by editing this file alone,
+ * without touching component code. To add a new theme later: add a new
+ * `[data-theme="name"]` block below with its own values, and wire up
+ * whatever sets that attribute on <html> (there's no toggle UI for it
+ * currently — see the git history for hooks/useTheme.ts /
+ * components/ThemeSwitcher.tsx, removed here, if resurrecting that pattern
+ * is useful groundwork).
  */
 
-/* ---- Light (default) ---------------------------------------------------
- * Also the fallback when no data-theme attribute is present yet (first
- * paint, before the no-FOUC script in app/layout.tsx runs).
- */
 :root,
-[data-theme="light"] {
-  --color-bg: oklch(0.99 0 0);
-  --color-surface: oklch(1 0 0);
-  --color-surface-hover: oklch(0.97 0 0);
-  --color-border: oklch(0.88 0 0);
-  --color-border-subtle: oklch(0.93 0 0);
-
-  --color-text: oklch(0.18 0 0);
-  --color-text-muted: oklch(0.45 0 0);
-  --color-text-inverse: oklch(0.99 0 0);
-
-  --color-accent: oklch(0.42 0.09 258);
-  --color-accent-hover: oklch(0.36 0.09 258);
-  --color-accent-text: oklch(0.99 0 0);
-
-  --color-danger: oklch(0.55 0.19 25);
-  --color-danger-hover: oklch(0.48 0.19 25);
-  --color-danger-text: oklch(0.99 0 0);
-
-  --color-success: oklch(0.55 0.13 150);
-  --color-warning: oklch(0.75 0.15 80);
-
-  --color-focus-ring: oklch(0.42 0.09 258);
-
-  --shadow-color: 220 15% 10%;
-}
-
-/* ---- Dark ---------------------------------------------------------------
- * Mirrors the light palette's roles, not its literal values — dark themes
- * need their own contrast tuning, not an inverted light theme.
- */
 [data-theme="dark"] {
-  --color-bg: oklch(0.16 0 0);
-  --color-surface: oklch(0.21 0 0);
-  --color-surface-hover: oklch(0.26 0 0);
-  --color-border: oklch(0.32 0 0);
-  --color-border-subtle: oklch(0.27 0 0);
+  --color-bg: oklch(0.115 0 0);
+  --color-surface: oklch(0.191 0 0);
+  --color-surface-hover: oklch(0.24 0 0);
+  --color-border: oklch(0.3 0 0);
+  --color-border-subtle: oklch(0.22 0 0);
 
-  --color-text: oklch(0.96 0 0);
-  --color-text-muted: oklch(0.7 0 0);
-  --color-text-inverse: oklch(0.16 0 0);
+  --color-text: oklch(0.997 0 0);
+  --color-text-muted: oklch(0.63 0 0);
+  --color-text-inverse: oklch(0.154 0 0);
 
-  --color-accent: oklch(0.72 0.1 258);
-  --color-accent-hover: oklch(0.78 0.1 258);
-  --color-accent-text: oklch(0.16 0 0);
+  /* "Accent" is this product's primary action color — white fill, dark
+   * text, per design/*.png (every button; the one screen showing orange
+   * was confirmed a one-off error, not a hidden accent system — there is
+   * no accent *hue* anywhere in the reference screens). Kept under the
+   * existing --color-accent* names rather than introduced as a new token:
+   * components/ui/Button.tsx's "primary" variant already wires to these,
+   * and the whole point of this token layer is that a redesign this
+   * total — including "the accent isn't a color anymore, it's white" —
+   * still happens by editing values here, not touching Button.tsx.
+   */
+  --color-accent: oklch(0.988 0 0);
+  --color-accent-hover: oklch(0.9 0 0);
+  --color-accent-text: oklch(0.154 0 0);
 
   --color-danger: oklch(0.65 0.19 25);
   --color-danger-hover: oklch(0.7 0.19 25);
-  --color-danger-text: oklch(0.16 0 0);
+  --color-danger-text: oklch(0.154 0 0);
 
   --color-success: oklch(0.65 0.13 150);
   --color-warning: oklch(0.8 0.15 80);
 
+  /* Deliberately NOT tied to --color-accent (unlike the old blue-accent
+   * theme, where they matched): accent is now near-white, and a white
+   * focus ring on a white button/input would be invisible. Keeps the
+   * previous dark-theme's blue so focus is visible against every surface,
+   * including accent-colored ones. No reference screen shows a focus
+   * state to confirm/deny this — a deliberate accessibility call, not a
+   * measured one; revisit if a reference screen ever shows otherwise.
+   */
   --color-focus-ring: oklch(0.72 0.1 258);
 
   --shadow-color: 0 0% 0%;
-}
-
-/* System-preference fallback for the pre-hydration instant on a first-ever
- * visit with no stored preference yet (the inline script still wins once it
- * runs; this only covers the earliest possible paint). */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    --color-bg: oklch(0.16 0 0);
-    --color-surface: oklch(0.21 0 0);
-    --color-surface-hover: oklch(0.26 0 0);
-    --color-border: oklch(0.32 0 0);
-    --color-border-subtle: oklch(0.27 0 0);
-    --color-text: oklch(0.96 0 0);
-    --color-text-muted: oklch(0.7 0 0);
-    --color-text-inverse: oklch(0.16 0 0);
-    --color-accent: oklch(0.72 0.1 258);
-    --color-accent-hover: oklch(0.78 0.1 258);
-    --color-accent-text: oklch(0.16 0 0);
-    --color-danger: oklch(0.65 0.19 25);
-    --color-danger-hover: oklch(0.7 0.19 25);
-    --color-danger-text: oklch(0.16 0 0);
-    --color-success: oklch(0.65 0.13 150);
-    --color-warning: oklch(0.8 0.15 80);
-    --color-focus-ring: oklch(0.72 0.1 258);
-    --shadow-color: 0 0% 0%;
-  }
 }

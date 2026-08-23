@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { CreditsBadge } from "@/components/CreditsBadge";
 import { SignOutButton } from "@/components/SignOutButton";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 export interface AppHeaderProps {
   userId: string;
@@ -15,7 +14,6 @@ export function AppHeader({ userId }: AppHeaderProps) {
       </Link>
       <div className="flex items-center gap-3">
         <CreditsBadge userId={userId} />
-        <ThemeSwitcher />
         <SignOutButton />
       </div>
     </header>
