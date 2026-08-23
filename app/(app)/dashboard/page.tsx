@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { DashboardModels } from "@/components/DashboardModels";
+import { HomeFeed } from "@/components/HomeFeed";
 
 // RLS "models: owner select" (rule 30) scopes this to the caller's own rows
 // without needing an explicit .eq("user_id", ...) — same pattern as
@@ -11,5 +11,5 @@ export default async function DashboardPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  return <DashboardModels initialModels={models ?? []} />;
+  return <HomeFeed initialModels={models ?? []} />;
 }
