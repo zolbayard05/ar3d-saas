@@ -35,13 +35,54 @@ function getApiKey(): string {
   return requiredEnv("TRIPO_API_KEY");
 }
 
-// v2.5-20250123 is the version the SDK docs call out as preserving V2's
-// former default behavior — a documented, deliberate choice rather than
-// picking the newest dated version, which could change output style /
-// pricing out from under us without a code change. Override via env once
-// you've decided that's worth it.
+// v2.5-20250123 (the prior default here) is a V2-era model string that
+// doesn't accept ANY of the H3-family quality parameters below — texture_
+// quality, geometry_quality, face_limit, etc. are silently unreachable on
+// that version. v3.1-20260211 is Tripo's current H3 endpoint (confirmed
+// against docs.tripo3d.ai, not the third-party spec this file used to cite
+// exclusively). Override via env if you deliberately want the legacy path.
 function getModelVersion(): string {
-  return process.env.TRIPO_MODEL_VERSION || "v2.5-20250123";
+  return process.env.TRIPO_MODEL_VERSION || "v3.1-20260211";
+}
+
+// Adaptive face_limit on a single-photo reconstruction produced ~13-14 MB of
+// raw (pre-Draco) mesh data even at default quality — the dominant
+// contributor to output size, well ahead of texture data (confirmed: a
+// generation with ~350 KB of combined PBR textures still produced a 14 MB
+// GLB). USDZ can't be Draco-compressed (KHR_draco_mesh_compression is a
+// glTF-only extension; ARKit's format has no equivalent), so constraining
+// geometry at generation time is the only lever that helps *that* file at
+// all. 200k faces is generous for a single piece of furniture at AR viewing
+// distance — this is a starting point to tune against real output (one
+// chair measured at 7.34 MB USDZ, under target, but geometry complexity
+// varies enormously by object type: a lattice/high-poly object could still
+// exceed rule 21's 8 MB target at this same face_limit — see
+// app/api/webhooks/tripo/route.ts's size-budget retry, which exists
+// specifically because this number is still a guess, not measured across
+// object types yet).
+export const DEFAULT_FACE_LIMIT = 200_000;
+
+// rule 21's target. Checked against the final USDZ specifically — the file
+// that can't be Draco-compressed after the fact, so this is the only stage
+// where "still too big" can still be fixed (by retrying at a lower
+// face_limit), rather than merely observed.
+export const TARGET_USDZ_BYTES = 8 * 1024 * 1024;
+
+// Bounded to 1: a retry re-submits an entire new Tripo generation (another
+// ~30-45 credits), not a cheap local re-process — must never spiral into
+// unbounded cost chasing a target that a genuinely complex object (a dense
+// lattice, foliage) may not be able to hit at any reasonable face_limit.
+// Ship the result and log it past this point rather than retry forever.
+export const MAX_SIZE_RETRIES = 1;
+
+/**
+ * face_limit for a given attempt index (0 = first attempt, 1 = first retry,
+ * ...) — halved per retry. `models.size_retry_count` tracks how many
+ * retries have already happened, which *is* the attempt index of the most
+ * recently completed attempt (0 retries so far = attempt 0 just finished).
+ */
+export function faceLimitForAttempt(attemptIndex: number): number {
+  return attemptIndex === 0 ? DEFAULT_FACE_LIMIT : Math.round(DEFAULT_FACE_LIMIT / 2 ** attemptIndex);
 }
 
 type TripoEnvelope<T> = { code: number; status?: string; data: T };
@@ -89,11 +130,33 @@ async function tripoFetch<T>(path: string, body: Record<string, unknown>): Promi
  * network latency, not the generation itself (rule 6 is about long-lived
  * shared AR links on the *models* bucket; this is a one-shot ingestion
  * fetch on a different, private bucket — not the same concern).
+ *
+ * Request shape confirmed against docs.tripo3d.ai's image-to-model (H3)
+ * reference: `type` + `file.url` + `model_version`, not the `{model, input}`
+ * shape this used to send (which happened to still be accepted under a
+ * legacy/back-compat path, but silently ignores every quality parameter
+ * below — there is no `texture_quality`/`geometry_quality`/`face_limit` on
+ * that path). face_limit is set explicitly (see DEFAULT_FACE_LIMIT) because
+ * USDZ can't be Draco-compressed after the fact, so this is the only real
+ * lever for keeping that file under rule 21's size target.
+ *
+ * texture_quality is left at "standard" (the default, so simply omitted).
+ * This was decided three times — see CLAUDE.md's decision log (rule on
+ * texture quality) for the full numbers and the general lesson (a fixed-
+ * pixel blur radius silently misbehaving across texture resolutions) before
+ * touching this again. geometry_quality is left at "standard" too — that
+ * lever affects mesh fidelity, not the texture defect, and face_limit
+ * already controls the geometry budget directly.
  */
-export async function submitImageToModelTask(sourceImageUrl: string): Promise<{ taskId: string }> {
+export async function submitImageToModelTask(
+  sourceImageUrl: string,
+  faceLimit: number = DEFAULT_FACE_LIMIT,
+): Promise<{ taskId: string }> {
   const data = await tripoFetch<{ task_id: string }>("/generation/image-to-model", {
-    model: getModelVersion(),
-    input: sourceImageUrl,
+    type: "image_to_model",
+    file: { url: sourceImageUrl },
+    model_version: getModelVersion(),
+    face_limit: faceLimit,
   });
   return { taskId: data.task_id };
 }

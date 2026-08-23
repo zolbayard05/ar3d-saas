@@ -48,6 +48,7 @@ export function DashboardModels({ initialModels }: { initialModels: ModelRow[] }
           provider_job_id: null,
           usdz_provider_job_id: null,
           idempotency_key: null,
+          size_retry_count: 0,
           scale: 1,
           error: null,
           created_at: new Date().toISOString(),

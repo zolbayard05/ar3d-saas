@@ -83,9 +83,82 @@ Numbered so they can be referenced from code comments (e.g. "see rule 30").
     paid credits.
 21. **Post-process for mobile AR**: target < 8 MB per model, Draco
     compression, textures capped at 1–2K. Large models simply never load on
-    phones.
+    phones. **Enforced, not just hoped for**, on the USDZ side specifically:
+    the webhook checks final USDZ size and retries the *generation* (not a
+    local re-process — USDZ can't be Draco-compressed after the fact, see
+    rule 24) at a lower `face_limit` if it's over target, bounded to
+    `MAX_SIZE_RETRIES` in `lib/tripo.ts` since each retry is a full paid
+    Tripo generation, not a cheap step. Final size is logged per model
+    either way (`app/api/webhooks/tripo/route.ts`) — `DEFAULT_FACE_LIMIT`
+    is still a guess (one chair measured at 7.34 MB, under target, but
+    geometry complexity varies enormously by object type), so that log data
+    is what should eventually replace the guess with a measured value.
 22. **AI meshes have no real-world scale.** Provide a scale control and
     persist the user's chosen scale per model.
+
+## Texture pipeline decisions
+
+23. **`texture_quality: "standard"` is final — decided three times, settled
+    2026-08-23. Do not relitigate without new measured evidence.**
+
+    Timeline: started on Tripo's legacy V2-compatible request shape, which
+    silently ignores `texture_quality` entirely (rule 12's original
+    `{model, input}` body). Moved to the real H3 request shape and tried
+    `"detailed"` (native 4096, +10 credits) paired with frequency separation
+    (rule below) — looked clean in crops. Tried reverting to `"standard"`
+    (native 2048) to save credits — read visibly worse on a real device,
+    more than expected. Root cause turned out to be a bug, not a resolution
+    limitation: `BLUR_SIGMA` in `lib/textureFreqSeparate.ts` was a **fixed
+    pixel value (40)**, tuned against the 4096 `"detailed"` texture, applied
+    *unchanged* to the 2048 `"standard"` texture — running proportionally
+    2x too large. Confirmed by direct measurement that larger sigma made it
+    *worse*, not better: at a fixed sample-point seam, sigma=20 (correct
+    for 2048) closed 90.7% of the gap; sigma=60 (oversized) only closed
+    77.9% — a blur wide enough to approach UV-island size starts averaging
+    in unrelated neighboring islands (arbitrarily adjacent in atlas space,
+    not 3D space) rather than isolating each one's own baked tone. Fixed by
+    making it a resolution-proportional ratio (`BLUR_SIGMA_RATIO = 40/4096`)
+    instead of a fixed constant, then re-compared `"standard"` against
+    `"detailed"` with the fix in place, on the same source photo, through
+    the real production pipeline both times:
+
+    | | detailed | standard (retuned) |
+    |---|---|---|
+    | Seam-gap reduction | 1.7 → 0.2 (88%) | 2.8 → 0.3 (89%) |
+    | Credits/model | 45 (40 + 5) | 35 (30 + 5) |
+    | GLB | 2.18 MB | 0.94 MB |
+    | USDZ | 8.76 MB (over target) | 7.34 MB |
+
+    Cleanup quality is a wash between tiers once the bug is fixed. Verified
+    on-device that the resolution/grain difference itself (2048 vs 4096) is
+    not perceptible in AR either. `"standard"` wins on every measurable
+    axis (credits, both file sizes) with no measured quality cost — that's
+    the decision, and why it's now default in `lib/tripo.ts`.
+
+    **General lesson**: a fixed pixel constant tuned against one texture
+    resolution can silently misbehave at another, in a direction that isn't
+    obviously "less effective" — it can actively make the underlying
+    algorithm *worse*, not just proportionally weaker. Any per-pixel
+    constant derived from testing at one resolution (blur radii, kernel
+    sizes, thresholds) needs either a resolution-proportional form or an
+    explicit note that it's only verified at that one resolution.
+
+24. **Frequency separation cleans baked lighting; it doesn't add material
+    detail.** Diffuse texture atlases from single-image reconstruction carry
+    two different problems at different spatial frequencies: low-frequency
+    per-UV-island baked lighting/AO (reads as "dirty/patchy," removable) and
+    high-frequency weave/grain (the material's real character, must be
+    preserved). `lib/textureFreqSeparate.ts` separates on the luminance
+    channel only (chroma untouched, so hue/saturation are mathematically
+    invariant — verified: identical saturation before/after on a real wood
+    sample) and flattens only the low-frequency layer toward its own global
+    mean by `FLATTEN_STRENGTH` (currently 0.9, named so it's tunable without
+    hunting for a magic number). A failure here must never fail a paid
+    generation — caught independently of the rest of `compressGlb`, falling
+    back to the unprocessed texture; Draco/resize still run either way. The
+    before/after seam-luminance gap is logged per model in the webhook —
+    watch that data for the technique quietly degrading on an unfamiliar
+    object/material type rather than finding out from a user.
 
 ## Auth & authorization
 

@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getR2Client, getModelsBucket, MODEL_CONTENT_TYPES, MODEL_CACHE_CONTROL } from "@/lib/r2";
-import { verifyTripoWebhookSignature, getWebhookSecret, submitUsdzConversionTask, type TripoTask } from "@/lib/tripo";
+import { getR2Client, getModelsBucket, getUploadsBucket, MODEL_CONTENT_TYPES, MODEL_CACHE_CONTROL } from "@/lib/r2";
+import {
+  verifyTripoWebhookSignature,
+  getWebhookSecret,
+  submitUsdzConversionTask,
+  submitImageToModelTask,
+  faceLimitForAttempt,
+  TARGET_USDZ_BYTES,
+  MAX_SIZE_RETRIES,
+  type TripoTask,
+} from "@/lib/tripo";
+import { compressGlb } from "@/lib/glbCompress";
+
+const SOURCE_URL_EXPIRY_SECONDS = 10 * 60;
 
 type Stage = "glb" | "usdz";
 
@@ -116,7 +129,98 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ ok: true });
   }
-  const fileBytes = Buffer.from(await fileRes.arrayBuffer());
+  let fileBytes = Buffer.from(await fileRes.arrayBuffer());
+
+  // Rule 21: Draco-compress + cap textures at 2K on the GLB specifically.
+  // Not applicable to USDZ — KHR_draco_mesh_compression is a glTF-only
+  // extension, ARKit's format has no equivalent (see lib/glbCompress.ts).
+  // Compression failure shouldn't lose the generation entirely: fall back to
+  // the uncompressed file rather than refunding over a post-process step.
+  if (stage === "glb") {
+    try {
+      const result = await compressGlb(fileBytes);
+      fileBytes = Buffer.from(result.glb);
+      if (result.seamGap) {
+        // Visibility into the frequency-separation quality pass itself, not
+        // just whether it ran: if this technique quietly stops helping on
+        // some object/material type, this is where that shows up in data
+        // rather than being discovered by a user first.
+        console.info(
+          `Tripo webhook: model ${model.id} seam luminance gap (P99, low-freq layer) ${result.seamGap.before.toFixed(1)} -> ${result.seamGap.after.toFixed(1)}`,
+        );
+      }
+    } catch (err) {
+      console.warn(
+        `Tripo webhook: GLB compression failed for model ${model.id}, storing uncompressed`,
+        err,
+      );
+    }
+  }
+
+  // Rule 21's size budget, enforced (not just hoped for): USDZ can't be
+  // Draco-compressed after the fact (see lib/glbCompress.ts), so geometry
+  // complexity at generation time is the only lever — an oversized result
+  // here means the *generation itself* has to be retried at a lower
+  // face_limit, not a local re-process. Bounded to MAX_SIZE_RETRIES: this
+  // costs a full new Tripo generation per attempt, not a cheap step.
+  if (stage === "usdz" && fileBytes.length > TARGET_USDZ_BYTES && model.size_retry_count < MAX_SIZE_RETRIES) {
+    const attemptedFaceLimit = faceLimitForAttempt(model.size_retry_count);
+    const nextAttempt = model.size_retry_count + 1;
+    const nextFaceLimit = faceLimitForAttempt(nextAttempt);
+    console.warn(
+      `Tripo webhook: model ${model.id} USDZ ${(fileBytes.length / (1024 * 1024)).toFixed(2)} MB ` +
+        `exceeds ${(TARGET_USDZ_BYTES / (1024 * 1024)).toFixed(0)} MB target at face_limit=${attemptedFaceLimit} ` +
+        `(attempt ${model.size_retry_count}) — retrying at face_limit=${nextFaceLimit} (attempt ${nextAttempt})`,
+    );
+
+    const sourceImageUrl = await getSignedUrl(
+      getR2Client(),
+      new GetObjectCommand({ Bucket: getUploadsBucket(), Key: model.source_image_key }),
+      { expiresIn: SOURCE_URL_EXPIRY_SECONDS },
+    );
+
+    try {
+      const { taskId: newTaskId } = await submitImageToModelTask(sourceImageUrl, nextFaceLimit);
+      const { data: updated } = await admin
+        .from("models")
+        .update({
+          status: "processing",
+          glb_url: null,
+          usdz_url: null,
+          provider_job_id: newTaskId,
+          usdz_provider_job_id: null,
+          size_retry_count: nextAttempt,
+        })
+        .eq("id", model.id)
+        .is("usdz_url", null)
+        .select("id");
+
+      if (!updated || updated.length === 0) {
+        // Lost the race to a concurrent duplicate delivery already driving
+        // this — don't submit a second retry generation on top of it.
+        return NextResponse.json({ ok: true, note: "concurrent delivery already handled" });
+      }
+      return NextResponse.json({ ok: true, note: `size retry submitted (attempt ${nextAttempt})` });
+    } catch (err) {
+      // Resubmission failed — don't strand the model row on a discarded
+      // oversized file. Fall through (past this whole if-block) and ship
+      // what we have instead; it's oversized but still a valid, deliverable
+      // model (rule: never fail a paid generation over a size-budget retry).
+      console.warn(`Tripo webhook: model ${model.id} size-retry resubmission failed, shipping oversized result instead`, err);
+    }
+  }
+
+  if (stage === "usdz") {
+    // Final size, logged either way — this is the data set rule 21's
+    // DEFAULT_FACE_LIMIT guess needs to become a measured value instead of
+    // a guess, after enough real objects have gone through this.
+    const withinTarget = fileBytes.length <= TARGET_USDZ_BYTES;
+    console.info(
+      `Tripo webhook: model ${model.id} final USDZ ${(fileBytes.length / (1024 * 1024)).toFixed(2)} MB ` +
+        `(face_limit=${faceLimitForAttempt(model.size_retry_count)}, attempt ${model.size_retry_count}, ` +
+        `${withinTarget ? "within" : "OVER"} ${(TARGET_USDZ_BYTES / (1024 * 1024)).toFixed(0)} MB target)`,
+    );
+  }
 
   // Stored as the bare R2 key, not a full URL: NEXT_PUBLIC_MODELS_CDN_URL
   // isn't live yet (see README — Phase 4 is blocked on a production
