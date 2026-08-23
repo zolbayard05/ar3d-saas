@@ -59,6 +59,31 @@ a desktop browser with no AR hardware.
 `@google/model-viewer` for `ARRenderer.onUpdateScene` before patching
 locally; a version bump may already fix it.
 
+## `/api/models` proxy — a real cost/latency line item, not just "not optimal yet"
+
+**Context**: no custom domain is bound to the `models` R2 bucket yet (rule 4
+— see README's "R2 setup" section), so `lib/models.ts`'s `buildModelUrl`
+falls back to `app/api/models/[...key]/route.ts`, which streams a model
+straight from R2 through a Vercel Function. That route's own comment already
+calls this a "dev/staging-only stand-in," which is correct — but on a public
+URL, every AR view of every model becomes a Vercel Function invocation plus
+an R2 read, for as long as this stays unbound. That's billed compute and
+added latency on the product's single most important interaction (opening
+AR), not a rounding error to clean up "eventually."
+
+**Mitigated, not eliminated** (see the commit hardening this route): the
+proxy now sets `s-maxage` so Vercel's CDN actually caches a given model
+after its first fetch — previously it forwarded R2's stored `max-age`-only
+header, which Vercel's CDN doesn't cache on at all, so *every* fetch of
+*every* model was hitting the function fresh. Repeat views of the same
+model are now cheap. First views, and the cost of running this as a
+function at all instead of Cloudflare serving a public bucket directly from
+its own edge, are not something a cache header fixes.
+
+**Revisit when**: a production domain exists to bind to the `models`
+bucket (README's DNS/custom-domain steps) — that's the actual fix, not
+further tuning of the interim proxy.
+
 ## Photo pre-flight validation — deferred, not forgotten
 
 **Context**: the GLB validation gate (`lib/glbCompress.ts`'s `validateGlb`,
