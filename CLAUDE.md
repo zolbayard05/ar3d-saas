@@ -243,3 +243,31 @@ Numbered so they can be referenced from code comments (e.g. "see rule 30").
     Icons only, 24px, active `text-text` / inactive `text-text-muted`. The
     scrollable feed needs bottom padding clearing the fixed group, or its
     last row is permanently hidden under it.
+40. **`design/*.png` is retired as the visual reference. The feed
+    (`components/HomeFeed.tsx`) and detail screen (`components/ModelDetail.tsx`)
+    are — finished, correct, and everything built from here on reuses what
+    they already established, not a fresh read of the old mockups (most of
+    which were never built: 03-capture/04-confirm/05-waiting/07-library/
+    08-library-empty are still unported, and rules 37-39 already diverged
+    from what 01/02 originally showed — e.g. the accent-orange AR button
+    they depicted was overridden to white-fill/dark-text, confirmed a
+    one-off reference error rather than a hidden accent system (see
+    `styles/themes.css`'s `--color-accent` comment). Every new screen:
+    - Uses existing tokens only. If one is genuinely missing for a new
+      screen's needs, stop and say so rather than inventing one inline.
+    - Reuses existing components — `Button`, `Card`, the feed's own card
+      markup — never a parallel/duplicate version of one that already
+      exists.
+    - Copies the feed's card radius, gutters, insets, and metadata
+      placement exactly rather than re-deriving them per screen.
+    - Reuses `BottomNav` as-is — the same three floating 56×56 buttons,
+      same position (rule 39). Never a second nav variant.
+    - Keeps the primary button white-fill/dark-text everywhere (settled —
+      see `styles/themes.css`'s `--color-accent` comment — not a
+      per-screen decision to relitigate).
+    - Keeps the near-black, greyscale-only page and wide-tracked uppercase
+      metadata convention (`--tracking-wide`, rule established in the
+      design-port token diff).
+    The feed and detail screens themselves are frozen while other screens
+    are being built — a restyle of either is its own deliberate turn, not
+    a side effect of building something else.
