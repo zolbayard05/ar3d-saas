@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ModelScaleControl } from "@/components/ModelScaleControl";
 import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useModelScale } from "@/hooks/useModelScale";
+import { useModelTitle } from "@/hooks/useModelTitle";
 import { buildModelUrl, formatDimensionsCm } from "@/lib/models";
 import type { Database } from "@/lib/supabase/types";
 import type { ARViewerHandle } from "@/components/ARViewer";
@@ -41,6 +42,7 @@ export function ModelDetail({ initialModel }: { initialModel: ModelRow }) {
   // usdz_url ever change after the initial server-rendered fetch.
   const model = useModelRealtime(initialModel.id, initialModel) ?? initialModel;
   const [scale, setScale] = useModelScale(model.id, model.scale);
+  const { title, setTitle, commitTitle } = useModelTitle(model.id, model.title);
   const [scaleOpen, setScaleOpen] = useState(false);
   const arViewerRef = useRef<ARViewerHandle>(null);
 
@@ -48,7 +50,7 @@ export function ModelDetail({ initialModel }: { initialModel: ModelRow }) {
     const url = window.location.href;
     if (navigator.share) {
       try {
-        await navigator.share({ title: model.title || "3D model", url });
+        await navigator.share({ title: title || "3D model", url });
       } catch {
         // User dismissed the share sheet — not an error.
       }
@@ -94,12 +96,26 @@ export function ModelDetail({ initialModel }: { initialModel: ModelRow }) {
             glbKey={model.glb_url as string}
             usdzKey={model.usdz_url as string}
             scale={scale}
-            alt={model.title ?? undefined}
+            alt={title || undefined}
             className="aspect-square w-full bg-surface"
           />
 
           <div className="flex flex-col gap-1 px-4 pt-4">
-            <p className="text-heading font-semibold text-text">{model.title || "Untitled"}</p>
+            {/* Editable in place — title is one of the two columns
+                authenticated may write directly (migration 0004), same
+                pattern as scale. No pencil-icon/edit-mode toggle: it's just
+                an input styled as the heading, committing on blur/Enter
+                rather than per keystroke. */}
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              onBlur={(event) => commitTitle(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+              }}
+              placeholder="Untitled"
+              className="bg-transparent text-heading font-semibold text-text placeholder:text-text-muted focus:outline-none"
+            />
             {formatDimensionsCm(model) && (
               <p className="text-small uppercase tracking-wide text-text-muted">
                 {formatDimensionsCm(model)}

@@ -85,12 +85,28 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
         // its last row needs bottom padding clearing the button group (24px
         // gap + 56px button height + the device safe area) plus breathing
         // room, or it's permanently hidden underneath.
+        //
+        // Two explicit flex-1 columns, not CSS `columns-2`: multi-column
+        // layout doesn't guarantee equal rendered column widths (a real
+        // browser quirk, confirmed visibly — the right column came out
+        // wider than the left). Two flex siblings with matching flex-1 are
+        // pixel-equal by construction, not by the browser's own balancing
+        // heuristic. Cards alternate into left/right by index, each column
+        // stacked with its own gap-2 for the vertical 8px spacing rule
+        // 37 asks for (replacing break-inside-avoid/mb-2, which were
+        // multi-column-specific and no longer apply).
         <div
-          className="columns-2 gap-2 overflow-y-auto px-2"
+          className="flex gap-2 overflow-y-auto px-2"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
         >
-          {models.map((model) => (
-            <ModelCard key={model.id} initialModel={model} onRetry={handleRetry} />
+          {[0, 1].map((col) => (
+            <div key={col} className="flex flex-1 flex-col gap-2">
+              {models
+                .filter((_, i) => i % 2 === col)
+                .map((model) => (
+                  <ModelCard key={model.id} initialModel={model} onRetry={handleRetry} />
+                ))}
+            </div>
           ))}
         </div>
       )}
@@ -118,7 +134,7 @@ function ModelCard({ initialModel, onRetry }: { initialModel: ModelRow; onRetry:
   // is needed. Column-height variation from that is masonry's whole point
   // (rule 37) — never normalized to a fixed ratio.
   const content = (
-    <div className="mb-2 break-inside-avoid">
+    <div>
       <div className="relative overflow-hidden rounded-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={thumbnailSrc} alt="" className="block w-full bg-surface-hover" />
