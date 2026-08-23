@@ -58,3 +58,39 @@ a desktop browser with no AR hardware.
 **Next step if picked back up**: check for an open upstream issue against
 `@google/model-viewer` for `ARRenderer.onUpdateScene` before patching
 locally; a version bump may already fix it.
+
+## Photo pre-flight validation — deferred, not forgotten
+
+**Context**: the GLB validation gate (`lib/glbCompress.ts`'s `validateGlb`,
+see CLAUDE.md) rejects a bad generation *after* paying Tripo for it. The
+case that prompted it — a "512x512" placeholder graphic reconstructed into
+a degenerate mesh — came from a smoke-test upload, not a real user, but the
+underlying gap is real: nothing currently checks a photo *before* it's sent
+to Tripo, so a genuinely bad user upload (rule 20's blurry/shadowed/
+multi-object cases) still costs a full credit + generation round-trip
+before the gate catches it.
+
+**Options considered, not built**:
+- A cheap image-statistics check (blur variance, resolution) — only catches
+  blur, one of rule 20's three named categories. Would not have caught the
+  placeholder case (it's crisp, not blurry) and doesn't touch multi-object
+  scenes at all.
+- A perceptual-hash blocklist against known placeholder/stock images — would
+  catch this exact case precisely, but solves a problem real users don't
+  actually have (no one uploads a placehold.co-style image by accident);
+  the failure that prompted this was our own smoke test, not user behavior.
+  Narrow, and needs an ongoingly-maintained list.
+- A vision-model call ("is this a usable single-object product photo?")
+  before ever hitting Tripo — the only option that addresses what rule 20
+  actually names (blur, heavy shadow, multi-object), since it's a general
+  content check rather than a signature match for one failure shape. Real
+  per-upload cost (latency + a small $ amount) and needs a fail-open
+  fallback so an outage doesn't block uploads.
+
+**Decision**: build the vision-model check, not the narrower two — but not
+yet. Setting a rejection threshold today would mean guessing from zero real
+uploads, the same trap `MAX_ASPECT_RATIO` was already in (see CLAUDE.md).
+
+**Revisit when**: there's a real corpus of user-submitted photos (rule 21's
+own "after 30 showcase models" checkpoint is a reasonable trigger to reuse)
+to tune a rejection threshold against, instead of guessing.
