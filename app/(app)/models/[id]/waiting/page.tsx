@@ -2,9 +2,13 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { WaitingScreen } from "@/components/WaitingScreen";
 
-// Same ownership pattern as app/(app)/models/[id]/page.tsx — RLS scopes the
-// query to the caller's own row (rule 30), a non-owner's request reads
-// identically to "doesn't exist."
+// No explicit owner filter needed here the way dashboard/library now need
+// one: a pending/processing row only ever matches RLS's owner-select policy
+// (migration 0011's public policy is status = 'ready' only), so a
+// non-owner's request for an in-progress model still reads as "doesn't
+// exist." A non-owner hitting this URL for an already-ready model does now
+// match 0011's policy — but that just falls into the redirect below, onto
+// the same public detail page a shared link already sends them to.
 export default async function WaitingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();

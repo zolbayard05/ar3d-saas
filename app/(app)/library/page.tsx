@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LibraryFeed } from "@/components/LibraryFeed";
 
-// RLS "models: owner select" (rule 30) already scopes the models query to
-// the caller's own rows — same pattern as app/(app)/dashboard/page.tsx.
-// getUser() is called directly (not just relying on the (app) layout's own
-// check) because this page also needs the caller's own id for the
-// `profiles` query, not just for auth.
+// Explicit .eq("user_id", user.id) on the models query — NOT just RLS —
+// same reasoning as app/(app)/dashboard/page.tsx: migration 0011's public
+// select-ready policy means a bare `.select("*")` would now also return
+// every other user's ready models. getUser() is called directly (not just
+// relying on the (app) layout's own check) because this page also needs
+// the caller's own id for the `profiles` query, not just for auth.
 export default async function LibraryPage() {
   const supabase = await createClient();
   const {
@@ -16,7 +17,7 @@ export default async function LibraryPage() {
   if (!user) redirect("/login");
 
   const [{ data: models }, { data: profile }] = await Promise.all([
-    supabase.from("models").select("*").order("created_at", { ascending: false }),
+    supabase.from("models").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("credits").eq("id", user.id).single(),
   ]);
 
