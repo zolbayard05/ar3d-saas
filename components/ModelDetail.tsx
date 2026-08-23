@@ -37,11 +37,21 @@ const ARViewer = dynamic(() => import("@/components/ARViewer").then((m) => m.ARV
 // element. That gap in weight is deliberate — Tripo's reference product
 // treats AR as one of five equal icons, and that's exactly what this page
 // must not do, since AR is the entire point of this product.
-export function ModelDetail({ initialModel }: { initialModel: ModelRow }) {
+export function ModelDetail({
+  initialModel,
+  hasSession = true,
+  isOwner = true,
+}: {
+  initialModel: ModelRow;
+  /** Defaults true — every pre-existing caller is inside the auth-gated (app) group. */
+  hasSession?: boolean;
+  /** Gates title-edit/download and scale persistence — see hooks/useModelScale.ts. */
+  isOwner?: boolean;
+}) {
   // Rule 14 — no polling. This is the one place the row's status/glb_url/
   // usdz_url ever change after the initial server-rendered fetch.
   const model = useModelRealtime(initialModel.id, initialModel) ?? initialModel;
-  const [scale, setScale] = useModelScale(model.id, model.scale);
+  const [scale, setScale] = useModelScale(model.id, model.scale, isOwner);
   const { title, setTitle, commitTitle } = useModelTitle(model.id, model.title);
   const [scaleOpen, setScaleOpen] = useState(false);
   const arViewerRef = useRef<ARViewerHandle>(null);
@@ -64,7 +74,14 @@ export function ModelDetail({ initialModel }: { initialModel: ModelRow }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-12 shrink-0 items-center justify-between px-4">
-        <Link href="/dashboard" aria-label="Back to feed" className="text-text-muted hover:text-text">
+        {/* Signed-out visitor has no /dashboard to go back to (it's still
+            auth-gated) — send them to the landing page instead of a dead
+            redirect-to-/login link. */}
+        <Link
+          href={hasSession ? "/dashboard" : "/"}
+          aria-label="Back"
+          className="text-text-muted hover:text-text"
+        >
           <ArrowLeft className="size-5" />
         </Link>
         <button
@@ -101,21 +118,31 @@ export function ModelDetail({ initialModel }: { initialModel: ModelRow }) {
           />
 
           <div className="flex flex-col gap-1 px-4 pt-4">
-            {/* Editable in place — title is one of the two columns
-                authenticated may write directly (migration 0004), same
-                pattern as scale. No pencil-icon/edit-mode toggle: it's just
-                an input styled as the heading, committing on blur/Enter
-                rather than per keystroke. */}
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              onBlur={(event) => commitTitle(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur();
-              }}
-              placeholder="Untitled"
-              className="bg-transparent text-heading font-semibold text-text placeholder:text-text-muted focus:outline-none"
-            />
+            {/* Editable in place for the owner only — title is one of the
+                two columns `authenticated` may write directly (migration
+                0004), but that grant is still row-scoped by RLS to
+                auth.uid() = user_id, so a non-owner's write would silently
+                affect zero rows. Showing an editable field that quietly
+                does nothing is worse than not showing it, so a viewer who
+                followed a shared link (migration 0011) or an authenticated
+                non-owner both get plain text instead. No pencil-icon/
+                edit-mode toggle for the owner case: it's just an input
+                styled as the heading, committing on blur/Enter rather than
+                per keystroke. */}
+            {isOwner ? (
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                onBlur={(event) => commitTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+                placeholder="Untitled"
+                className="bg-transparent text-heading font-semibold text-text placeholder:text-text-muted focus:outline-none"
+              />
+            ) : (
+              <p className="text-heading font-semibold text-text">{title || "Untitled"}</p>
+            )}
             {formatDimensionsCm(model) && (
               <p className="text-small uppercase tracking-wide text-text-muted">
                 {formatDimensionsCm(model)}
@@ -133,31 +160,45 @@ export function ModelDetail({ initialModel }: { initialModel: ModelRow }) {
               <Ruler className="size-5" />
               <span className="text-small uppercase tracking-wide">Scale</span>
             </button>
-            <a
-              href={`/api/uploads/${model.source_image_key}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
-            >
-              <ImageIcon className="size-5" />
-              <span className="text-small uppercase tracking-wide">Original photo</span>
-            </a>
-            <a
-              href={buildModelUrl(model.glb_url as string)}
-              download
-              className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
-            >
-              <Download className="size-5" />
-              <span className="text-small uppercase tracking-wide">GLB</span>
-            </a>
-            <a
-              href={buildModelUrl(model.usdz_url as string)}
-              download
-              className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
-            >
-              <Download className="size-5" />
-              <span className="text-small uppercase tracking-wide">USDZ</span>
-            </a>
+            {/* Original photo and both downloads are owner-only: the source
+                photo lives in the private `uploads` bucket behind its own
+                ownership check (app/api/uploads/[...key]/route.ts), so for
+                anyone but the owner this link would already 404/401 — hiding
+                it isn't a new restriction, it's not showing a link that was
+                already broken for this viewer. GLB/USDZ do serve from the
+                public models bucket (rule 6) and would technically work for
+                any viewer, but the download affordance itself is scoped to
+                the owner as a deliberate product choice, not a data-access
+                one. */}
+            {isOwner && (
+              <>
+                <a
+                  href={`/api/uploads/${model.source_image_key}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+                >
+                  <ImageIcon className="size-5" />
+                  <span className="text-small uppercase tracking-wide">Original photo</span>
+                </a>
+                <a
+                  href={buildModelUrl(model.glb_url as string)}
+                  download
+                  className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+                >
+                  <Download className="size-5" />
+                  <span className="text-small uppercase tracking-wide">GLB</span>
+                </a>
+                <a
+                  href={buildModelUrl(model.usdz_url as string)}
+                  download
+                  className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+                >
+                  <Download className="size-5" />
+                  <span className="text-small uppercase tracking-wide">USDZ</span>
+                </a>
+              </>
+            )}
           </div>
 
           {scaleOpen && (
