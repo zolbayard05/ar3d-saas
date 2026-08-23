@@ -24,8 +24,11 @@ export function BottomNav({ hasActiveJob }: BottomNavProps) {
   // design/02-detail.png is edge-to-edge with a single bottom-docked AR CTA
   // in the nav's own screen position — a floating nav group stacked over
   // that button would reintroduce the equal-weight problem the detail view
-  // is specifically designed to avoid.
-  if (pathname?.startsWith("/models/")) return null;
+  // is specifically designed to avoid. /create is the same story: a
+  // full-screen camera with its own bottom-docked shutter button, then a
+  // Confirm step with its own bottom-docked Create button — the floating
+  // nav has nowhere to sit on either without competing with them.
+  if (pathname?.startsWith("/models/") || pathname === "/create") return null;
 
   return (
     // pointer-events-none on the row, -auto on each button: the row spans
