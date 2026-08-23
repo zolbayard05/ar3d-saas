@@ -32,8 +32,20 @@ export async function POST(request: Request) {
 
   let task: TripoTask;
   try {
-    const parsed = JSON.parse(rawBody) as { data?: TripoTask };
-    if (!parsed?.data?.task_id || !parsed.data.status) throw new Error("missing data.task_id/status");
+    const parsed = JSON.parse(rawBody) as { data?: TripoTask; type?: string };
+
+    // Tripo posts every account-level event type to this same webhook URL,
+    // not just task completions (observed live: "balance.low", whose data
+    // has a task_id — coincidentally the id of an in-flight task — but no
+    // status). Only a task-status event has `data.status`; anything else is
+    // a real, expected delivery we don't act on. Same rationale as the
+    // unmatched-task_id branch below: ack 200, don't 400, or Tripo retries
+    // a delivery that will never resolve to anything.
+    if (!parsed?.data?.status) {
+      console.info(`Tripo webhook: ignoring non-task-status event type=${parsed?.type ?? "unknown"}`);
+      return NextResponse.json({ ok: true, note: `ignored event type=${parsed?.type ?? "unknown"}` });
+    }
+    if (!parsed.data.task_id) throw new Error("missing data.task_id");
     task = parsed.data;
   } catch {
     return NextResponse.json({ error: "Malformed payload" }, { status: 400 });
