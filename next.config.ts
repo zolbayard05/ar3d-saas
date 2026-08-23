@@ -18,7 +18,18 @@ const nextConfig: NextConfig = {
   // @gltf-transform packages that pull it in) external keeps them as plain
   // node_modules `require()`s at runtime instead, so the path Draco computes
   // is the real one.
-  serverExternalPackages: ["draco3dgltf", "@gltf-transform/core", "@gltf-transform/functions", "@gltf-transform/extensions"],
+  // puppeteer-core / @sparticuz/chromium (lib/renderThumbnail.ts) resolve
+  // their Chromium binary path at runtime the same way draco3dgltf resolves
+  // its .wasm — external for the same reason, before hitting the same
+  // bundler-rewritten-path failure rather than after.
+  serverExternalPackages: [
+    "draco3dgltf",
+    "@gltf-transform/core",
+    "@gltf-transform/functions",
+    "@gltf-transform/extensions",
+    "puppeteer-core",
+    "@sparticuz/chromium",
+  ],
 };
 
 export default nextConfig;
