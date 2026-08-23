@@ -1,16 +1,15 @@
-import { Box } from "lucide-react";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Button } from "@/components/ui/Button";
+import { createClient } from "@/lib/supabase/server";
+import { DashboardModels } from "@/components/DashboardModels";
 
-// Model generation (upload -> Tripo -> AR viewer) ships in Phase 2/3 — this
-// is a placeholder proving the protected shell, tokens, and primitives work.
-export default function DashboardPage() {
-  return (
-    <EmptyState
-      icon={<Box className="size-10" />}
-      title="No models yet"
-      description="Upload a photo to generate your first 3D model. This flow lands in Phase 2."
-      action={<Button disabled>Generate a model</Button>}
-    />
-  );
+// RLS "models: owner select" (rule 30) scopes this to the caller's own rows
+// without needing an explicit .eq("user_id", ...) — same pattern as
+// app/(app)/models/[id]/page.tsx.
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const { data: models } = await supabase
+    .from("models")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  return <DashboardModels initialModels={models ?? []} />;
 }
