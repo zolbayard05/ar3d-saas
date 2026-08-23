@@ -57,6 +57,13 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
     }
   }
 
+  // The DELETE request (app/api/models/delete/route.ts) and its confirm
+  // prompt already happened inside lib/deleteModel.ts by the time this
+  // fires — this only reconciles local state once the server call succeeded.
+  function handleDelete(model: ModelRow) {
+    setModels((prev) => prev.filter((m) => m.id !== model.id));
+  }
+
   const activeJob = models.find((m) => m.status === "pending" || m.status === "processing");
 
   return (
@@ -95,7 +102,7 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
           className="flex min-h-0 flex-1 flex-col overflow-y-auto"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
         >
-          <MasonryGrid models={models} onRetry={handleRetry} />
+          <MasonryGrid models={models} onRetry={handleRetry} onDelete={handleDelete} />
         </div>
       )}
     </div>

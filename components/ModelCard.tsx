@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useElapsedTime } from "@/hooks/useElapsedTime";
 import { formatDimensionsCm } from "@/lib/models";
+import { deleteModel } from "@/lib/deleteModel";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
 
@@ -12,12 +13,13 @@ type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 export interface ModelCardProps {
   initialModel: ModelRow;
   onRetry: (model: ModelRow) => void;
+  onDelete: (model: ModelRow) => void;
 }
 
 // CLAUDE.md rule 40 — the one card component every screen's masonry uses
 // (dashboard feed, library). Extracted out of components/HomeFeed.tsx so
 // library reuses this directly rather than a parallel copy.
-export function ModelCard({ initialModel, onRetry }: ModelCardProps) {
+export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
   const model = useModelRealtime(initialModel.id, initialModel) ?? initialModel;
 
   // Always the source photo, never render_url: the studio render sits on
@@ -73,7 +75,7 @@ export function ModelCard({ initialModel, onRetry }: ModelCardProps) {
           on-image chip above, not a second line here. */}
       <div className="flex flex-col gap-1 pt-2">
         <p className="text-body text-text">{model.title || "Untitled"}</p>
-        {model.status !== "ready" && <StatusLine model={model} onRetry={onRetry} />}
+        {model.status !== "ready" && <StatusLine model={model} onRetry={onRetry} onDelete={onDelete} />}
       </div>
     </div>
   );
@@ -89,21 +91,41 @@ export function ModelCard({ initialModel, onRetry }: ModelCardProps) {
 
 // Only ever called for a non-ready model — the ready case renders its
 // dimensions as the on-image chip instead (see above).
-function StatusLine({ model, onRetry }: { model: ModelRow; onRetry: (model: ModelRow) => void }) {
+function StatusLine({
+  model,
+  onRetry,
+  onDelete,
+}: {
+  model: ModelRow;
+  onRetry: (model: ModelRow) => void;
+  onDelete: (model: ModelRow) => void;
+}) {
   if (model.status === "failed") {
     return (
       <div className="flex flex-col gap-1">
         <p className="text-small uppercase tracking-wide text-text-muted">Credit refunded</p>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.preventDefault();
-            onRetry(model);
-          }}
-          className="w-fit text-small uppercase tracking-wide text-text underline underline-offset-2"
-        >
-          Try again
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              onRetry(model);
+            }}
+            className="w-fit text-small uppercase tracking-wide text-text underline underline-offset-2"
+          >
+            Try again
+          </button>
+          <button
+            type="button"
+            onClick={async (event) => {
+              event.preventDefault();
+              if (await deleteModel(model.id)) onDelete(model);
+            }}
+            className="w-fit text-small uppercase tracking-wide text-text-muted underline underline-offset-2 hover:text-text"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     );
   }

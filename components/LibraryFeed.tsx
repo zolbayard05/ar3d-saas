@@ -63,6 +63,10 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
     }
   }
 
+  function handleDelete(model: ModelRow) {
+    setModels((prev) => prev.filter((m) => m.id !== model.id));
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Top: one quiet metadata line, not a card/banner — same bare-text
@@ -94,7 +98,7 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
             }
           />
         ) : (
-          <MasonryGrid models={models} onRetry={handleRetry} />
+          <MasonryGrid models={models} onRetry={handleRetry} onDelete={handleDelete} />
         )}
 
         {/* Bottom: three small grey text links — no settings list, no

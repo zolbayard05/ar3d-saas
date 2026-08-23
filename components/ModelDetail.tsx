@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Share2, Ruler, Image as ImageIcon, Download } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
@@ -10,6 +11,8 @@ import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useModelScale } from "@/hooks/useModelScale";
 import { useModelTitle } from "@/hooks/useModelTitle";
 import { buildModelUrl, formatDimensionsCm } from "@/lib/models";
+import { deleteModel } from "@/lib/deleteModel";
+import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
 import type { ARViewerHandle } from "@/components/ARViewer";
 
@@ -54,7 +57,23 @@ export function ModelDetail({
   const [scale, setScale] = useModelScale(model.id, model.scale, isOwner);
   const { title, setTitle, commitTitle } = useModelTitle(model.id, model.title);
   const [scaleOpen, setScaleOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const arViewerRef = useRef<ARViewerHandle>(null);
+  const router = useRouter();
+
+  // Available regardless of status (rule from the task: "every model needs
+  // a way to remove it") — the row won't exist for this page to render
+  // again after success, so this navigates away rather than updating local
+  // state the way the feed's card-level delete does.
+  async function handleDelete() {
+    setDeleting(true);
+    if (await deleteModel(model.id)) {
+      router.push(hasSession ? "/dashboard" : "/");
+      router.refresh();
+    } else {
+      setDeleting(false);
+    }
+  }
 
   async function handleShare() {
     const url = window.location.href;
@@ -98,6 +117,7 @@ export function ModelDetail({
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
           <p className="text-body text-text">Generation failed.</p>
           {model.error && <p className="text-small text-text-muted">{model.error}</p>}
+          {isOwner && <DeleteAction deleting={deleting} onDelete={handleDelete} className="mt-4" />}
         </div>
       ) : !ready ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
@@ -105,6 +125,7 @@ export function ModelDetail({
           <p className="text-small text-text-muted">
             Generating your model — this usually takes 30 to 100 seconds.
           </p>
+          {isOwner && <DeleteAction deleting={deleting} onDelete={handleDelete} className="mt-4" />}
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
@@ -207,6 +228,16 @@ export function ModelDetail({
             </div>
           )}
 
+          {/* Quiet, deliberately separate from the icon row above (rule 40's
+              "no red anywhere" convention — same muted register as
+              everything else, destructiveness conveyed by the confirm
+              prompt and a little breathing room, not by color). */}
+          {isOwner && (
+            <div className="flex justify-center px-4 pb-2">
+              <DeleteAction deleting={deleting} onDelete={handleDelete} />
+            </div>
+          )}
+
           <div className="mt-auto flex flex-col">
             <button
               type="button"
@@ -233,5 +264,29 @@ export function ModelDetail({
         </div>
       )}
     </div>
+  );
+}
+
+function DeleteAction({
+  deleting,
+  onDelete,
+  className,
+}: {
+  deleting: boolean;
+  onDelete: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onDelete}
+      disabled={deleting}
+      className={cn(
+        "text-small uppercase tracking-wide text-text-muted underline underline-offset-2 hover:text-text disabled:opacity-50",
+        className,
+      )}
+    >
+      {deleting ? "Deleting…" : "Delete model"}
+    </button>
   );
 }

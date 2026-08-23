@@ -8,6 +8,7 @@ type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 export interface MasonryGridProps {
   models: ModelRow[];
   onRetry: (model: ModelRow) => void;
+  onDelete: (model: ModelRow) => void;
 }
 
 // CLAUDE.md rule 40 — the one masonry layout every screen reuses (dashboard
@@ -34,7 +35,7 @@ function columnForId(id: string): 0 | 1 {
   return (hash & 1) as 0 | 1;
 }
 
-export function MasonryGrid({ models, onRetry }: MasonryGridProps) {
+export function MasonryGrid({ models, onRetry, onDelete }: MasonryGridProps) {
   return (
     <div className="flex gap-2 px-2">
       {[0, 1].map((col) => (
@@ -42,7 +43,7 @@ export function MasonryGrid({ models, onRetry }: MasonryGridProps) {
           {models
             .filter((model) => columnForId(model.id) === col)
             .map((model) => (
-              <ModelCard key={model.id} initialModel={model} onRetry={onRetry} />
+              <ModelCard key={model.id} initialModel={model} onRetry={onRetry} onDelete={onDelete} />
             ))}
         </div>
       ))}
