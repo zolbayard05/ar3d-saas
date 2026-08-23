@@ -124,7 +124,22 @@ function putWithProgress(
       }
     };
 
-    xhr.onerror = () => reject(new Error("Network error during upload"));
+    // Fires when the browser blocks the request before any HTTP response is
+    // delivered to JS — a failed CORS preflight (the common case: the R2
+    // bucket's CORS policy doesn't allow this origin/method/header) looks
+    // identical to a DNS failure or dropped connection here; the browser
+    // deliberately withholds the real reason from script for security. This
+    // is NOT the same failure mode as xhr.onload with a 4xx/5xx status
+    // (below) — that means a response *did* come back (bad/expired
+    // signature, wrong bucket policy, etc), which is a different fix.
+    xhr.onerror = () =>
+      reject(
+        new Error(
+          "Network error during upload — the browser blocked the request before getting a response. " +
+            "This almost always means the R2 bucket's CORS policy doesn't allow this origin/method (check " +
+            "the Network tab for a failed OPTIONS preflight to *.r2.cloudflarestorage.com), not a rejected file.",
+        ),
+      );
     xhr.onabort = () => reject(new Error("Upload cancelled"));
 
     xhr.send(file);
