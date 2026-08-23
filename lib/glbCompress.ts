@@ -98,6 +98,15 @@ export interface GlbValidationResult {
   valid: boolean;
   reason?: string;
   bbox?: { width: number; depth: number; height: number };
+  /**
+   * Set whenever bounds were computable (whether or not the model passed —
+   * present on both an aspect-ratio rejection and a clean pass, absent only
+   * when bounds themselves couldn't be measured at all, e.g. no geometry).
+   * The caller logs this unconditionally so MAX_ASPECT_RATIO can eventually
+   * move from a guess to a value backed by a real distribution instead of
+   * the one sample it was sized against.
+   */
+  aspectRatio?: number;
 }
 
 // A real piece of furniture/decor essentially never has a bounding box more
@@ -173,9 +182,10 @@ export async function validateGlb(input: Buffer): Promise<GlbValidationResult> {
   if (aspectRatio > MAX_ASPECT_RATIO) {
     return {
       valid: false,
+      aspectRatio,
       reason: `GLB bounding box aspect ratio ${aspectRatio.toFixed(1)}:1 exceeds ${MAX_ASPECT_RATIO}:1 (extents ${extents.map((e) => e.toFixed(4)).join(", ")}) — implausible proportions, likely reconstructed from an unusable source photo`,
     };
   }
 
-  return { valid: true, bbox: { width: extents[0], height: extents[1], depth: extents[2] } };
+  return { valid: true, aspectRatio, bbox: { width: extents[0], height: extents[1], depth: extents[2] } };
 }

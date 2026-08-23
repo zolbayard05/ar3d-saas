@@ -166,6 +166,19 @@ export async function POST(request: Request) {
     // or the raw fallback above if compression itself failed) — whichever
     // one we'd actually be shipping.
     const validation = await validateGlb(fileBytes);
+
+    // Logged unconditionally, pass or fail — MAX_ASPECT_RATIO in
+    // lib/glbCompress.ts is currently sized to catch one sample (the
+    // "512x512" placeholder case). This is the data that turns it into a
+    // measured threshold instead of a guess: without the passing values too,
+    // there's no distribution to compare a rejection against, only the one
+    // failure that prompted picking 10 in the first place.
+    if (validation.aspectRatio !== undefined) {
+      console.info(
+        `Tripo webhook: model ${model.id} GLB aspect ratio ${validation.aspectRatio.toFixed(2)}:1 (${validation.valid ? "passed" : "REJECTED"})`,
+      );
+    }
+
     if (!validation.valid) {
       console.warn(`Tripo webhook: model ${model.id} failed GLB validation: ${validation.reason}`);
       await admin.rpc("refund_credit", {
