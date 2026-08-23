@@ -100,3 +100,32 @@ Numbered so they can be referenced from code comments (e.g. "see rule 30").
     revalidating it against the Auth server — a stale or forged cookie can
     pass. `getUser()` round-trips to Supabase and confirms the token is
     still valid; it's the only one safe to gate access with.
+32. **Never edit a migration file that has already been applied to a live
+    database.** Add a new migration file instead. An already-applied file is
+    part of the historical record other environments replay in order —
+    editing it in place means a fresh database and an existing one diverge
+    silently, since the existing one already ran the old contents and won't
+    re-run the edited version.
+33. **RLS restricts rows, not columns.** A `USING (auth.uid() = id)` policy
+    is satisfied by a user updating their own row, including columns that
+    must be server-only (e.g. credits, plan, status) — row ownership says
+    nothing about which columns they should be allowed to set. Any table
+    with a mix of user-writable and server-only columns needs column-level
+    `GRANT`/`REVOKE`, not just a row policy, to close that gap.
+34. **`service_role` is the only write path for `profiles.credits`,
+    `profiles.plan`, `models.status`, `models.glb_url`, and
+    `models.usdz_url`.** `authenticated` has no grant on these columns at
+    the database level (see rule 33) — every write to them must go through
+    a server action or webhook using the service role key. Never add a
+    client-side `.update()` touching these columns; it will fail at the
+    database, and if it didn't, it would be the security hole rule 33
+    exists to prevent.
+35. **RLS restricts rows, not columns, and column-level grants must be
+    audited for INSERT as well as UPDATE.** A user who can insert a row can
+    set every column in it. We've hit this class of bug twice: first on
+    UPDATE (rule 33 — a user updating their own row could also set
+    server-only columns like credits/status), then on INSERT (`models`'s
+    owner-insert policy only checked `user_id`, so a user could insert a row
+    with `status = 'ready'` and a fabricated `glb_url`, self-granting a
+    finished model for free). Any table with a mix of user-writable and
+    server-only columns needs both directions checked, not just UPDATE.
