@@ -1,0 +1,32 @@
+-- ============================================================================
+-- 0009_revoke_anon_write_grants.sql — anon was never addressed, on either table
+--
+-- Found while auditing grants for migration 0008 (new bbox_* columns):
+-- `anon` has INSERT + UPDATE on *every* column of both `models` and
+-- `profiles` — Supabase's ALTER DEFAULT PRIVILEGES grants these to anon
+-- automatically at table/column creation time (same mechanism rule 33/34/35
+-- already describe for `authenticated`), and no prior migration ever
+-- revoked it. 0004/0005 only ever touched `authenticated`.
+--
+-- Currently NOT exploitable: RLS is enabled on both tables (confirmed via
+-- pg_class.relrowsecurity), and:
+--   - Neither table has an INSERT policy left (0005 dropped models' "owner
+--     insert"; profiles never had one) — RLS defaults to deny-all for
+--     INSERT with zero permissive policies, blocking anon regardless of
+--     the raw grant.
+--   - Both tables' UPDATE policies require auth.uid() = user_id/id, which
+--     is NULL for an unauthenticated anon request and so never matches.
+--
+-- Revoking anyway: this is exactly the "don't rely on RLS alone" principle
+-- rule 33/34/35 already establish for `authenticated` — a raw grant with no
+-- matching row policy is a loaded gun with the safety on, not something to
+-- leave in place because the safety currently holds. It also closes the
+-- gap for good going forward: every ALTER TABLE ADD COLUMN since (0006,
+-- 0007, 0008) re-triggered this for anon on each new column, and would
+-- keep doing so for every future column addition if left unaddressed here.
+--
+-- All statements idempotent, safe to re-run.
+-- ============================================================================
+
+revoke insert, update, delete on models from anon;
+revoke insert, update, delete on profiles from anon;

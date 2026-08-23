@@ -202,3 +202,20 @@ Numbered so they can be referenced from code comments (e.g. "see rule 30").
     with `status = 'ready'` and a fabricated `glb_url`, self-granting a
     finished model for free). Any table with a mix of user-writable and
     server-only columns needs both directions checked, not just UPDATE.
+36. **Third occurrence of the rule 33/35 class of bug, found auditing
+    migration 0008: `anon` — not just `authenticated` — needs its grants
+    checked too, and on every table, not just the ones already audited.**
+    `anon` had blanket INSERT/UPDATE on *every* column of both `models` and
+    `profiles`, on every column including ones that predate this — 0004/0005
+    only ever revoked from `authenticated`, `anon` was never addressed at
+    all, this whole project (fixed in 0009). Not currently exploitable
+    (RLS's row policies block anon regardless — no INSERT policy survives
+    on either table, and UPDATE policies require `auth.uid() = user_id/id`,
+    never true with no JWT) but that's "the safety happens to be on," not
+    "there's no loaded gun" — fix it anyway, same principle as rule 33/34
+    already establish for authenticated. Also confirmed: Supabase's
+    default-privileges auto-grant re-triggers on `ALTER TABLE ADD COLUMN`,
+    not just `CREATE TABLE` — every migration since 0006 that added a
+    column had this gap for anon on that column specifically, in addition
+    to the pre-existing gap on every older column. Check `anon` grants,
+    not just `authenticated`, whenever auditing a table after this.
