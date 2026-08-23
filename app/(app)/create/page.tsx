@@ -5,11 +5,11 @@ import { UploadDropzone } from "@/components/UploadDropzone";
 import type { UploadResult } from "@/hooks/useUpload";
 import { useState } from "react";
 
-// Functional placeholder, not a ported screen: design/03-capture.png,
-// 04-confirm.png, 05-waiting.png are their own turns later in the port
-// order. This exists so "+" in BottomNav goes somewhere real today rather
-// than a dead link, reusing the same upload -> generate call the previous
-// dashboard wiring already had. No visual design pass here.
+// Functional placeholder, not a ported screen: capture/confirm are their
+// own turns later (rule 40 — the feed/detail/library/waiting screens are
+// the reference now, design/*.png is retired). This exists so "+" in
+// BottomNav goes somewhere real, reusing the same upload -> generate call
+// the previous dashboard wiring already had. No visual design pass here.
 export default function CreatePage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +26,7 @@ export default function CreatePage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Failed to start generation (${res.status})`);
-      router.push("/dashboard");
+      router.push(`/models/${body.modelId}/waiting`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start generation");
       setBusy(false);
