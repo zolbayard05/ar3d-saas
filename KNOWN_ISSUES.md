@@ -4,6 +4,48 @@ Tracked here so they aren't rediscovered from scratch later. Not urgent
 enough to have blocked the phase that surfaced them — fix opportunistically
 or when they start actually hurting.
 
+## ~~`@sparticuz/chromium` binary missing on first real Vercel deploy~~ — resolved
+
+**Found**: the first production generation after the thumbnail-render
+feature shipped. The user reported a model stuck "generating" for 10+
+minutes. Diagnosis (Tripo's own task API timestamps + full Vercel log
+messages, not just status codes) showed Tripo itself had simply taken
+longer than usual (6m9s vs. the typical 1-3 min) — nothing was actually
+stuck. But it surfaced a real, separate bug along the way: the render
+step failed on every attempt, immediately, with:
+
+```
+Error: The input directory "/var/task/node_modules/@sparticuz/chromium/bin"
+does not exist. If you are using a bundler (esbuild, webpack, etc.), you
+must externalize @sparticuz/chromium so it is not relocated.
+```
+
+**Cause**: `serverExternalPackages` (next.config.ts) stops the bundler from
+rewriting the package's `require()` calls, but that's a different mechanism
+from Vercel's *output file tracing* — the step that decides which
+`node_modules` files physically ship inside a route's deployed function.
+`@sparticuz/chromium` resolves its binary path itself at runtime rather than
+via a static `require()`, so Next's automatic tracing never detected the
+`bin/` directory needed to come along, and it was silently absent from the
+deployed function.
+
+**Resolved by**: `outputFileTracingIncludes` in next.config.ts, scoped to
+`/api/webhooks/tripo` specifically, force-including
+`./node_modules/@sparticuz/chromium/**/*`.
+
+**Also prompted two structural fixes, independent of this specific bug**
+(a masking fix that happened to hide this failure would have been worse
+than no fix — this bug needed to be found and root-caused, not just
+absorbed): the render now runs strictly after the row is already `ready`
+(`app/api/webhooks/tripo/route.ts`'s `after()` callback), with its own hard
+timeout around the *entire* call including Chromium launch — previously
+only the internal "wait for model to load" step was bounded, so a hang
+(this bug happened to fail fast, not hang, but the code didn't guarantee
+that) could have delayed the ready transition. And `lib/sweepStaleGenerations.ts`
+now recovers any model that DOES get truly stuck (dead mid-webhook, no
+retry ever arriving) — see that file for the timeout ceiling and the
+race-safety argument against a live webhook.
+
 ## ~~Hydration mismatch on `<html data-theme>`~~ — resolved
 
 **Found**: Phase 4, while browser-testing `/models/[id]` (unrelated to that

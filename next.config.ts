@@ -30,6 +30,18 @@ const nextConfig: NextConfig = {
     "puppeteer-core",
     "@sparticuz/chromium",
   ],
+  // serverExternalPackages alone wasn't enough for @sparticuz/chromium on
+  // Vercel (confirmed live, KNOWN_ISSUES.md): that stops the bundler from
+  // rewriting its require() calls, but Vercel's OUTPUT FILE TRACING is a
+  // separate mechanism that decides which node_modules files physically
+  // ship in a route's deployed function — chromium's binary directory isn't
+  // require()'d directly (it's resolved via its own runtime path
+  // computation), so Next's automatic tracing didn't detect it needed to
+  // come along, and the deployed function was missing
+  // node_modules/@sparticuz/chromium/bin entirely. This says so explicitly.
+  outputFileTracingIncludes: {
+    "/api/webhooks/tripo": ["./node_modules/@sparticuz/chromium/**/*"],
+  },
 };
 
 export default nextConfig;
