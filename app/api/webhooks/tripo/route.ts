@@ -14,8 +14,16 @@ import {
   type TripoTask,
 } from "@/lib/tripo";
 import { compressGlb, validateGlb } from "@/lib/glbCompress";
+import { renderThumbnail } from "@/lib/renderThumbnail";
 
 const SOURCE_URL_EXPIRY_SECONDS = 10 * 60;
+
+// Default Vercel function timeout (10s) isn't enough headroom once this
+// handler launches headless Chromium for lib/renderThumbnail.ts on top of
+// everything else it already does (download, Draco compress, frequency
+// separation, validate). 60s is the Hobby-plan ceiling — the safe universal
+// max without assuming a Pro/Enterprise plan that could go higher.
+export const maxDuration = 60;
 
 type Stage = "glb" | "usdz";
 
@@ -137,6 +145,7 @@ export async function POST(request: Request) {
   // Compression failure shouldn't lose the generation entirely: fall back to
   // the uncompressed file rather than refunding over a post-process step.
   let bbox: { width: number; depth: number; height: number } | undefined;
+  let renderKey: string | undefined;
   if (stage === "glb") {
     try {
       const result = await compressGlb(fileBytes);
@@ -186,6 +195,33 @@ export async function POST(request: Request) {
         failure_reason: `Model failed validation: ${validation.reason}`,
       });
       return NextResponse.json({ ok: true, note: "failed validation" });
+    }
+
+    // design/01, design/06 — the feed shows the generated object on a dark
+    // studio backdrop, not the source photo. Best-effort, same rule as
+    // compressGlb above: a render failure (Chromium crash, timeout, OOM —
+    // this runs full headless PBR rendering, more can go wrong than a Draco
+    // pass) must never fail an otherwise-valid, already-validated
+    // generation. Needs `bbox` for both the output aspect ratio and the
+    // camera-fit math, so it's skipped (not retried) if extraction itself
+    // failed above — a model without bbox already ships without a
+    // dimensions line for the same reason (rule established in 0008).
+    if (bbox) {
+      try {
+        const rendered = await renderThumbnail({ glb: fileBytes, bbox, modelId: model.id });
+        renderKey = `models/${model.id}.webp`;
+        await getR2Client().send(
+          new PutObjectCommand({
+            Bucket: getModelsBucket(),
+            Key: renderKey,
+            Body: rendered.image,
+            ContentType: MODEL_CONTENT_TYPES.webp,
+            CacheControl: MODEL_CACHE_CONTROL,
+          }),
+        );
+      } catch (err) {
+        console.warn(`Tripo webhook: thumbnail render failed for model ${model.id}, feed falls back to source photo`, err);
+      }
     }
   }
 
@@ -278,6 +314,7 @@ export async function POST(request: Request) {
       .update({
         glb_url: key,
         ...(bbox && { bbox_width_m: bbox.width, bbox_depth_m: bbox.depth, bbox_height_m: bbox.height }),
+        ...(renderKey && { render_url: renderKey }),
       })
       .eq("id", model.id)
       .is("glb_url", null)
