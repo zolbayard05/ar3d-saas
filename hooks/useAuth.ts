@@ -32,6 +32,31 @@ export function useAuth() {
     setStatus("sent");
   }, []);
 
+  // signInWithOAuth navigates the browser itself (window.location.assign)
+  // once it gets a provider URL back — there's no local success/error state
+  // to resolve to the way email sign-in has, since the next thing that
+  // happens is the tab leaving this page entirely for Google's consent
+  // screen. redirectTo reuses /auth/confirm — that route already handles a
+  // PKCE `code` param (see app/auth/confirm/route.ts), which is exactly
+  // what Supabase's OAuth callback sends; no separate callback route needed.
+  const signInWithGoogle = useCallback(async () => {
+    setStatus("sending");
+    setError(null);
+
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/confirm`,
+      },
+    });
+
+    if (signInError) {
+      setStatus("error");
+      setError(signInError.message);
+    }
+  }, []);
+
   // Dev-only escape hatch: Supabase's free-tier email rate limit blocks
   // magic-link testing (not our bug — a platform limit), so local testing
   // needs a path that doesn't send email at all. Gated on NODE_ENV, which
@@ -67,5 +92,5 @@ export function useAuth() {
     router.refresh();
   }, [router]);
 
-  return { status, error, sendMagicLink, signInWithPassword, signOut };
+  return { status, error, sendMagicLink, signInWithGoogle, signInWithPassword, signOut };
 }

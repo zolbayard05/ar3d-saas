@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-  const { status, error, sendMagicLink, signInWithPassword } = useAuth();
+  const { status, error, sendMagicLink, signInWithGoogle, signInWithPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -31,6 +31,23 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            loading={status === "sending"}
+            onClick={() => void signInWithGoogle()}
+          >
+            Continue with Google
+          </Button>
+          {status === "error" && <p className="mt-2 text-caption text-danger">{error}</p>}
+
+          <div className="my-6 flex items-center gap-3 text-caption text-text-muted">
+            <div className="h-px flex-1 bg-border" />
+            or
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
           {status === "sent" ? (
             <p className="text-body text-text">
               Check <span className="font-medium">{email}</span> for a sign-in link.
