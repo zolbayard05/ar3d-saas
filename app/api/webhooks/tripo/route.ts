@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/tripo";
 import { compressGlb, validateGlb } from "@/lib/glbCompress";
 import { renderThumbnail } from "@/lib/renderThumbnail";
+import { sweepStaleGenerations } from "@/lib/sweepStaleGenerations";
 
 const SOURCE_URL_EXPIRY_SECONDS = 10 * 60;
 
@@ -49,6 +50,17 @@ export async function POST(request: Request) {
 
   if (!verifyTripoWebhookSignature(rawBody, signature, getWebhookSecret())) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  // Piggybacks recovery of any OTHER stuck model onto real webhook traffic —
+  // see lib/sweepStaleGenerations.ts for why this runs here (works on every
+  // Vercel plan tier, no cron infrastructure needed) as well as from a
+  // once-daily cron backstop. Independent of this request's own payload, so
+  // a failure here must never block processing the actual delivery below.
+  try {
+    await sweepStaleGenerations();
+  } catch (err) {
+    console.warn("Tripo webhook: opportunistic stale-generation sweep failed", err);
   }
 
   let task: TripoTask;
@@ -145,7 +157,6 @@ export async function POST(request: Request) {
   // Compression failure shouldn't lose the generation entirely: fall back to
   // the uncompressed file rather than refunding over a post-process step.
   let bbox: { width: number; depth: number; height: number } | undefined;
-  let renderKey: string | undefined;
   if (stage === "glb") {
     try {
       const result = await compressGlb(fileBytes);
@@ -195,33 +206,6 @@ export async function POST(request: Request) {
         failure_reason: `Model failed validation: ${validation.reason}`,
       });
       return NextResponse.json({ ok: true, note: "failed validation" });
-    }
-
-    // design/01, design/06 — the feed shows the generated object on a dark
-    // studio backdrop, not the source photo. Best-effort, same rule as
-    // compressGlb above: a render failure (Chromium crash, timeout, OOM —
-    // this runs full headless PBR rendering, more can go wrong than a Draco
-    // pass) must never fail an otherwise-valid, already-validated
-    // generation. Needs `bbox` for both the output aspect ratio and the
-    // camera-fit math, so it's skipped (not retried) if extraction itself
-    // failed above — a model without bbox already ships without a
-    // dimensions line for the same reason (rule established in 0008).
-    if (bbox) {
-      try {
-        const rendered = await renderThumbnail({ glb: fileBytes, bbox, modelId: model.id });
-        renderKey = `models/${model.id}.webp`;
-        await getR2Client().send(
-          new PutObjectCommand({
-            Bucket: getModelsBucket(),
-            Key: renderKey,
-            Body: rendered.image,
-            ContentType: MODEL_CONTENT_TYPES.webp,
-            CacheControl: MODEL_CACHE_CONTROL,
-          }),
-        );
-      } catch (err) {
-        console.warn(`Tripo webhook: thumbnail render failed for model ${model.id}, feed falls back to source photo`, err);
-      }
     }
   }
 
@@ -314,10 +298,15 @@ export async function POST(request: Request) {
       .update({
         glb_url: key,
         ...(bbox && { bbox_width_m: bbox.width, bbox_depth_m: bbox.depth, bbox_height_m: bbox.height }),
-        ...(renderKey && { render_url: renderKey }),
       })
       .eq("id", model.id)
       .is("glb_url", null)
+      // Guards against the stale-sweep race (scripts run via
+      // app/api/cron/sweep-stale-generations/route.ts): if the sweep already
+      // refunded and failed this row while this delivery was in flight, this
+      // must not revive it by writing glb_url onto a row the user has
+      // already been told (and refunded) failed.
+      .neq("status", "failed")
       .select("id");
 
     if (!updated || updated.length === 0) {
@@ -339,12 +328,88 @@ export async function POST(request: Request) {
   }
 
   // stage === "usdz": this is the last step — flip to ready atomically with
-  // the write, guarded the same way as the GLB branch above.
-  await admin
+  // the write, guarded the same way as the GLB branch above. Also guarded
+  // against the stale-sweep race (see the glb_url update above) — without
+  // this, a sweep that refunds+fails this row a moment before this delivery
+  // lands would get silently overwritten back to "ready" by this write.
+  const { data: readyUpdated } = await admin
     .from("models")
     .update({ usdz_url: key, status: "ready" })
     .eq("id", model.id)
-    .is("usdz_url", null);
+    .is("usdz_url", null)
+    .neq("status", "failed")
+    .select("id");
+
+  if (readyUpdated && readyUpdated.length > 0) {
+    // after(), not await: Tripo gets its 200 the moment the row is ready —
+    // a slow render must not risk Tripo treating this delivery as timed out
+    // and retrying it (harmless, since the idempotency guard above would
+    // just no-op the retry, but pointless). Vercel keeps this invocation
+    // alive to run the callback after the response is sent, up to
+    // maxDuration — the render's own RENDER_HARD_TIMEOUT_MS (25s) fits
+    // comfortably inside that.
+    after(() => renderAndStoreThumbnail(admin, model.id));
+  }
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * design/01, design/06 — the feed shows the generated object on a dark
+ * studio backdrop, not the source photo. Runs strictly AFTER the row is
+ * already `ready`, not before: rendering is cosmetic, and the credit/model
+ * delivery must never wait on or be jeopardized by it (this is exactly what
+ * broke on the first real Vercel run — see KNOWN_ISSUES.md — a caught,
+ * fast-failing bug that time, but the render call had no bound on the
+ * *entire* operation, only on the internal "wait for model to load" step;
+ * a hang in Chromium launch or the screenshot itself was unbounded except by
+ * Vercel's own 60s function timeout, which would have delayed the ready
+ * transition had the failure mode been a hang instead of a fast throw).
+ *
+ * RENDER_HARD_TIMEOUT_MS bounds the ENTIRE call, launch included, via
+ * Promise.race — if it fires, this function returns and the webhook
+ * responds normally; the abandoned renderThumbnail() call has no further
+ * effect since Vercel freezes the invocation shortly after the response is
+ * sent. A model with no render just keeps showing its source photo (already
+ * the fallback), never held up.
+ */
+const RENDER_HARD_TIMEOUT_MS = 25_000;
+
+async function renderAndStoreThumbnail(admin: ReturnType<typeof createAdminClient>, modelId: string): Promise<void> {
+  try {
+    const { data: model } = await admin
+      .from("models")
+      .select("glb_url, bbox_width_m, bbox_depth_m, bbox_height_m")
+      .eq("id", modelId)
+      .single();
+
+    if (!model?.glb_url || model.bbox_width_m == null || model.bbox_depth_m == null || model.bbox_height_m == null) {
+      return;
+    }
+
+    const glbObject = await getR2Client().send(new GetObjectCommand({ Bucket: getModelsBucket(), Key: model.glb_url }));
+    if (!glbObject.Body) return;
+    const glb = Buffer.from(await glbObject.Body.transformToByteArray());
+    const bbox = { width: model.bbox_width_m, depth: model.bbox_depth_m, height: model.bbox_height_m };
+
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`thumbnail render exceeded ${RENDER_HARD_TIMEOUT_MS}ms hard timeout`)), RENDER_HARD_TIMEOUT_MS),
+    );
+    const rendered = await Promise.race([renderThumbnail({ glb, bbox, modelId }), timeout]);
+
+    const renderKey = `models/${modelId}.webp`;
+    await getR2Client().send(
+      new PutObjectCommand({
+        Bucket: getModelsBucket(),
+        Key: renderKey,
+        Body: rendered.image,
+        ContentType: MODEL_CONTENT_TYPES.webp,
+        CacheControl: MODEL_CACHE_CONTROL,
+      }),
+    );
+
+    await admin.from("models").update({ render_url: renderKey }).eq("id", modelId).is("render_url", null);
+  } catch (err) {
+    console.warn(`Tripo webhook: thumbnail render failed for model ${modelId}, feed falls back to source photo`, err);
+  }
 }
