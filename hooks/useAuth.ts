@@ -32,6 +32,34 @@ export function useAuth() {
     setStatus("sent");
   }, []);
 
+  // Dev-only escape hatch: Supabase's free-tier email rate limit blocks
+  // magic-link testing (not our bug — a platform limit), so local testing
+  // needs a path that doesn't send email at all. Gated on NODE_ENV, which
+  // Next.js inlines at build time — `next build`/`next start` compile this
+  // branch to `false` and dead-code-eliminate it, so it cannot ship, not
+  // just "be hidden in the UI".
+  const signInWithPassword = useCallback(
+    async (email: string, password: string) => {
+      if (process.env.NODE_ENV !== "development") return;
+
+      setStatus("sending");
+      setError(null);
+
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (signInError) {
+        setStatus("error");
+        setError(signInError.message);
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    },
+    [router],
+  );
+
   const signOut = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -39,5 +67,5 @@ export function useAuth() {
     router.refresh();
   }, [router]);
 
-  return { status, error, sendMagicLink, signOut };
+  return { status, error, sendMagicLink, signInWithPassword, signOut };
 }
