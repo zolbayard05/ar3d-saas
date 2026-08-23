@@ -34,7 +34,7 @@ import { getR2Client, getModelsBucket } from "@/lib/r2";
  *    files are genuinely immutable once written (a given id.stage key is
  *    written exactly once), so this is a correct cache, not just a fast one.
  */
-const KEY_RE = /^models\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(glb|usdz)$/i;
+const KEY_RE = /^models\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(glb|usdz|webp)$/i;
 
 export async function GET(_request: Request, { params }: { params: Promise<{ key: string[] }> }) {
   const { key: keyParts } = await params;

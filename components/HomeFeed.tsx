@@ -6,16 +6,15 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusStrip } from "@/components/StatusStrip";
 import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useElapsedTime } from "@/hooks/useElapsedTime";
-import { formatDimensionsCm } from "@/lib/models";
+import { buildModelUrl, formatDimensionsCm } from "@/lib/models";
 import type { Database } from "@/lib/supabase/types";
 
 type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 
-// design/01-home-feed.png, design/06-feed-with-job.png. Minimal port: real
-// data end to end (dimensions, live status, retry), but thumbnails are the
-// user's own source photo, not a rendered 3D preview — Tripo's response
-// does include a rendered_image_url we don't currently capture/store
-// anywhere; swapping to that is a real, scoped follow-up, not done here.
+// design/01-home-feed.png, design/06-feed-with-job.png. Real data end to
+// end: dimensions, live status, retry, and a server-rendered studio
+// thumbnail of the generated object itself (lib/renderThumbnail.ts) rather
+// than the user's source photo.
 export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
   const [models, setModels] = useState(initialModels);
   const [retryError, setRetryError] = useState<string | null>(null);
@@ -43,6 +42,7 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
           status: "pending",
           glb_url: null,
           usdz_url: null,
+          render_url: null,
           provider_job_id: null,
           usdz_provider_job_id: null,
           idempotency_key: null,
@@ -89,12 +89,19 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
 function ModelCard({ initialModel, onRetry }: { initialModel: ModelRow; onRetry: (model: ModelRow) => void }) {
   const model = useModelRealtime(initialModel.id, initialModel) ?? initialModel;
 
+  // design/01, design/06: the card shows the generated object on a dark
+  // studio backdrop (lib/renderThumbnail.ts), not the source photo — falls
+  // back to the source photo only when there's no render yet (still
+  // generating, or the render itself failed — see the webhook's try/catch,
+  // never a reason to fail the generation).
+  const thumbnailSrc = model.render_url ? buildModelUrl(model.render_url) : `/api/uploads/${model.source_image_key}`;
+
   const content = (
     <div className="mb-px break-inside-avoid bg-surface">
       <div className="relative w-full bg-surface-hover">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`/api/uploads/${model.source_image_key}`}
+          src={thumbnailSrc}
           alt=""
           className="block w-full"
         />
