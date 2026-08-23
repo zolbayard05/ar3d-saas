@@ -136,10 +136,12 @@ export async function POST(request: Request) {
   // extension, ARKit's format has no equivalent (see lib/glbCompress.ts).
   // Compression failure shouldn't lose the generation entirely: fall back to
   // the uncompressed file rather than refunding over a post-process step.
+  let bbox: { width: number; depth: number; height: number } | undefined;
   if (stage === "glb") {
     try {
       const result = await compressGlb(fileBytes);
       fileBytes = Buffer.from(result.glb);
+      bbox = result.bbox;
       if (result.seamGap) {
         // Visibility into the frequency-separation quality pass itself, not
         // just whether it ran: if this technique quietly stops helping on
@@ -243,7 +245,10 @@ export async function POST(request: Request) {
   if (stage === "glb") {
     const { data: updated } = await admin
       .from("models")
-      .update({ glb_url: key })
+      .update({
+        glb_url: key,
+        ...(bbox && { bbox_width_m: bbox.width, bbox_depth_m: bbox.depth, bbox_height_m: bbox.height }),
+      })
       .eq("id", model.id)
       .is("glb_url", null)
       .select("id");

@@ -42,6 +42,9 @@ export interface Database {
           usdz_provider_job_id: string | null;
           idempotency_key: string | null;
           size_retry_count: number;
+          bbox_width_m: number | null;
+          bbox_depth_m: number | null;
+          bbox_height_m: number | null;
           scale: number;
           error: string | null;
           created_at: string;
@@ -60,6 +63,9 @@ export interface Database {
           usdz_provider_job_id?: string | null;
           idempotency_key?: string | null;
           size_retry_count?: number;
+          bbox_width_m?: number | null;
+          bbox_depth_m?: number | null;
+          bbox_height_m?: number | null;
           scale?: number;
           error?: string | null;
           created_at?: string;

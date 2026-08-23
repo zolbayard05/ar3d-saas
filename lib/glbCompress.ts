@@ -1,7 +1,7 @@
 import "server-only";
 import { NodeIO } from "@gltf-transform/core";
 import { KHRDracoMeshCompression } from "@gltf-transform/extensions";
-import { draco, textureCompress, dedup, prune } from "@gltf-transform/functions";
+import { draco, textureCompress, dedup, prune, getBounds } from "@gltf-transform/functions";
 import draco3d from "draco3dgltf";
 import sharp from "sharp";
 import { frequencySeparate } from "@/lib/textureFreqSeparate";
@@ -17,6 +17,14 @@ export interface GlbCompressResult {
   glb: Buffer;
   /** Set only if frequency separation actually ran (it may not — see the catch below). */
   seamGap?: { before: number; after: number };
+  /**
+   * Raw bounding-box size in the mesh's own (unscaled) units — glTF's
+   * convention is 1 unit = 1 meter, but Tripo's output has no real-world
+   * scale (rule 22), so these are NOT meters of anything real. Multiply by
+   * the model's own `scale` column at display time to get an honest,
+   * user-traceable centimeter figure — see migration 0008.
+   */
+  bbox?: { width: number; depth: number; height: number };
 }
 
 /**
@@ -48,6 +56,19 @@ export async function compressGlb(input: Buffer): Promise<GlbCompressResult> {
 
   const doc = await io.readBinary(input);
 
+  // Computed on the pristine mesh, before draco()'s quantization runs below
+  // — avoids any question of quantization affecting the measurement.
+  let bbox: GlbCompressResult["bbox"];
+  try {
+    const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
+    if (scene) {
+      const { min, max } = getBounds(scene);
+      bbox = { width: max[0] - min[0], height: max[1] - min[1], depth: max[2] - min[2] };
+    }
+  } catch (err) {
+    console.warn("compressGlb: bounding-box extraction failed", err);
+  }
+
   let seamGap: GlbCompressResult["seamGap"];
   try {
     for (const material of doc.getRoot().listMaterials()) {
@@ -70,5 +91,5 @@ export async function compressGlb(input: Buffer): Promise<GlbCompressResult> {
     draco({ method: "edgebreaker", quantizePosition: 14, quantizeTexcoord: 12, quantizeNormal: 10 }),
   );
 
-  return { glb: Buffer.from(await io.writeBinary(doc)), seamGap };
+  return { glb: Buffer.from(await io.writeBinary(doc)), seamGap, bbox };
 }
