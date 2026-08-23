@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusStrip } from "@/components/StatusStrip";
 import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useElapsedTime } from "@/hooks/useElapsedTime";
-import { buildModelUrl, formatDimensionsCm } from "@/lib/models";
+import { formatDimensionsCm } from "@/lib/models";
 import type { Database } from "@/lib/supabase/types";
 
 type ModelRow = Database["public"]["Tables"]["models"]["Row"];
@@ -101,12 +101,14 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
 function ModelCard({ initialModel, onRetry }: { initialModel: ModelRow; onRetry: (model: ModelRow) => void }) {
   const model = useModelRealtime(initialModel.id, initialModel) ?? initialModel;
 
-  // design/01, design/06: the card shows the generated object on a dark
-  // studio backdrop (lib/renderThumbnail.ts), not the source photo — falls
-  // back to the source photo only when there's no render yet (still
-  // generating, or the render itself failed — see the webhook's try/catch,
-  // never a reason to fail the generation).
-  const thumbnailSrc = model.render_url ? buildModelUrl(model.render_url) : `/api/uploads/${model.source_image_key}`;
+  // Always the source photo, never render_url: the studio render sits on
+  // the same near-black backdrop as the page itself, so against --color-bg
+  // the card reads as an empty rectangle rather than an object. The photo's
+  // own background (white, a room, whatever it actually was) is what gives
+  // the feed contrast and per-card variety. lib/renderThumbnail.ts and its
+  // stored output are untouched — this only changes what the feed displays,
+  // not whether the render pipeline runs or what's kept in R2/render_url.
+  const thumbnailSrc = `/api/uploads/${model.source_image_key}`;
 
   // CLAUDE.md rule 37: the image fills its own rounded frame edge to edge —
   // no padding, no letterboxing, no card background showing behind it. A
