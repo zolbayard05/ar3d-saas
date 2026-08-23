@@ -13,7 +13,7 @@ import {
   MAX_SIZE_RETRIES,
   type TripoTask,
 } from "@/lib/tripo";
-import { compressGlb } from "@/lib/glbCompress";
+import { compressGlb, validateGlb } from "@/lib/glbCompress";
 
 const SOURCE_URL_EXPIRY_SECONDS = 10 * 60;
 
@@ -156,6 +156,23 @@ export async function POST(request: Request) {
         `Tripo webhook: GLB compression failed for model ${model.id}, storing uncompressed`,
         err,
       );
+    }
+
+    // Gate before anything is uploaded or the USDZ conversion (another paid
+    // Tripo task) is even kicked off: a model that can't parse, has no real
+    // geometry, or has implausible proportions shouldn't reach a user as
+    // "ready" and shouldn't cost a credit — see lib/glbCompress.ts's
+    // validateGlb. Runs on `fileBytes` as it stands right now (compressed,
+    // or the raw fallback above if compression itself failed) — whichever
+    // one we'd actually be shipping.
+    const validation = await validateGlb(fileBytes);
+    if (!validation.valid) {
+      console.warn(`Tripo webhook: model ${model.id} failed GLB validation: ${validation.reason}`);
+      await admin.rpc("refund_credit", {
+        model_id: model.id,
+        failure_reason: `Model failed validation: ${validation.reason}`,
+      });
+      return NextResponse.json({ ok: true, note: "failed validation" });
     }
   }
 
