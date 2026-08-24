@@ -16,9 +16,13 @@ export default async function CreatePage() {
 
   // Now that BottomNav stays visible on /create (2026-08-24), a user can
   // navigate away mid-generation and come back — without this, returning
-  // to /create would show a blank choice screen with no sign the earlier
-  // generation is still running. Only the single most recent one: showing
-  // several would need its own list UI this screen was never meant to have.
+  // to /create would show the picker with no sign the earlier generation
+  // is still running. CaptureFlow.tsx renders this exactly like a
+  // generation just started in this same session (the full GeneratingStep,
+  // not a separate smaller "still going" banner — that was tried and
+  // retired for showing two different generating UIs instead of one).
+  // Only the single most recent one: showing several would need its own
+  // list UI this screen was never meant to have.
   const { data: activeModel } = await supabase
     .from("models")
     .select("*")

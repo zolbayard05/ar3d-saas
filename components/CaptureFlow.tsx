@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ActiveGenerationBanner } from "@/components/ActiveGenerationBanner";
 import { CaptureChoice } from "@/components/CaptureChoice";
 import { GeneratingStep } from "@/components/GeneratingStep";
 import { ResultStep } from "@/components/ResultStep";
@@ -40,12 +39,27 @@ interface GeneratingModel {
 // ResultStep's own Save is pressed — Delete there removes it via the same
 // lib/deleteModel.ts every other delete action uses, same as never having
 // kept it.
+//
+// initialActiveModel (a generation already running when the caller landed
+// on /create — see create/page.tsx) seeds generatingModel directly rather
+// than showing a separate small "still generating" banner alongside the
+// picker (that was an earlier version of this screen, retired 2026-08-24
+// for having two different generating UIs instead of one) — arriving with
+// an active generation now renders the exact same full GeneratingStep a
+// fresh Create press would, just sourced from the model's own stored photo
+// (via /api/uploads) instead of a local blob URL, since there's no File
+// object left for a generation started in an earlier page load.
 export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [generatingModel, setGeneratingModel] = useState<GeneratingModel | null>(null);
+  const [generatingModel, setGeneratingModel] = useState<GeneratingModel | null>(() =>
+    initialActiveModel ? { id: initialActiveModel.id, createdAt: initialActiveModel.created_at } : null,
+  );
+  const [generatingPreviewUrl, setGeneratingPreviewUrl] = useState<string | null>(() =>
+    initialActiveModel ? `/api/uploads/${initialActiveModel.source_image_key}` : null,
+  );
   const [resultModel, setResultModel] = useState<ModelRow | null>(null);
   const { upload } = useUpload();
 
@@ -99,6 +113,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       if (!res.ok) throw new Error(body.error ?? `Failed to start generation (${res.status})`);
 
       setGeneratingModel({ id: body.modelId, createdAt: new Date().toISOString() });
+      setGeneratingPreviewUrl(previewUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start generation");
       setCreating(false);
@@ -108,6 +123,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   function resetToChoice() {
     setFile(null);
     setGeneratingModel(null);
+    setGeneratingPreviewUrl(null);
     setResultModel(null);
   }
 
@@ -126,12 +142,12 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     );
   }
 
-  if (generatingModel && previewUrl) {
+  if (generatingModel && generatingPreviewUrl) {
     return (
       <div className={wrapperClassName} style={wrapperStyle}>
         <GeneratingStep
           modelId={generatingModel.id}
-          previewUrl={previewUrl}
+          previewUrl={generatingPreviewUrl}
           createdAt={generatingModel.createdAt}
           onReady={setResultModel}
           onFailed={() => router.push(`/models/${generatingModel.id}`)}
@@ -152,7 +168,6 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
         creating={creating}
         error={error}
       />
-      {!file && initialActiveModel && <ActiveGenerationBanner initialModel={initialActiveModel} />}
     </div>
   );
 }
