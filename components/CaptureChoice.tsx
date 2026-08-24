@@ -129,7 +129,7 @@ export function CaptureChoice({
         type="button"
         onClick={onCreate}
         disabled={!file || creating}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-accent text-small font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-40"
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-card bg-accent text-small font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-40"
       >
         {creating ? (
           <Spinner size="sm" />
