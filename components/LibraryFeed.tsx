@@ -69,16 +69,22 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Top: one quiet metadata line, not a card/banner — same bare-text
-          register as the feed's wordmark (rule 38). "Add" has nowhere real
+      {/* Own header, same weight/position as HomeFeed's "AR3D" wordmark
+          (rule 38) but reading "My Models" — this screen's own identity,
+          not a duplicate of the home feed's. Title + metadata line stacked
+          with gap-1 reuses ModelDetail.tsx's exact title/dimensions
+          pattern rather than inventing new spacing. "Add" has nowhere real
           to go yet (no billing flow exists — Phase 6/Stripe isn't built),
           so it's present but visibly inert rather than a dead link, same
           call as BottomNav's library icon before this screen existed. */}
-      <div className="flex shrink-0 items-center gap-2 px-2 pt-4 pb-3">
-        <p className="text-small uppercase tracking-wide text-text-muted">
-          {loading ? "…" : `${credits ?? 0} credits remaining`}
-        </p>
-        <span className="text-small uppercase tracking-wide text-text-muted opacity-40">· Add</span>
+      <div className="flex shrink-0 flex-col gap-1 px-2 pt-4 pb-3">
+        <p className="text-body font-semibold text-text">My Models</p>
+        <div className="flex items-center gap-2">
+          <p className="text-small uppercase tracking-wide text-text-muted">
+            {loading ? "…" : `${credits ?? 0} credits remaining`}
+          </p>
+          <span className="text-small uppercase tracking-wide text-text-muted opacity-40">· Add</span>
+        </div>
       </div>
 
       {retryError && <p className="px-2 py-2 text-small text-danger">{retryError}</p>}

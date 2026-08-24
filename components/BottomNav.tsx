@@ -13,9 +13,9 @@ export interface BottomNavProps {
 // CLAUDE.md rules 39/40: three separate floating rounded-square buttons,
 // not a merged bar, reused as-is on every screen — never a second variant.
 const ITEMS = [
-  { href: "/dashboard", icon: LayoutGrid, label: "Feed" },
+  { href: "/dashboard", icon: LayoutGrid, label: "Home" },
   { href: "/create", icon: Plus, label: "Create" },
-  { href: "/library", icon: Columns2, label: "Library" },
+  { href: "/library", icon: Columns2, label: "My Models" },
 ] as const;
 
 export function BottomNav({ hasActiveJob }: BottomNavProps) {
