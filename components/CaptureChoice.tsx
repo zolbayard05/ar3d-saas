@@ -69,7 +69,10 @@ export function CaptureChoice({
           photo's fixed aspect-[2/1] approximating the two-card row's own
           footprint) so Create sits immediately below it, the way the
           reference has it, instead of stretching to fill the screen and
-          pushing Create down to the very bottom. */}
+          pushing Create down to the very bottom. rounded-md (not
+          rounded-card) on all three tappable pieces here — 2026-08-24: a
+          smaller radius specifically, not a smaller size (that stays as
+          fixed already). */}
       <div
         className={cn(
           "transition-all duration-300 ease-out",
@@ -77,7 +80,7 @@ export function CaptureChoice({
         )}
       >
         {previewUrl ? (
-          <div className="relative aspect-[2/1] w-full overflow-hidden rounded-card bg-surface">
+          <div className="relative aspect-[2/1] w-full overflow-hidden rounded-md bg-surface">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={previewUrl} alt="Captured photo" className="size-full object-cover" />
             <button
@@ -95,7 +98,7 @@ export function CaptureChoice({
             <button
               type="button"
               onClick={onTakePhoto}
-              className="flex aspect-square flex-col items-center justify-center gap-3 rounded-card bg-surface-hover text-text hover:opacity-90"
+              className="flex aspect-square flex-col items-center justify-center gap-3 rounded-md bg-surface-hover text-text hover:opacity-90"
             >
               <Camera className="size-8" />
               <span className="text-small uppercase tracking-wide">Take Photo</span>
@@ -104,7 +107,7 @@ export function CaptureChoice({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex aspect-square flex-col items-center justify-center gap-3 rounded-card bg-surface-hover text-text hover:opacity-90"
+              className="flex aspect-square flex-col items-center justify-center gap-3 rounded-md bg-surface-hover text-text hover:opacity-90"
             >
               <ImageUp className="size-8" />
               <span className="text-small uppercase tracking-wide">Upload Photo</span>
@@ -129,7 +132,7 @@ export function CaptureChoice({
         type="button"
         onClick={onCreate}
         disabled={!file || creating}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-card bg-accent text-small font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-40"
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-accent text-small font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-40"
       >
         {creating ? (
           <Spinner size="sm" />
