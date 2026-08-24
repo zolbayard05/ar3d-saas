@@ -17,6 +17,18 @@ import { getR2Client, getUploadsBucket } from "@/lib/r2";
  * (enforced server-side at upload time, never client-supplied — see
  * app/api/upload-url), so checking the prefix against the authenticated
  * caller's own id is sufficient to confirm ownership.
+ *
+ * Second, narrower allowance added for the public showcase feed (migration
+ * 0013): a showcase model's card is rendered for every visitor, signed in
+ * or not, so its source photo can't stay owner-only or every showcase
+ * thumbnail 401s for everyone but the admin — confirmed live before this
+ * was added, not assumed. Scoped tight: the request-scoped client (never
+ * admin/service-role — no reason to reach past what the caller's own RLS
+ * grants already permit) must find a `status = 'ready', is_showcase = true`
+ * row whose OWN source_image_key is an EXACT match for the requested key.
+ * Since is_showcase has no client write path at all (that migration's own
+ * comment), this only ever opens the specific ~10 photos an admin actually
+ * curated — never a guessable path to anyone else's private upload.
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ key: string[] }> }) {
   const supabase = await createClient();
@@ -24,18 +36,26 @@ export async function GET(_request: Request, { params }: { params: Promise<{ key
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { key: keyParts } = await params;
   const key = keyParts.join("/");
 
-  if (!key.startsWith(`uploads/${user.id}/`)) {
-    // Reads identically to "doesn't exist" for a non-owner, same rationale
-    // as the models detail page's ownership check — don't leak whether the
-    // key belongs to someone else.
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const isOwnKey = !!user && key.startsWith(`uploads/${user.id}/`);
+  if (!isOwnKey) {
+    const { data: showcaseModel } = await supabase
+      .from("models")
+      .select("id")
+      .eq("source_image_key", key)
+      .eq("status", "ready")
+      .eq("is_showcase", true)
+      .limit(1)
+      .maybeSingle();
+
+    if (!showcaseModel) {
+      // Reads identically to "doesn't exist" for a non-owner/non-showcase
+      // key, same rationale as the models detail page's ownership check —
+      // don't leak whether the key belongs to someone else.
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
   }
 
   let object;

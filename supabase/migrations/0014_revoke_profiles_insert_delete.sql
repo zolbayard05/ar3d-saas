@@ -1,0 +1,31 @@
+-- ============================================================================
+-- 0014_revoke_profiles_insert_delete.sql
+--
+-- Found while locking down profiles.is_admin (0013): column-level
+-- `revoke insert (is_admin) on profiles from authenticated` didn't actually
+-- take — `authenticated` still had it after. Cause: `profiles` carries a
+-- TABLE-level INSERT grant (and DELETE) for `authenticated`, left over from
+-- 0001's initial Supabase defaults and never revoked. 0004 only revoked
+-- UPDATE on profiles; INSERT/DELETE were never addressed. Postgres column
+-- privileges are additive with table privileges — a column-level REVOKE
+-- can't narrow a broader table-level GRANT that's still in effect, so
+-- is_admin (and every other profiles column) stayed insertable by
+-- `authenticated` regardless of what 0013 tried to do to it specifically.
+--
+-- This was inert only because profiles has no INSERT or DELETE RLS policy
+-- (0001's own comment: rows are created solely by the handle_new_user()
+-- trigger, SECURITY DEFINER, and never deleted directly by users) — "the
+-- safety happens to be on," the exact phrase rule 36 already used for the
+-- same class of gap found on `anon`. Same fix: revoke the table-level grant
+-- outright, matching how models' own INSERT was already fully revoked from
+-- authenticated in 0005 (profile creation and deletion both have no
+-- legitimate direct-from-client path — the trigger bypasses grants
+-- entirely, and there's no account-deletion feature in this app).
+--
+-- `anon` was also checked (rule 36's lesson: never just authenticated) —
+-- already clean, no INSERT/UPDATE/DELETE grant on profiles or models for
+-- anon at the table level.
+-- ============================================================================
+
+revoke insert on profiles from authenticated;
+revoke delete on profiles from authenticated;

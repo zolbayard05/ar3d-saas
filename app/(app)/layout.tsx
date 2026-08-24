@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BottomNav } from "@/components/BottomNav";
 
@@ -9,18 +8,24 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Defense in depth — proxy.ts already redirects unauthenticated requests
-  // away from this route group, but a layout should never trust that alone.
-  if (!user) redirect("/login");
+  // No blanket redirect here anymore. This group now has one route that
+  // must render for a signed-out visitor — /dashboard, the public showcase
+  // feed — alongside two that must still require a session — /library,
+  // /create. Each of those two already independently calls getUser() and
+  // redirects on its own (rule 30: a layout/proxy check is never the only
+  // gate), so removing the check here doesn't loosen anything for them; it
+  // only stops blocking the one route that's supposed to be open.
 
-  // For BottomNav's create-icon badge (design/07) — RLS already scopes this
-  // to the caller's own rows, .eq is just explicit about intent.
-  const { data: activeJobs } = await supabase
-    .from("models")
-    .select("id")
-    .eq("user_id", user.id)
-    .in("status", ["pending", "processing"])
-    .limit(1);
+  // For BottomNav's create-icon badge — no badge to show for a signed-out
+  // visitor, and no "own rows" to query without a user id.
+  const { data: activeJobs } = user
+    ? await supabase
+        .from("models")
+        .select("id")
+        .eq("user_id", user.id)
+        .in("status", ["pending", "processing"])
+        .limit(1)
+    : { data: null };
 
   // BottomNav is `fixed` (rule 39) — out of normal flow regardless of this
   // wrapper's own display type, so it no longer occupies a row in this flex

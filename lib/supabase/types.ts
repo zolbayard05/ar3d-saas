@@ -16,6 +16,7 @@ export interface Database {
           credits: number;
           plan: string;
           stripe_customer_id: string | null;
+          is_admin: boolean;
           created_at: string;
         };
         Insert: {
@@ -23,6 +24,7 @@ export interface Database {
           credits?: number;
           plan?: string;
           stripe_customer_id?: string | null;
+          is_admin?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -48,6 +50,7 @@ export interface Database {
           bbox_height_m: number | null;
           source_image_width: number | null;
           source_image_height: number | null;
+          is_showcase: boolean;
           scale: number;
           error: string | null;
           created_at: string;
@@ -72,6 +75,7 @@ export interface Database {
           bbox_height_m?: number | null;
           source_image_width?: number | null;
           source_image_height?: number | null;
+          is_showcase?: boolean;
           scale?: number;
           error?: string | null;
           created_at?: string;
