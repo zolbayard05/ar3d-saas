@@ -15,19 +15,22 @@
 
 :root {
   /* ---- Radius ----------------------------------------------------------
-   * CLAUDE.md rule 37: cards are the one deliberately rounded surface
-   * (16px) — the original "0 everywhere, no exceptions" call is retired
-   * for cards specifically, not abandoned generally. Buttons/inputs/
-   * dialogs (--radius-sm/--radius-md) stay sharp. --radius-lg is a SEPARATE
-   * 18px value reserved for the floating bottom-nav buttons (rule 39) — not
-   * the card radius reused, a different surface with its own number.
-   * --radius-full remains the functional (not decorative) exception it
-   * always was: what makes a spinner or avatar an actual circle.
+   * The old "0 everywhere except cards" rule (CLAUDE.md rules 37/39) is
+   * retired — the design direction now follows the reference screens the
+   * user supplies directly, starting with the login screen (2026-08-24).
+   * --radius-md now carries real rounding for buttons/inputs — the single
+   * token both components/ui/Button.tsx and components/ui/Input.tsx
+   * already reference via `rounded-md`, so this one change is what
+   * restyles every button/input at once, same "edit tokens.css only"
+   * promise this file has always made. --radius-sm stays 0 for now
+   * (nothing currently uses it) until a smaller-surface need for it shows
+   * up in a reference screen. --radius-lg/--radius-card/--radius-full are
+   * unchanged pending their own screens being revisited.
    */
   --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 1.125rem; /* 18px — bottom-nav buttons only (rule 39) */
-  --radius-card: 1rem; /* 16px — feed cards (rule 37) */
+  --radius-md: 0.875rem; /* 14px — buttons/inputs, from the login screen reference */
+  --radius-lg: 1.125rem; /* 18px — bottom-nav buttons (pending redesign) */
+  --radius-card: 1rem; /* 16px — feed cards (pending redesign) */
   --radius-full: 9999px;
 
   /* ---- Shadow (color-independent shape; tinted per-theme via themes.css) */

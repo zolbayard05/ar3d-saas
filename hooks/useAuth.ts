@@ -4,33 +4,12 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export type MagicLinkStatus = "idle" | "sending" | "sent" | "error";
+export type AuthStatus = "idle" | "sending" | "error";
 
 export function useAuth() {
   const router = useRouter();
-  const [status, setStatus] = useState<MagicLinkStatus>("idle");
+  const [status, setStatus] = useState<AuthStatus>("idle");
   const [error, setError] = useState<string | null>(null);
-
-  const sendMagicLink = useCallback(async (email: string) => {
-    setStatus("sending");
-    setError(null);
-
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
-      },
-    });
-
-    if (signInError) {
-      setStatus("error");
-      setError(signInError.message);
-      return;
-    }
-
-    setStatus("sent");
-  }, []);
 
   // signInWithOAuth navigates the browser itself (window.location.assign)
   // once it gets a provider URL back — there's no local success/error state
@@ -57,30 +36,68 @@ export function useAuth() {
     }
   }, []);
 
-  // Dev-only escape hatch: Supabase's free-tier email rate limit blocks
-  // magic-link testing (not our bug — a platform limit), so local testing
-  // needs a path that doesn't send email at all. Gated on NODE_ENV, which
-  // Next.js inlines at build time — `next build`/`next start` compile this
-  // branch to `false` and dead-code-eliminate it, so it cannot ship, not
-  // just "be hidden in the UI".
-  const signInWithPassword = useCallback(
+  /**
+   * One field, one button, handles both log in and sign up — matching the
+   * reference screen's single "Continue" action rather than making the
+   * user pick which one they're doing. Email confirmation is disabled on
+   * this project (product decision, set in the Supabase dashboard under
+   * Authentication → Providers → Email — not something this codebase
+   * controls), so signUp returns an active session immediately instead of
+   * requiring a confirmation-email round trip.
+   *
+   * Ordering matters and both branches were verified live against this
+   * project's real (confirmation-disabled) config, not assumed:
+   * 1. Try signInWithPassword first — optimizes for the common case (an
+   *    existing user signing back in).
+   * 2. On failure, try signUp. With confirmation disabled, calling signUp
+   *    on an email that's ALREADY registered returns a real, explicit
+   *    error — `code: "user_already_exists"` — rather than Supabase's
+   *    masked "identities: []" anti-enumeration response (that masking is
+   *    specifically a confirmation-flow behavior, to stop an attacker
+   *    telling accounts apart by whether a confirmation email arrives;
+   *    with no such email in play here, there's nothing to protect by
+   *    hiding it). That code is what tells "the original sign-in's
+   *    password was just wrong" apart from every other signUp failure.
+   */
+  const signInOrSignUp = useCallback(
     async (email: string, password: string) => {
-      if (process.env.NODE_ENV !== "development") return;
-
       setStatus("sending");
       setError(null);
 
       const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (signInError) {
-        setStatus("error");
-        setError(signInError.message);
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (!signInError) {
+        router.push("/dashboard");
+        router.refresh();
         return;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+
+      if (signUpError?.code === "user_already_exists") {
+        setStatus("error");
+        setError("Incorrect email or password.");
+        return;
+      }
+
+      if (signUpError) {
+        setStatus("error");
+        setError(signUpError.message);
+        return;
+      }
+
+      if (signUpData.session) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      // Defensive fallback, not the expected path — verified live that
+      // confirmation-disabled signUp returns a session immediately. Only
+      // reachable if that dashboard setting gets flipped back on later.
+      setStatus("error");
+      setError("Check your email to confirm your account before signing in.");
     },
     [router],
   );
@@ -92,5 +109,5 @@ export function useAuth() {
     router.refresh();
   }, [router]);
 
-  return { status, error, sendMagicLink, signInWithGoogle, signInWithPassword, signOut };
+  return { status, error, signInWithGoogle, signInOrSignUp, signOut };
 }

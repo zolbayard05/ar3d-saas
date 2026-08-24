@@ -5,33 +5,63 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 
-// CLAUDE.md rule 40: no Card wrapper, no heading/description — every other
-// post-redesign screen (feed, library, capture, confirm) is bare elements
-// directly on the near-black page background, not panel chrome, and this
-// page was asked for nothing beyond the three things below.
+// New design direction (2026-08-24) — see styles/tokens.css's radius
+// comment. Layout/hierarchy taken from the user's reference screen (mark,
+// bold heading, email + password, Google below); background and the
+// primary button's color are explicitly unchanged per that same
+// conversation. Magic link is gone — replaced with a real email+password
+// flow (useAuth's signInOrSignUp) rather than brought back, since the
+// underlying need ("type an email, get in") is now served by that instead.
 export default function LoginPage() {
-  const { status, error, sendMagicLink, signInWithGoogle, signInWithPassword } = useAuth();
+  const { status, error, signInWithGoogle, signInOrSignUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (email) void sendMagicLink(email);
-  }
-
-  function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (email && password) void signInWithPassword(email, password);
+    if (email && password) void signInOrSignUp(email, password);
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-bg p-6">
-      <div className="flex w-full max-w-xs flex-col gap-4">
-        {/* Primary: white fill/dark text, the one primary-button convention
-            used everywhere else in the app. */}
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-bg p-6">
+      <div className="flex w-full max-w-xs flex-col items-center gap-8">
+        <div className="flex flex-col items-center gap-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-192.png" alt="AR3D" className="size-16 rounded-md" />
+          <h1 className="text-center text-display font-semibold text-text">Log in or sign up</h1>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
+          <Input
+            type="email"
+            aria-label="Email"
+            placeholder="you@example.com"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+          <Input
+            type="password"
+            aria-label="Password"
+            placeholder="Password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+          <Button type="submit" variant="primary" className="w-full" loading={status === "sending"}>
+            Continue
+          </Button>
+        </form>
+
+        <div className="flex w-full items-center gap-3 text-small uppercase tracking-wide text-text-muted">
+          <div className="h-px flex-1 bg-border-subtle" />
+          Or
+          <div className="h-px flex-1 bg-border-subtle" />
+        </div>
+
         <Button
           type="button"
-          variant="primary"
+          variant="secondary"
           className="w-full"
           loading={status === "sending"}
           onClick={() => void signInWithGoogle()}
@@ -40,51 +70,6 @@ export default function LoginPage() {
         </Button>
 
         {status === "error" && <p className="text-small text-danger">{error}</p>}
-
-        <div className="flex items-center gap-3 text-small uppercase tracking-wide text-text-muted">
-          <div className="h-px flex-1 bg-border-subtle" />
-          Or
-          <div className="h-px flex-1 bg-border-subtle" />
-        </div>
-
-        {/* Secondary: email + magic link, the outline-style Button variant. */}
-        {status === "sent" ? (
-          <p className="text-small text-text-muted">
-            Check <span className="text-text">{email}</span> for a sign-in link.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <Input
-              type="email"
-              aria-label="Email"
-              placeholder="you@example.com"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-            <Button type="submit" variant="secondary" className="w-full" loading={status === "sending"}>
-              Send magic link
-            </Button>
-          </form>
-        )}
-
-        {/* Rule unchanged: NODE_ENV is inlined at build time, so this branch
-            is dead-code-eliminated from every production build, not just
-            hidden in the UI — see hooks/useAuth.ts's signInWithPassword. */}
-        {process.env.NODE_ENV === "development" && (
-          <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-3 border-t border-border-subtle pt-4">
-            <Input
-              type="password"
-              aria-label="Dev password"
-              placeholder="dev password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            <Button type="submit" variant="secondary" className="w-full" loading={status === "sending"}>
-              Sign in with password (dev only)
-            </Button>
-          </form>
-        )}
       </div>
     </main>
   );
