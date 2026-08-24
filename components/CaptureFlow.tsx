@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActiveGenerationBanner } from "@/components/ActiveGenerationBanner";
 import { CaptureChoice } from "@/components/CaptureChoice";
-import { CaptureStep } from "@/components/CaptureStep";
 import { GeneratingStep } from "@/components/GeneratingStep";
 import { ResultStep } from "@/components/ResultStep";
 import { useUpload } from "@/hooks/useUpload";
@@ -18,8 +17,6 @@ export interface CaptureFlowProps {
   initialActiveModel?: ModelRow;
 }
 
-type Mode = "choice" | "camera";
-
 interface GeneratingModel {
   id: string;
   createdAt: string;
@@ -31,18 +28,20 @@ interface GeneratingModel {
 // tiles with the photo in the same slot rather than both staying visible).
 // Generating and the Save/Delete result each take over that whole area
 // instead — Create's job is done by then, there's nothing left to pick.
-// Only the live camera is still a separate full-screen step (its own
-// immersive view; a two-card picker and a viewfinder don't fit together).
-// Nothing is uploaded until Create is actually pressed; capturing/choosing
-// a photo alone spends no credit and touches no server. A finished model
-// only reaches My Models (library/page.tsx's status filter is no
-// protection here; the row is already `ready` the moment generation
-// succeeds) once ResultStep's own Save is pressed — Delete there removes it
-// via the same lib/deleteModel.ts every other delete action uses, same as
-// never having kept it.
+// "Take Photo" is a plain file input with capture="environment"
+// (CaptureChoice.tsx), not a custom live-camera view — the native OS camera
+// UI (2026-08-24 reference screenshots) is what's wanted, and it's what
+// that attribute already gets on both iOS and Android, so there's no
+// separate full-screen camera step here anymore either. Nothing is
+// uploaded until Create is actually pressed; capturing/choosing a photo
+// alone spends no credit and touches no server. A finished model only
+// reaches My Models (library/page.tsx's status filter is no protection
+// here; the row is already `ready` the moment generation succeeds) once
+// ResultStep's own Save is pressed — Delete there removes it via the same
+// lib/deleteModel.ts every other delete action uses, same as never having
+// kept it.
 export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("choice");
   const [file, setFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,11 +66,11 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     try {
       // MasonryGrid needs the photo's real pixel aspect ratio to balance
       // columns by expected card height up front (see that file) — reading
-      // it here, once, at the one point a File object exists for either
-      // capture path (camera canvas blob or gallery pick), rather than
-      // duplicating it in CaptureStep for each. Best-effort: a decode
-      // failure shouldn't block generation, just means this model falls
-      // back to MasonryGrid's neutral default ratio.
+      // it here, once, at the one point a File object exists, whichever
+      // input it came from (CaptureChoice.tsx's camera or gallery file
+      // input). Best-effort: a decode failure shouldn't block generation,
+      // just means this model falls back to MasonryGrid's neutral default
+      // ratio.
       let sourceImageWidth: number | undefined;
       let sourceImageHeight: number | undefined;
       try {
@@ -110,11 +109,6 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     setFile(null);
     setGeneratingModel(null);
     setResultModel(null);
-    setMode("choice");
-  }
-
-  if (mode === "camera") {
-    return <CaptureStep onCaptured={setFile} onBack={() => setMode("choice")} />;
   }
 
   const wrapperClassName = "flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4";
@@ -150,7 +144,6 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     <div className={wrapperClassName} style={wrapperStyle}>
       <CaptureChoice
         userId={userId}
-        onTakePhoto={() => setMode("camera")}
         file={file}
         previewUrl={previewUrl}
         onFileChosen={setFile}

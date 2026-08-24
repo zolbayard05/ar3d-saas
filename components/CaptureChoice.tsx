@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 
 export interface CaptureChoiceProps {
   userId: string;
-  onTakePhoto: () => void;
   file: File | null;
   previewUrl: string | null;
   onFileChosen: (file: File) => void;
@@ -50,7 +49,6 @@ function useSlotEnter(key: string) {
 
 export function CaptureChoice({
   userId,
-  onTakePhoto,
   file,
   previewUrl,
   onFileChosen,
@@ -59,7 +57,8 @@ export function CaptureChoice({
   creating,
   error,
 }: CaptureChoiceProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const { credits, loading } = useCredits(userId);
   const entered = useSlotEnter(file ? "photo" : "cards");
 
@@ -99,7 +98,7 @@ export function CaptureChoice({
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={onTakePhoto}
+              onClick={() => cameraInputRef.current?.click()}
               className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
             >
               <Camera className="size-8" />
@@ -108,7 +107,7 @@ export function CaptureChoice({
 
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => galleryInputRef.current?.click()}
               className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
             >
               <ImageUp className="size-8" />
@@ -118,8 +117,26 @@ export function CaptureChoice({
         )}
       </div>
 
+      {/* capture="environment" is what actually opens the native OS camera
+          (reference: 2026-08-24 iOS screenshots — flash/zoom controls, the
+          native shutter, then its own Retake/Use Photo confirmation) rather
+          than a custom getUserMedia view; Android's browsers honor it the
+          same way. No custom camera UI to build or maintain on either
+          platform. */}
       <input
-        ref={fileInputRef}
+        ref={cameraInputRef}
+        type="file"
+        accept={Object.keys(ALLOWED_IMAGE_TYPES).join(",")}
+        capture="environment"
+        className="hidden"
+        onChange={(event) => {
+          const chosen = event.target.files?.[0];
+          if (chosen) onFileChosen(chosen);
+          event.target.value = "";
+        }}
+      />
+      <input
+        ref={galleryInputRef}
         type="file"
         accept={Object.keys(ALLOWED_IMAGE_TYPES).join(",")}
         className="hidden"
