@@ -27,7 +27,7 @@ export default function LoginPage() {
       <div className="flex w-full max-w-xs flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-192.png" alt="AR3D" className="size-16 rounded-md" />
+          <img src="/icon-192.png" alt="Realify" className="size-16 rounded-md" />
           <h1 className="text-center text-display font-semibold text-text">Log in or sign up</h1>
         </div>
 

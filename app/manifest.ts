@@ -8,8 +8,8 @@ import type { MetadataRoute } from "next";
 // background are all one color, not three separately-eyeballed ones.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AR3D",
-    short_name: "AR3D",
+    name: "Realify",
+    short_name: "Realify",
     description: "Turn a photo into a 3D model you can place in AR.",
     start_url: "/",
     display: "standalone",

@@ -10,7 +10,7 @@ import { buttonVariants } from "@/components/ui/Button";
 export default function Home() {
   return (
     <main className="flex min-h-dvh flex-col bg-bg p-6">
-      <p className="text-body font-semibold text-text">AR3D</p>
+      <p className="text-body font-semibold text-text">Realify</p>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
         <div className="flex max-w-xs flex-col gap-4">

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AR3D",
+  title: "Realify",
   description: "Turn a photo into a 3D model you can place in AR.",
   // capable + title auto-generate apple-mobile-web-app-capable and
   // apple-mobile-web-app-title — the two meta tags that make "Add to Home
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   // whether a given iOS version also honors the manifest's own
   // display: "standalone" (app/manifest.ts).
   appleWebApp: {
-    title: "AR3D",
+    title: "Realify",
     statusBarStyle: "black-translucent",
   },
   // Next's Metadata API only emits the modern `mobile-web-app-capable`

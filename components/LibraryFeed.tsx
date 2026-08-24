@@ -69,7 +69,7 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Own header, same weight/position as HomeFeed's "AR3D" wordmark
+      {/* Own header, same weight/position as HomeFeed's "Realify" wordmark
           (rule 38) but reading "My Models" — this screen's own identity,
           not a duplicate of the home feed's. Title + metadata line stacked
           with gap-1 reuses ModelDetail.tsx's exact title/dimensions

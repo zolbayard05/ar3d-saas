@@ -180,7 +180,7 @@ export function InstallPrompt() {
   if (showAndroidBar) {
     return (
       <div className={overlayClass} style={overlayStyle}>
-        <p className="text-small text-text">Install AR3D for full-screen AR.</p>
+        <p className="text-small text-text">Install Realify for full-screen AR.</p>
         <div className="flex shrink-0 items-center gap-2">
           <Button size="sm" variant="primary" loading={installing} onClick={() => void handleAndroidInstall()}>
             Install

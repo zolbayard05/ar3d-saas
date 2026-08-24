@@ -1,4 +1,4 @@
-# AR3D
+# Realify
 
 Upload a photo → generate a 3D model → view it in AR from a phone browser. PWA only, no
 app stores. See the build spec in project history for full scope; phases land incrementally.
