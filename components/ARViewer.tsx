@@ -65,6 +65,12 @@ export const ARViewer = forwardRef<ARViewerHandle, ARViewerProps>(function ARVie
       alt={alt || "3D model"}
       shadow-intensity="1"
       className={className}
+      // Subtle radial gradient instead of a flat surface color so the model
+      // has visual depth to sit against — tokens only (rule from
+      // styles/tokens.css's header comment), no raw hex.
+      style={{
+        background: "radial-gradient(circle at 50% 38%, var(--color-surface-hover), var(--color-bg) 75%)",
+      }}
     >
       <button slot="ar-button" aria-hidden="true" tabIndex={-1} style={{ display: "none" }} />
     </model-viewer>

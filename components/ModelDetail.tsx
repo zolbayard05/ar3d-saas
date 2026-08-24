@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Share2, Ruler, Image as ImageIcon, Download } from "lucide-react";
+import { ArrowLeft, Share2, Ruler, Image as ImageIcon, Download, QrCode, Box } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { ModelScaleControl } from "@/components/ModelScaleControl";
+import { ModelShare } from "@/components/ModelShare";
 import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useModelScale } from "@/hooks/useModelScale";
 import { useModelTitle } from "@/hooks/useModelTitle";
@@ -24,7 +25,12 @@ type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 const ARViewer = dynamic(() => import("@/components/ARViewer").then((m) => m.ARViewer), {
   ssr: false,
   loading: () => (
-    <div className="flex aspect-square w-full items-center justify-center bg-surface">
+    <div
+      className="flex aspect-[4/5] w-full items-center justify-center"
+      style={{
+        background: "radial-gradient(circle at 50% 38%, var(--color-surface-hover), var(--color-bg) 75%)",
+      }}
+    >
       <Spinner size="lg" label="Loading viewer" />
     </div>
   ),
@@ -57,6 +63,7 @@ export function ModelDetail({
   const [scale, setScale] = useModelScale(model.id, model.scale, isOwner);
   const { title, setTitle, commitTitle } = useModelTitle(model.id, model.title);
   const [scaleOpen, setScaleOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const arViewerRef = useRef<ARViewerHandle>(null);
   const router = useRouter();
@@ -135,7 +142,7 @@ export function ModelDetail({
             usdzKey={model.usdz_url as string}
             scale={scale}
             alt={title || undefined}
-            className="aspect-square w-full bg-surface"
+            className="aspect-[4/5]! h-auto! w-full"
           />
 
           <div className="flex flex-col gap-1 px-4 pt-4">
@@ -172,6 +179,17 @@ export function ModelDetail({
           </div>
 
           <div className="flex items-center justify-around px-4 py-6">
+            {/* Not owner-gated — the URL being shared is the current page's
+                own, already visible to whoever's looking at this button. */}
+            <button
+              type="button"
+              onClick={() => setShareOpen((open) => !open)}
+              aria-expanded={shareOpen}
+              className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+            >
+              <QrCode className="size-5" />
+              <span className="text-small uppercase tracking-wide">Share</span>
+            </button>
             <button
               type="button"
               onClick={() => setScaleOpen((open) => !open)}
@@ -222,6 +240,8 @@ export function ModelDetail({
             )}
           </div>
 
+          {shareOpen && <ModelShare title={title} />}
+
           {scaleOpen && (
             <div className="px-4 pb-4">
               <ModelScaleControl scale={scale} onScaleChange={setScale} />
@@ -238,12 +258,13 @@ export function ModelDetail({
             </div>
           )}
 
-          <div className="mt-auto flex flex-col">
+          <div className="mt-auto flex flex-col gap-2 px-4 pb-4 pt-2">
             <button
               type="button"
               onClick={() => arViewerRef.current?.activateAR()}
-              className="flex h-14 w-full items-center justify-center bg-accent text-body font-semibold uppercase tracking-wide text-accent-text hover:bg-accent-hover"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover"
             >
+              <Box className="size-5" />
               View in your room
             </button>
             {/* Rule 10 — the AR button (default or, here, our custom one) can
@@ -256,7 +277,7 @@ export function ModelDetail({
                 reference screen shows this — it must exist anyway. */}
             <a
               href={buildModelUrl(model.usdz_url as string)}
-              className="px-4 py-2 text-center text-small text-text-muted underline underline-offset-2 hover:text-text"
+              className="text-center text-small text-text-muted underline underline-offset-2 hover:text-text"
             >
               AR button not responding? Tap here to open the model directly.
             </a>
