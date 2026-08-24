@@ -71,11 +71,12 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
       {/* Wordmark, no bar/fill/border/shadow, nothing on its right. Scrolls
           with the content below (it's inside the same scroll container, not
           a separate sticky element). Icon before the name, per the
-          rebrand — reuses the same /icon-192.png mark the login screen and
-          the PWA manifest already use, not a second logo asset. */}
+          rebrand — icon-mark.png is the plain-R mark (no scan-frame): at
+          this size-6 (24px) the framed app-icon version was tested and
+          read as noise, see scripts/generate-pwa-icons.mjs. */}
       <div className="flex shrink-0 items-center gap-2 px-2 pt-4 pb-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon-192.png" alt="" className="size-6 rounded-md" />
+        <img src="/icon-mark.png" alt="" className="size-6 rounded-md" />
         <p className="text-body font-semibold text-text">Realify</p>
       </div>
 
