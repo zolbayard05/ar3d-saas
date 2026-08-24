@@ -64,14 +64,11 @@ export function CaptureChoice({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Not flex-1 — sized to its own content (cards' aspect-square, or the
-          photo's fixed aspect-[2/1] approximating the two-card row's own
-          footprint) so Create sits immediately below it, the way the
-          reference has it, instead of stretching to fill the screen and
-          pushing Create down to the very bottom. rounded-sm (2026-08-24 —
-          reduced twice: rounded-card 16px, then rounded-md 14px, now
-          rounded-sm's 0/sharp corners) on all three tappable pieces here —
-          radius only, not size (that stays fixed). */}
+      {/* Not flex-1 — sized to its own content so Create sits immediately
+          below it, the way the reference has it, instead of stretching to
+          fill the screen and pushing Create down to the very bottom.
+          rounded-sm on all three tappable pieces here — radius only, not
+          size (that stays fixed). */}
       <div
         className={cn(
           "transition-all duration-300 ease-out",
@@ -79,11 +76,21 @@ export function CaptureChoice({
         )}
       >
         {previewUrl ? (
-          <div className="relative flex aspect-[2/1] w-full items-center justify-center overflow-hidden rounded-sm bg-surface">
-            {/* object-contain, not object-cover — the whole photo should be
-               visible here, not cropped down to whatever fits a 2:1 box. */}
+          // No forced aspect ratio here (2026-08-24, fixed a real bug: a
+          // fixed wide aspect-[2/1] box left a real phone's typically
+          // portrait photo rendered as a thin sliver down the middle via
+          // object-contain — technically not distorted, but reads as
+          // "squished," and only ever showed up on real phone photos since
+          // desktop testing here used square/landscape test images). Photo
+          // sizes at its own real aspect ratio, capped at max-h-72 so it
+          // can't dominate the screen either way.
+          <div className="relative w-full overflow-hidden rounded-sm bg-surface">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="Captured photo" className="max-h-full max-w-full object-contain" />
+            <img
+              src={previewUrl}
+              alt="Captured photo"
+              className="mx-auto block max-h-72 w-auto max-w-full object-contain"
+            />
             <button
               type="button"
               onClick={onRetake}
