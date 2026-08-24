@@ -15,6 +15,7 @@ import {
 } from "@/lib/tripo";
 import { compressGlb, validateGlb } from "@/lib/glbCompress";
 import { renderThumbnail } from "@/lib/renderThumbnail";
+import { generateModelTitle } from "@/lib/gemini";
 import { sweepStaleGenerations } from "@/lib/sweepStaleGenerations";
 
 const SOURCE_URL_EXPIRY_SECONDS = 10 * 60;
@@ -349,6 +350,11 @@ export async function POST(request: Request) {
     // maxDuration — the render's own RENDER_HARD_TIMEOUT_MS (25s) fits
     // comfortably inside that.
     after(() => renderAndStoreThumbnail(admin, model.id));
+    // Independent of the thumbnail render above — uses the source photo,
+    // not the GLB, so it has nothing to wait on. Cosmetic like the
+    // thumbnail: never allowed to affect the ready transition, which has
+    // already happened by the time this runs.
+    after(() => nameModel(admin, model.id, model.source_image_key));
   }
 
   return NextResponse.json({ ok: true });
@@ -411,5 +417,37 @@ async function renderAndStoreThumbnail(admin: ReturnType<typeof createAdminClien
     await admin.from("models").update({ render_url: renderKey }).eq("id", modelId).is("render_url", null);
   } catch (err) {
     console.warn(`Tripo webhook: thumbnail render failed for model ${modelId}, feed falls back to source photo`, err);
+  }
+}
+
+const UPLOAD_MIME_TYPES: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
+/**
+ * Best-effort auto-naming from the source photo — a failed or missing
+ * Gemini call leaves `title` null, which the UI already renders as
+ * "Untitled" (same fallback as before this feature existed), so there's
+ * nothing to fail here in the way a real generation step can fail.
+ * `.is("title", null)` makes this idempotent against a duplicate webhook
+ * delivery AND against a user who already renamed the model in the window
+ * between the ready update and this running.
+ */
+async function nameModel(admin: ReturnType<typeof createAdminClient>, modelId: string, sourceImageKey: string): Promise<void> {
+  try {
+    const object = await getR2Client().send(new GetObjectCommand({ Bucket: getUploadsBucket(), Key: sourceImageKey }));
+    if (!object.Body) return;
+    const bytes = Buffer.from(await object.Body.transformToByteArray());
+    const ext = sourceImageKey.split(".").pop()?.toLowerCase() ?? "";
+    const mimeType = object.ContentType || UPLOAD_MIME_TYPES[ext] || "image/jpeg";
+
+    const title = await generateModelTitle(bytes, mimeType);
+
+    await admin.from("models").update({ title }).eq("id", modelId).is("title", null);
+  } catch (err) {
+    console.warn(`Tripo webhook: auto-naming failed for model ${modelId}, leaving title unset`, err);
   }
 }
