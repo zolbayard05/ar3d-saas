@@ -74,17 +74,18 @@ body {
   outline-offset: var(--focus-ring-offset);
 }
 
-/* Hides the scrollbar track/thumb, not scrolling itself — HomeFeed.tsx and
-   LibraryFeed.tsx's overflow-y-auto containers stay fully scrollable by
-   touch/wheel/keyboard, they just don't paint the browser's own scrollbar
-   chrome over the feed. A plain utility class, not a component-level
-   arbitrary value: the underlying rule needs a pseudo-element selector
-   (::-webkit-scrollbar), which no Tailwind utility can express without a
-   plugin this project doesn't have. */
-.scrollbar-hide {
+/* No visible scrollbar anywhere in the app, permanently — a standing
+   product rule (2026-08-24), not an opt-in per scroll container. Hides the
+   track/thumb only, not scrolling itself: every overflow-y-auto region
+   (HomeFeed.tsx, LibraryFeed.tsx, any future one) stays fully scrollable by
+   touch/wheel/keyboard, it just never paints the browser's own scrollbar
+   chrome. Global on `*` rather than a `.scrollbar-hide` class applied
+   per-component specifically so a new scrollable area is covered by
+   default and can't be missed. */
+* {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* legacy Edge */
 }
-.scrollbar-hide::-webkit-scrollbar {
+*::-webkit-scrollbar {
   display: none; /* Chrome, Safari, modern Edge */
 }
