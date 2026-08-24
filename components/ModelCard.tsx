@@ -80,12 +80,24 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
           )}
         />
         {generating && (
-          // Thin indeterminate progress line — Tripo gives us start/complete
-          // events, never a real percentage, so an animated-but-unspecific
-          // bar is the honest representation, not a fabricated number.
-          <div className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-surface-hover">
-            <div className="h-full w-1/3 animate-pulse bg-text" />
-          </div>
+          <>
+            {/* Pulsing app-mark centered over the dimmed photo — the "this
+                is actively working" signal (Tripo's reference uses a
+                generic rotating cube in the same spot; ours is the app's
+                own icon instead of a generic placeholder). A pulse, not a
+                spin: a monogram keeps its letterform readable at rest,
+                which a continuously-rotating "R" wouldn't. */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon-192.png" alt="" className="size-12 animate-pulse rounded-md" />
+            </div>
+            {/* Thin indeterminate progress line — Tripo gives us start/complete
+                events, never a real percentage, so an animated-but-unspecific
+                bar is the honest representation, not a fabricated number. */}
+            <div className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-surface-hover">
+              <div className="h-full w-1/3 animate-pulse bg-text" />
+            </div>
+          </>
         )}
         {model.status === "failed" && (
           <div className="absolute inset-0 flex items-center justify-center bg-bg/70">

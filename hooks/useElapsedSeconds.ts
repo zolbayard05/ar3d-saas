@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-/** Raw ticking seconds elapsed since `startIso` — the shared timer behind useElapsedTime's "M:SS" string and WaitingScreen's stage thresholds. */
+/** Raw ticking seconds elapsed since `startIso` — the timer behind useElapsedTime's "M:SS" string. */
 export function useElapsedSeconds(startIso: string): number {
   const [now, setNow] = useState(() => Date.now());
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/Button";
+import { X } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 import { useCredits } from "@/hooks/useCredits";
 
 export interface ConfirmStepProps {
@@ -18,6 +19,14 @@ export interface ConfirmStepProps {
 // else in the schema that expresses "cost per generation" as a value.
 const CREDIT_COST = 1;
 
+// Reference: a Tripo screenshot (2026-08-24) — large photo, a small corner
+// close button standing in for a separate "retake" action, one dominant
+// bottom action. Adapted rather than copied: no face-limit/quality controls
+// (rule 21's retry logic is internal, never user-facing), and the bottom
+// action reuses ModelDetail.tsx's AR-button treatment (rounded-full,
+// icon-free here since there's no icon that reads as "create," shadow-card)
+// for one consistent "primary floating action" language across the app
+// rather than a second button style.
 export function ConfirmStep({ file, userId, onRetake, onCreate, creating, error }: ConfirmStepProps) {
   // Derived directly from `file`, not effect+state — a blob URL for the
   // same File object is always the same conceptual value, so it doesn't
@@ -29,23 +38,38 @@ export function ConfirmStep({ file, userId, onRetake, onCreate, creating, error 
   const { credits, loading } = useCredits(userId);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={previewUrl} alt="Captured photo" className="max-h-96 w-auto max-w-full" />
+    <div className="flex min-h-0 flex-1 flex-col p-6">
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-card bg-surface">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={previewUrl} alt="Captured photo" className="max-h-full max-w-full object-contain" />
 
-      <p className="text-small uppercase tracking-wide text-text-muted">
-        {CREDIT_COST} credit · {loading ? "…" : `${Math.max((credits ?? 0) - CREDIT_COST, 0)} remaining`}
-      </p>
+        <button
+          type="button"
+          onClick={onRetake}
+          disabled={creating}
+          aria-label="Retake"
+          className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-bg/80 text-text hover:bg-bg disabled:opacity-50"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
 
-      {error && <p className="text-small text-danger">{error}</p>}
+      <div className="flex flex-col items-center gap-3 pt-6">
+        <p className="text-small uppercase tracking-wide text-text-muted">
+          {CREDIT_COST} credit · {loading ? "…" : `${Math.max((credits ?? 0) - CREDIT_COST, 0)} remaining`}
+        </p>
 
-      <div className="flex w-full max-w-xs gap-3">
-        <Button variant="secondary" size="lg" className="flex-1" onClick={onRetake} disabled={creating}>
-          Retake
-        </Button>
-        <Button variant="primary" size="lg" className="flex-1" onClick={onCreate} loading={creating}>
+        {error && <p className="text-small text-danger">{error}</p>}
+
+        <button
+          type="button"
+          onClick={onCreate}
+          disabled={creating}
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-50"
+        >
+          {creating && <Spinner size="sm" />}
           Create
-        </Button>
+        </button>
       </div>
     </div>
   );

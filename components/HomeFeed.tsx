@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { StatusStrip } from "@/components/StatusStrip";
 import { MasonryGrid } from "@/components/MasonryGrid";
 import type { Database } from "@/lib/supabase/types";
 
@@ -64,8 +63,6 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
     setModels((prev) => prev.filter((m) => m.id !== model.id));
   }
 
-  const activeJob = models.find((m) => m.status === "pending" || m.status === "processing");
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Wordmark, no bar/fill/border/shadow, nothing on its right. Scrolls
@@ -78,8 +75,6 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
         <img src="/icon-192.png" alt="" className="size-9 rounded-md" />
         <p className="text-heading font-semibold text-text">Realify</p>
       </div>
-
-      {activeJob && <StatusStrip createdAt={activeJob.created_at} />}
 
       {retryError && <p className="px-2 py-2 text-small text-danger">{retryError}</p>}
 

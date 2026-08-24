@@ -17,8 +17,8 @@ const AUTH_PAGES = ["/login"];
 // signed-out visitor. Migration 0011's "models: public select ready" RLS
 // policy is the actual data boundary — this only relaxes the UX redirect to
 // match it. Scoped tight: GET only, and only the single-segment detail
-// route (`/models/[id]`), so `/models/[id]/waiting` and any deeper path
-// stay gated. Mutations (title edit, scale persistence) are also blocked at
+// route (`/models/[id]`), so any deeper `/models/[id]/*` path stays gated.
+// Mutations (title edit, scale persistence) are also blocked at
 // the DB grant layer regardless of this — anon has no UPDATE grant on
 // models (0009) — this exemption is belt-and-suspenders on top of that,
 // not the real boundary (rule 30: proxy is UX only).

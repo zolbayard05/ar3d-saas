@@ -63,7 +63,12 @@ export function CaptureFlow({ userId }: CaptureFlowProps) {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Failed to start generation (${res.status})`);
 
-      router.push(`/models/${body.modelId}/waiting`);
+      // Straight to My Models, not a dedicated waiting screen — the new
+      // pending row already shows there as a normal ModelCard (dimmed
+      // photo, pulsing app-mark, progress line; see ModelCard.tsx), so
+      // generation status only ever appears inline in the grid, never as
+      // its own full-screen takeover.
+      router.push("/library");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start generation");
       setCreating(false);
