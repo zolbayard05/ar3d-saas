@@ -1,28 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { CaptureChoice } from "@/components/CaptureChoice";
 import { CaptureStep } from "@/components/CaptureStep";
 import { ConfirmStep } from "@/components/ConfirmStep";
+import { GeneratingStep } from "@/components/GeneratingStep";
 import { useUpload } from "@/hooks/useUpload";
 
 export interface CaptureFlowProps {
   userId: string;
 }
 
-// Capture and Confirm are two steps of one client-side flow, not two
-// routes: the captured Blob only exists in memory (URL.createObjectURL),
-// and there's no reason to persist it anywhere or make either step
-// bookmarkable on its own — the whole point is a short, linear "shoot,
-// check, go" sequence. Nothing is uploaded until Create is actually
-// pressed on Confirm; capturing/choosing a photo alone spends no credit
-// and touches no server.
+type Mode = "choice" | "camera";
+
+interface GeneratingModel {
+  id: string;
+  createdAt: string;
+}
+
+// Four steps of one client-side flow, not separate routes: the captured
+// Blob only exists in memory (URL.createObjectURL), and there's no reason
+// to persist it or make any step bookmarkable on its own. Nothing is
+// uploaded until Create is actually pressed on Confirm; capturing/choosing
+// a photo alone spends no credit and touches no server. Generating is a
+// step here too, not a redirect to /models/[id]/waiting or to My Models
+// (which never shows a pending row — see library/page.tsx) — status stays
+// inside this same flow until the model is actually ready or failed.
 export function CaptureFlow({ userId }: CaptureFlowProps) {
-  const router = useRouter();
+  const [mode, setMode] = useState<Mode>("choice");
   const [file, setFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generatingModel, setGeneratingModel] = useState<GeneratingModel | null>(null);
   const { upload } = useUpload();
+
+  // Owned here, not inside ConfirmStep — GeneratingStep needs the same
+  // preview after ConfirmStep itself has unmounted, so the blob URL has to
+  // outlive that one step rather than being revoked with it.
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   async function handleCreate() {
     if (!file) return;
@@ -63,27 +83,32 @@ export function CaptureFlow({ userId }: CaptureFlowProps) {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Failed to start generation (${res.status})`);
 
-      // Straight to My Models, not a dedicated waiting screen — the new
-      // pending row already shows there as a normal ModelCard (dimmed
-      // photo, pulsing app-mark, progress line; see ModelCard.tsx), so
-      // generation status only ever appears inline in the grid, never as
-      // its own full-screen takeover.
-      router.push("/library");
+      setGeneratingModel({ id: body.modelId, createdAt: new Date().toISOString() });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start generation");
       setCreating(false);
     }
   }
 
+  function handleRetake() {
+    setFile(null);
+    setMode("choice");
+  }
+
+  if (generatingModel && previewUrl) {
+    return <GeneratingStep modelId={generatingModel.id} previewUrl={previewUrl} createdAt={generatingModel.createdAt} />;
+  }
+
   if (!file) {
-    return <CaptureStep onCaptured={setFile} />;
+    if (mode === "camera") return <CaptureStep onCaptured={setFile} />;
+    return <CaptureChoice onTakePhoto={() => setMode("camera")} onFileChosen={setFile} />;
   }
 
   return (
     <ConfirmStep
-      file={file}
+      previewUrl={previewUrl!}
       userId={userId}
-      onRetake={() => setFile(null)}
+      onRetake={handleRetake}
       onCreate={handleCreate}
       creating={creating}
       error={error}

@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { useCredits } from "@/hooks/useCredits";
 
 export interface ConfirmStepProps {
-  file: File;
+  previewUrl: string;
   userId: string;
   onRetake: () => void;
   onCreate: () => void;
@@ -27,14 +26,10 @@ const CREDIT_COST = 1;
 // icon-free here since there's no icon that reads as "create," shadow-card)
 // for one consistent "primary floating action" language across the app
 // rather than a second button style.
-export function ConfirmStep({ file, userId, onRetake, onCreate, creating, error }: ConfirmStepProps) {
-  // Derived directly from `file`, not effect+state — a blob URL for the
-  // same File object is always the same conceptual value, so it doesn't
-  // need its own render cycle to "arrive." The effect below only manages
-  // revokeObjectURL's cleanup, which is the one genuine side effect here.
-  const previewUrl = useMemo(() => URL.createObjectURL(file), [file]);
-  useEffect(() => () => URL.revokeObjectURL(previewUrl), [previewUrl]);
-
+export function ConfirmStep({ previewUrl, userId, onRetake, onCreate, creating, error }: ConfirmStepProps) {
+  // previewUrl's blob-URL lifecycle (create/revoke) lives in CaptureFlow.tsx
+  // now, not here — GeneratingStep needs the same preview after this
+  // component unmounts, so it has to outlive this one step.
   const { credits, loading } = useCredits(userId);
 
   return (

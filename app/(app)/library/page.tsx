@@ -16,8 +16,19 @@ export default async function LibraryPage() {
 
   if (!user) redirect("/login");
 
+  // Excludes pending/processing rows (rule from 2026-08-24: generation
+  // status is confined to CaptureFlow.tsx's own in-place GeneratingStep,
+  // never shown here). A retry's own optimistic pending row still appears
+  // via LibraryFeed's local state after this initial fetch — that's a
+  // deliberate exception scoped to retrying an existing card in place,
+  // not this query.
   const [{ data: models }, { data: profile }] = await Promise.all([
-    supabase.from("models").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+    supabase
+      .from("models")
+      .select("*")
+      .eq("user_id", user.id)
+      .in("status", ["ready", "failed"])
+      .order("created_at", { ascending: false }),
     supabase.from("profiles").select("credits").eq("id", user.id).single(),
   ]);
 
