@@ -62,6 +62,39 @@ export function ModelShare({ title }: ModelShareProps) {
     await handleCopy();
   }
 
+  // `<a download>` doesn't reliably save to the phone's photo library — iOS
+  // Safari in particular ignores the download attribute on a data: URI and
+  // just opens the image instead of saving it. Sharing an actual File
+  // through the Web Share API is what puts "Save Image"/"Save to Photos" in
+  // front of the user (supported iOS 16.4+, Android Chrome); desktop and
+  // any browser without file-sharing support fall back to the plain
+  // download link, which does work there.
+  async function handleSaveQr() {
+    if (!qrDataUrl) return;
+    let file: File | null = null;
+    try {
+      const blob = await fetch(qrDataUrl).then((res) => res.blob());
+      file = new File([blob], "model-qr.png", { type: "image/png" });
+    } catch {
+      file = null;
+    }
+    // Once file-sharing is actually offered, always resolve through it —
+    // including a dismissed share sheet — rather than falling through to
+    // download and effectively forcing a second, unrequested save.
+    if (file && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+      } catch {
+        // User dismissed the share sheet — not an error.
+      }
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = qrDataUrl;
+    a.download = "model-qr.png";
+    a.click();
+  }
+
   return (
     <div className="flex flex-col items-center gap-4 px-4 pb-4">
       {qrDataUrl ? (
@@ -96,14 +129,14 @@ export function ModelShare({ title }: ModelShareProps) {
           Share
         </button>
         {qrDataUrl && (
-          <a
-            href={qrDataUrl}
-            download="model-qr.png"
+          <button
+            type="button"
+            onClick={() => void handleSaveQr()}
             className="flex flex-1 items-center justify-center gap-2 rounded-md bg-surface-hover py-2.5 text-small font-semibold text-text hover:opacity-90"
           >
             <Download className="size-4" />
             Save
-          </a>
+          </button>
         )}
       </div>
     </div>
