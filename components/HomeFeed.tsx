@@ -70,14 +70,13 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Wordmark, no bar/fill/border/shadow, nothing on its right. Scrolls
           with the content below (it's inside the same scroll container, not
-          a separate sticky element). Icon before the name, per the
-          rebrand — icon-mark.png is the plain-R mark (no scan-frame): at
-          this size-6 (24px) the framed app-icon version was tested and
-          read as noise, see scripts/generate-pwa-icons.mjs. */}
+          a separate sticky element). Icon before the name — the actual
+          PWA app icon (icon-192.png, framed R), sized up to size-9 (36px)
+          so the frame stays legible (checked down to 32px). */}
       <div className="flex shrink-0 items-center gap-2 px-2 pt-4 pb-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon-mark.png" alt="" className="size-6 rounded-md" />
-        <p className="text-body font-semibold text-text">Realify</p>
+        <img src="/icon-192.png" alt="" className="size-9 rounded-md" />
+        <p className="text-heading font-semibold text-text">Realify</p>
       </div>
 
       {activeJob && <StatusStrip createdAt={activeJob.created_at} />}
