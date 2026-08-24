@@ -99,7 +99,7 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
         // (LibraryFeed.tsx's equivalent div already has these — this was the
         // one place that didn't.)
         <div
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+          className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto"
           // The extra var(--install-bar-reserve) term is 0px whenever
           // components/InstallPrompt.tsx isn't showing a bar (it clears the
           // property on unmount/hide) — see that file's setFeedBottomReserve.

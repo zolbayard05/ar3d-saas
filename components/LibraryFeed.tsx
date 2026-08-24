@@ -90,7 +90,7 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
       {retryError && <p className="px-2 py-2 text-small text-danger">{retryError}</p>}
 
       <div
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+        className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto"
         // See components/InstallPrompt.tsx's setFeedBottomReserve — 0px
         // whenever no install bar is showing.
         style={{

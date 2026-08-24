@@ -60,6 +60,17 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
         <img
           src={thumbnailSrc}
           alt=""
+          // onLoad alone misses an image the browser already had cached —
+          // its `load` event can fire before this listener is even
+          // attached, leaving imageLoaded stuck false and the image stuck
+          // at opacity-0 forever (caught live: real cards with
+          // img.complete === true but opacity "0"). The ref callback runs
+          // synchronously once the node exists and checks what the browser
+          // already knows, covering exactly that case; onLoad still covers
+          // the normal not-yet-cached one.
+          ref={(node) => {
+            if (node?.complete) setImageLoaded(true);
+          }}
           onLoad={() => setImageLoaded(true)}
           className={cn(
             "block size-full object-cover transition-opacity duration-300",
