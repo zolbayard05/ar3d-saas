@@ -26,11 +26,13 @@ export function buildModelUrl(key: string): string {
  * before migration 0008, or where bbox extraction failed — see
  * lib/glbCompress.ts's catch.
  */
-// MasonryGrid.tsx: cards without a stored aspect ratio (pre-migration-0012
-// rows, or a client-side decode failure) fall back to this rather than
-// guessing wildly — a common-ish "landscape product photo" ratio, not 1:1
-// (most captured objects are wider than tall in-frame) and not extreme.
-const DEFAULT_SOURCE_ASPECT_RATIO = 4 / 3;
+// MasonryGrid.tsx and ModelCard.tsx: cards without a stored aspect ratio
+// (pre-migration-0012 rows, or a client-side decode failure) fall back to
+// this rather than guessing wildly — a common-ish "landscape product
+// photo" ratio, not 1:1 (most captured objects are wider than tall in
+// frame) and not extreme. Exported so both files derive it from the same
+// number rather than two copies that could drift.
+export const DEFAULT_SOURCE_ASPECT_RATIO = 4 / 3;
 
 // Arbitrary but consistent — every card uses the same assumed column width,
 // so it cancels out in the relative comparison MasonryGrid actually does

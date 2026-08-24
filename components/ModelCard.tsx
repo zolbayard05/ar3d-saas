@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useElapsedTime } from "@/hooks/useElapsedTime";
-import { formatDimensionsCm } from "@/lib/models";
+import { DEFAULT_SOURCE_ASPECT_RATIO, formatDimensionsCm } from "@/lib/models";
 import { deleteModel } from "@/lib/deleteModel";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
@@ -21,6 +22,7 @@ export interface ModelCardProps {
 // library reuses this directly rather than a parallel copy.
 export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
   const model = useModelRealtime(initialModel.id, initialModel) ?? initialModel;
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Always the source photo, never render_url: the studio render sits on
   // the same near-black backdrop as the page itself, so against --color-bg
@@ -32,23 +34,39 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
   const thumbnailSrc = `/api/uploads/${model.source_image_key}`;
   const generating = model.status === "pending" || model.status === "processing";
 
-  // CLAUDE.md rule 37: the image fills its own rounded frame edge to edge —
-  // no padding, no letterboxing, no card background showing behind it. A
-  // plain w-full <img> at its natural (unforced) aspect ratio already IS
-  // "cropped to the photo's own aspect ratio": the frame takes the image's
-  // shape rather than imposing a different one, so no object-fit/crop math
-  // is needed. Column-height variation from that is masonry's whole point
-  // — never normalized to a fixed ratio.
+  // Reserved up front from the same stored aspect ratio MasonryGrid.tsx
+  // already uses to balance columns (migration 0012) — an <img> with no
+  // intrinsic size renders at 0 height until it's actually downloaded, so
+  // every card in the grid collapses to just its title on first paint, then
+  // jumps to full size later, shoving everything below it down at a random
+  // moment per card. Setting aspect-ratio up front makes the frame its real
+  // final size on the very first paint (filled with bg-surface-hover as a
+  // placeholder), so there's nothing left to shift — only a fade once the
+  // image itself is actually in. object-cover (not the old bare w-full)
+  // because the reserved box is now sized from stored data, not from
+  // whatever the image's own natural size happens to render at, so a row
+  // that fell back to DEFAULT_SOURCE_ASPECT_RATIO (no stored ratio) needs
+  // cropping rather than distortion to fill that box cleanly.
+  const aspectRatio =
+    model.source_image_width && model.source_image_height
+      ? model.source_image_width / model.source_image_height
+      : DEFAULT_SOURCE_ASPECT_RATIO;
   const dims = model.status === "ready" ? formatDimensionsCm(model) : null;
 
   const content = (
     <div>
-      <div className="relative overflow-hidden rounded-card">
+      <div className="relative overflow-hidden rounded-card bg-surface-hover" style={{ aspectRatio }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={thumbnailSrc}
           alt=""
-          className={cn("block w-full bg-surface-hover", generating && "opacity-50")}
+          onLoad={() => setImageLoaded(true)}
+          className={cn(
+            "block size-full object-cover transition-opacity duration-300",
+            !imageLoaded && "opacity-0",
+            imageLoaded && !generating && "opacity-100",
+            imageLoaded && generating && "opacity-50",
+          )}
         />
         {generating && (
           // Thin indeterminate progress line — Tripo gives us start/complete
