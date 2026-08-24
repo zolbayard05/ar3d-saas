@@ -22,12 +22,13 @@
    * token both components/ui/Button.tsx and components/ui/Input.tsx
    * already reference via `rounded-md`, so this one change is what
    * restyles every button/input at once, same "edit tokens.css only"
-   * promise this file has always made. --radius-sm stays 0 for now
-   * (nothing currently uses it) until a smaller-surface need for it shows
-   * up in a reference screen. --radius-lg/--radius-card/--radius-full are
-   * unchanged pending their own screens being revisited.
+   * promise this file has always made. --radius-sm now carries the create
+   * screen's picker/Create tiles (components/CaptureChoice.tsx, via
+   * `rounded-sm`) — a smaller-surface case rounded-md's 14px read as too
+   * round for; being tuned live. --radius-lg/--radius-card/--radius-full
+   * are unchanged pending their own screens being revisited.
    */
-  --radius-sm: 0;
+  --radius-sm: 0.625rem; /* 10px — CaptureChoice.tsx's picker/Create tiles */
   --radius-md: 0.875rem; /* 14px — buttons/inputs, from the login screen reference */
   --radius-lg: 1.125rem; /* 18px — bottom-nav buttons (pending redesign) */
   --radius-card: 1rem; /* 16px — feed cards (pending redesign) */
