@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CaptureChoice } from "@/components/CaptureChoice";
 import { CaptureStep } from "@/components/CaptureStep";
 import { ConfirmStep } from "@/components/ConfirmStep";
 import { GeneratingStep } from "@/components/GeneratingStep";
+import { ResultStep } from "@/components/ResultStep";
 import { useUpload } from "@/hooks/useUpload";
 import type { Database } from "@/lib/supabase/types";
 
@@ -23,20 +25,25 @@ interface GeneratingModel {
   createdAt: string;
 }
 
-// Four steps of one client-side flow, not separate routes: the captured
+// Five steps of one client-side flow, not separate routes: the captured
 // Blob only exists in memory (URL.createObjectURL), and there's no reason
 // to persist it or make any step bookmarkable on its own. Nothing is
 // uploaded until Create is actually pressed on Confirm; capturing/choosing
-// a photo alone spends no credit and touches no server. Generating is a
-// step here too, not a redirect to /models/[id]/waiting or to My Models
-// (which never shows a pending row — see library/page.tsx) — status stays
-// inside this same flow until the model is actually ready or failed.
+// a photo alone spends no credit and touches no server. Generating and the
+// result review are steps here too, not a redirect to /models/[id]/waiting
+// or straight to /models/[id] — a finished model only reaches My Models
+// (library/page.tsx's status filter is no protection here; the row is
+// already `ready` the moment generation succeeds) once ResultStep's own
+// Save is pressed. Delete there removes it via the same lib/deleteModel.ts
+// every other delete action uses, same as never having kept it.
 export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("choice");
   const [file, setFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatingModel, setGeneratingModel] = useState<GeneratingModel | null>(null);
+  const [resultModel, setResultModel] = useState<ModelRow | null>(null);
   const { upload } = useUpload();
 
   // Owned here, not inside ConfirmStep — GeneratingStep needs the same
@@ -100,8 +107,33 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     setMode("choice");
   }
 
+  function resetToChoice() {
+    setFile(null);
+    setGeneratingModel(null);
+    setResultModel(null);
+    setMode("choice");
+  }
+
+  if (resultModel) {
+    return (
+      <ResultStep
+        model={resultModel}
+        onSaved={() => router.push(`/models/${resultModel.id}`)}
+        onDeleted={resetToChoice}
+      />
+    );
+  }
+
   if (generatingModel && previewUrl) {
-    return <GeneratingStep modelId={generatingModel.id} previewUrl={previewUrl} createdAt={generatingModel.createdAt} />;
+    return (
+      <GeneratingStep
+        modelId={generatingModel.id}
+        previewUrl={previewUrl}
+        createdAt={generatingModel.createdAt}
+        onReady={setResultModel}
+        onFailed={() => router.push(`/models/${generatingModel.id}`)}
+      />
+    );
   }
 
   if (!file) {

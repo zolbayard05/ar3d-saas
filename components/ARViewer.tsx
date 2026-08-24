@@ -21,10 +21,12 @@ type ModelViewerElement = HTMLElement & { activateAR: () => Promise<void>; loade
 
 /**
  * CLAUDE.md rule 11 — this file imports "@google/model-viewer" for its
- * customElements.define() side effect, which needs `window`. Callers MUST
- * bring this in via `next/dynamic(() => import("@/components/ARViewer"), {
+ * customElements.define() side effect, which needs `window`. Every caller
+ * MUST bring this in via `next/dynamic(() => import("@/components/ARViewer"), {
  * ssr: false })`, never a plain import — a plain import runs this during
- * SSR and breaks the build. (See components/ModelDetail.tsx.)
+ * SSR and breaks the build. Two call sites do this today (ModelDetail.tsx,
+ * ResultStep.tsx) — the rule is "always via this pattern," not "only one
+ * importer."
  *
  * Rule 8's exact config: ar, ar-modes="webxr scene-viewer quick-look",
  * src = GLB, ios-src = USDZ.

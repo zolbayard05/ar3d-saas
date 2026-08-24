@@ -19,9 +19,10 @@ import type { ARViewerHandle } from "@/components/ARViewer";
 
 type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 
-// Rule 11 — the only place ARViewer may be imported. ssr:false keeps
-// @google/model-viewer's customElements.define() out of the SSR pass
-// entirely (it needs `window`, which doesn't exist there).
+// Rule 11 — ssr:false keeps @google/model-viewer's customElements.define()
+// out of the SSR pass entirely (it needs `window`, which doesn't exist
+// there). ResultStep.tsx (components/CaptureFlow.tsx's own review step)
+// imports ARViewer the same way — see that rule's comment in ARViewer.tsx.
 const ARViewer = dynamic(() => import("@/components/ARViewer").then((m) => m.ARViewer), {
   ssr: false,
   loading: () => (
