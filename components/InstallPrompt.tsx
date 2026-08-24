@@ -89,6 +89,25 @@ function dismissIosInstallHint() {
   detectionListeners.forEach((l) => l());
 }
 
+// Bar's own rendered height, measured live via getBoundingClientRect (py-2.5
+// + text-small line height + the row's icon/button), not guessed: 52px.
+// Reserve = the bar's own 92px offset from the viewport bottom (see
+// overlayStyle below) + that height + 8px breathing room above it.
+const INSTALL_BAR_RESERVE_PX = 152;
+
+/**
+ * HomeFeed/LibraryFeed read this to extend their existing bottom scroll
+ * padding only while a bar is actually visible — set here (a DOM-sync
+ * effect, not a setState-in-effect: this is exactly the "update an external
+ * system with the latest state from React" case react-hooks/set-state-in-effect's
+ * own guidance calls out as fine) rather than prop-drilled or reserved
+ * unconditionally, so dismissing the bar gives that space straight back
+ * instead of leaving a permanent gap under the last row.
+ */
+function setFeedBottomReserve(px: number) {
+  document.documentElement.style.setProperty("--install-bar-reserve", `${px}px`);
+}
+
 /**
  * Two entirely different install paths, since only one of them is a real
  * browser API:
@@ -122,6 +141,14 @@ export function InstallPrompt() {
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
   }, []);
 
+  const showAndroidBar = !standalone && !!deferredPrompt;
+  const showIosBar = !standalone && !deferredPrompt && isIOS && !iosHintDismissed;
+
+  useEffect(() => {
+    setFeedBottomReserve(showAndroidBar || showIosBar ? INSTALL_BAR_RESERVE_PX : 0);
+    return () => setFeedBottomReserve(0);
+  }, [showAndroidBar, showIosBar]);
+
   if (standalone) return null;
 
   async function handleAndroidInstall() {
@@ -133,25 +160,25 @@ export function InstallPrompt() {
     setInstalling(false);
   }
 
-  // Fixed overlay, not a normal-flow banner: (app)/layout.tsx and
-  // (model)/layout.tsx both size their content against `h-dvh` on the
-  // assumption that nothing else in <body> consumes viewport height (see
-  // that file's own comment on the min-h-dvh vs h-dvh bug this session
-  // already fixed once). A flow banner here would reintroduce exactly that
-  // bug from a new angle — a fixed overlay affects none of that math since
-  // it's removed from the flow entirely.
+  // Fixed overlay, not a normal-flow banner — see app/layout.tsx's own
+  // comment on why body is h-dvh: nothing outside that chain should ever
+  // consume flex space, in-flow or not.
+  //
+  // Bottom, not top: sits just above BottomNav's floating buttons (rule 39:
+  // size-14 = 56px, offset env(safe-area-inset-bottom) + 24px), with a 12px
+  // gap matching the nav's own inter-button spacing — 24 + 56 + 12 = 92px.
+  // Inset from the side edges (not edge-to-edge) and rounded-card, so it
+  // reads as a floating compact bar rather than a strip across the screen —
+  // same "floating, never full-width" language rule 39 already uses for the
+  // nav itself, not a second banner style.
   const overlayClass =
-    "fixed inset-x-0 top-0 z-50 flex items-center justify-between gap-3 border-b border-border-subtle bg-surface px-4 py-3";
-  // env()-based safe-area padding isn't expressible as a design token (it's
-  // a per-device runtime value, not a fixed scale value) — inline style,
-  // same escape hatch components/BottomNav.tsx already uses for its own
-  // safe-area-inset-bottom offset, not a Tailwind arbitrary-value class.
-  const overlayStyle = { paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" };
+    "fixed inset-x-4 z-50 flex items-center justify-between gap-3 rounded-card bg-surface px-3 py-2.5 shadow-card";
+  const overlayStyle = { bottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" };
 
-  if (deferredPrompt) {
+  if (showAndroidBar) {
     return (
       <div className={overlayClass} style={overlayStyle}>
-        <p className="text-small text-text">Install AR3D for a full-screen app on your home screen.</p>
+        <p className="text-small text-text">Install AR3D for full-screen AR.</p>
         <div className="flex shrink-0 items-center gap-2">
           <Button size="sm" variant="primary" loading={installing} onClick={() => void handleAndroidInstall()}>
             Install
@@ -169,11 +196,11 @@ export function InstallPrompt() {
     );
   }
 
-  if (isIOS && !iosHintDismissed) {
+  if (showIosBar) {
     return (
       <div className={overlayClass} style={overlayStyle}>
-        <p className="flex items-center gap-1.5 text-small text-text">
-          Install AR3D: tap <Share2 size={15} className="inline text-text-muted" /> Share, then “Add to Home Screen”.
+        <p className="flex min-w-0 items-center gap-1 text-small text-text">
+          Tap <Share2 size={14} className="shrink-0 text-text-muted" /> then “Add to Home Screen”
         </p>
         <button
           type="button"

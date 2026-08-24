@@ -85,7 +85,11 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
 
       <div
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
+        // See components/InstallPrompt.tsx's setFeedBottomReserve — 0px
+        // whenever no install bar is showing.
+        style={{
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem + var(--install-bar-reserve, 0px))",
+        }}
       >
         {models.length === 0 ? (
           <EmptyState

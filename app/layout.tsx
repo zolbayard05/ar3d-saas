@@ -49,9 +49,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       data-theme="dark"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      {/* h-dvh, not min-h-full: min-height is a floor, and a floor lets body
+          render taller than the CURRENTLY live dvh value whenever the two
+          diverge even briefly (e.g. right after a client-only child like
+          InstallPrompt mounts and inserts new fixed content post-hydration).
+          When that happens body itself becomes scrollable, which shifts
+          (app)/layout.tsx's in-flow feed relative to BottomNav (fixed,
+          tracks the real viewport, unaffected by body's scroll) — the same
+          min vs h footgun that div's own comment already documents, one
+          level up, previously dormant here because body only ever had one
+          child (already itself h-dvh-sized) until InstallPrompt became a
+          second one. h-dvh on both html and body removes the ambiguity
+          entirely: every level of the chain reports the same live value. */}
+      <body className="flex h-dvh flex-col">
         <ServiceWorkerRegister />
         <InstallPrompt />
         {children}

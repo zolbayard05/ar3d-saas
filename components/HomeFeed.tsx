@@ -100,7 +100,12 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
         // one place that didn't.)
         <div
           className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
+          // The extra var(--install-bar-reserve) term is 0px whenever
+          // components/InstallPrompt.tsx isn't showing a bar (it clears the
+          // property on unmount/hide) — see that file's setFeedBottomReserve.
+          style={{
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem + var(--install-bar-reserve, 0px))",
+          }}
         >
           <MasonryGrid models={models} onRetry={handleRetry} onDelete={handleDelete} />
         </div>
