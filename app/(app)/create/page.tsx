@@ -14,5 +14,19 @@ export default async function CreatePage() {
 
   if (!user) redirect("/login");
 
-  return <CaptureFlow userId={user.id} />;
+  // Now that BottomNav stays visible on /create (2026-08-24), a user can
+  // navigate away mid-generation and come back — without this, returning
+  // to /create would show a blank choice screen with no sign the earlier
+  // generation is still running. Only the single most recent one: showing
+  // several would need its own list UI this screen was never meant to have.
+  const { data: activeModel } = await supabase
+    .from("models")
+    .select("*")
+    .eq("user_id", user.id)
+    .in("status", ["pending", "processing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return <CaptureFlow userId={user.id} initialActiveModel={activeModel ?? undefined} />;
 }

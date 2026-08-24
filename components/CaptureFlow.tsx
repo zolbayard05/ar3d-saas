@@ -6,9 +6,14 @@ import { CaptureStep } from "@/components/CaptureStep";
 import { ConfirmStep } from "@/components/ConfirmStep";
 import { GeneratingStep } from "@/components/GeneratingStep";
 import { useUpload } from "@/hooks/useUpload";
+import type { Database } from "@/lib/supabase/types";
+
+type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 
 export interface CaptureFlowProps {
   userId: string;
+  /** A model the caller already had generating before landing on this page — see create/page.tsx. */
+  initialActiveModel?: ModelRow;
 }
 
 type Mode = "choice" | "camera";
@@ -26,7 +31,7 @@ interface GeneratingModel {
 // step here too, not a redirect to /models/[id]/waiting or to My Models
 // (which never shows a pending row — see library/page.tsx) — status stays
 // inside this same flow until the model is actually ready or failed.
-export function CaptureFlow({ userId }: CaptureFlowProps) {
+export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const [mode, setMode] = useState<Mode>("choice");
   const [file, setFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
@@ -101,7 +106,13 @@ export function CaptureFlow({ userId }: CaptureFlowProps) {
 
   if (!file) {
     if (mode === "camera") return <CaptureStep onCaptured={setFile} />;
-    return <CaptureChoice onTakePhoto={() => setMode("camera")} onFileChosen={setFile} />;
+    return (
+      <CaptureChoice
+        onTakePhoto={() => setMode("camera")}
+        onFileChosen={setFile}
+        activeGeneration={initialActiveModel}
+      />
+    );
   }
 
   return (
