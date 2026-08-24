@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ActiveGenerationBanner } from "@/components/ActiveGenerationBanner";
 import { CaptureChoice } from "@/components/CaptureChoice";
 import { CaptureStep } from "@/components/CaptureStep";
 import { ConfirmStep } from "@/components/ConfirmStep";
@@ -25,17 +26,19 @@ interface GeneratingModel {
   createdAt: string;
 }
 
-// Five steps of one client-side flow, not separate routes: the captured
-// Blob only exists in memory (URL.createObjectURL), and there's no reason
-// to persist it or make any step bookmarkable on its own. Nothing is
-// uploaded until Create is actually pressed on Confirm; capturing/choosing
-// a photo alone spends no credit and touches no server. Generating and the
-// result review are steps here too, not a redirect to /models/[id]/waiting
-// or straight to /models/[id] — a finished model only reaches My Models
-// (library/page.tsx's status filter is no protection here; the row is
-// already `ready` the moment generation succeeds) once ResultStep's own
-// Save is pressed. Delete there removes it via the same lib/deleteModel.ts
-// every other delete action uses, same as never having kept it.
+// The Take Photo / Upload Photo cards stay on screen the whole time
+// (2026-08-24) — everything after choosing a photo (Confirm, Generating,
+// the Save/Delete result) renders below them in this same screen instead of
+// swapping out to a separate full-screen step. Only the live camera (its
+// own immersive full-screen view — a two-card picker plus a viewfinder
+// wouldn't fit together) is still a distinct step. Nothing is uploaded
+// until Create is actually pressed on Confirm; capturing/choosing a photo
+// alone spends no credit and touches no server. A finished model only
+// reaches My Models (library/page.tsx's status filter is no protection
+// here; the row is already `ready` the moment generation succeeds) once
+// ResultStep's own Save is pressed — Delete there removes it via the same
+// lib/deleteModel.ts every other delete action uses, same as never having
+// kept it.
 export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("choice");
@@ -104,7 +107,6 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
 
   function handleRetake() {
     setFile(null);
-    setMode("choice");
   }
 
   function resetToChoice() {
@@ -114,47 +116,45 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     setMode("choice");
   }
 
-  if (resultModel) {
-    return (
-      <ResultStep
-        model={resultModel}
-        onSaved={() => router.push(`/models/${resultModel.id}`)}
-        onDeleted={resetToChoice}
-      />
-    );
-  }
-
-  if (generatingModel && previewUrl) {
-    return (
-      <GeneratingStep
-        modelId={generatingModel.id}
-        previewUrl={previewUrl}
-        createdAt={generatingModel.createdAt}
-        onReady={setResultModel}
-        onFailed={() => router.push(`/models/${generatingModel.id}`)}
-      />
-    );
-  }
-
-  if (!file) {
-    if (mode === "camera") return <CaptureStep onCaptured={setFile} onBack={() => setMode("choice")} />;
-    return (
-      <CaptureChoice
-        onTakePhoto={() => setMode("camera")}
-        onFileChosen={setFile}
-        activeGeneration={initialActiveModel}
-      />
-    );
+  if (mode === "camera") {
+    return <CaptureStep onCaptured={setFile} onBack={() => setMode("choice")} />;
   }
 
   return (
-    <ConfirmStep
-      previewUrl={previewUrl!}
-      userId={userId}
-      onRetake={handleRetake}
-      onCreate={handleCreate}
-      creating={creating}
-      error={error}
-    />
+    <div
+      className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" }}
+    >
+      <CaptureChoice onTakePhoto={() => setMode("camera")} onFileChosen={setFile} />
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        {resultModel ? (
+          <ResultStep
+            model={resultModel}
+            onSaved={() => router.push(`/models/${resultModel.id}`)}
+            onDeleted={resetToChoice}
+          />
+        ) : generatingModel && previewUrl ? (
+          <GeneratingStep
+            modelId={generatingModel.id}
+            previewUrl={previewUrl}
+            createdAt={generatingModel.createdAt}
+            onReady={setResultModel}
+            onFailed={() => router.push(`/models/${generatingModel.id}`)}
+          />
+        ) : file && previewUrl ? (
+          <ConfirmStep
+            previewUrl={previewUrl}
+            userId={userId}
+            onRetake={handleRetake}
+            onCreate={handleCreate}
+            creating={creating}
+            error={error}
+          />
+        ) : (
+          initialActiveModel && <ActiveGenerationBanner initialModel={initialActiveModel} />
+        )}
+      </div>
+    </div>
   );
 }

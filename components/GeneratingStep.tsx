@@ -30,6 +30,10 @@ export interface GeneratingStepProps {
 // here was a small max-w-xs box that read as an afterthought) so it's the
 // dominant thing on screen, same footprint as ModelDetail.tsx's own viewer
 // and the same gradient backdrop, rather than a token-sized placeholder.
+//
+// Renders below CaptureFlow.tsx's own CaptureChoice cards, not as a
+// separate full-screen step — no padding of its own, CaptureFlow's shared
+// wrapper owns that once for every phase.
 export function GeneratingStep({ modelId, previewUrl, createdAt, onReady, onFailed }: GeneratingStepProps) {
   const model = useModelRealtime(modelId);
   const elapsed = useElapsedTime(createdAt);
@@ -41,7 +45,7 @@ export function GeneratingStep({ modelId, previewUrl, createdAt, onReady, onFail
   }, [model, onReady, onFailed]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
       <div
         className="relative aspect-[4/5] w-full overflow-hidden rounded-card"
         style={{

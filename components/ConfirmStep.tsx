@@ -26,6 +26,10 @@ const CREDIT_COST = 1;
 // icon-free here since there's no icon that reads as "create," shadow-card)
 // for one consistent "primary floating action" language across the app
 // rather than a second button style.
+//
+// Renders below CaptureFlow.tsx's own CaptureChoice cards, not as a
+// separate full-screen step (2026-08-24) — no padding/nav-clearance of its
+// own, CaptureFlow's shared wrapper owns that once for every phase.
 export function ConfirmStep({ previewUrl, userId, onRetake, onCreate, creating, error }: ConfirmStepProps) {
   // previewUrl's blob-URL lifecycle (create/revoke) lives in CaptureFlow.tsx
   // now, not here — GeneratingStep needs the same preview after this
@@ -33,13 +37,7 @@ export function ConfirmStep({ previewUrl, userId, onRetake, onCreate, creating, 
   const { credits, loading } = useCredits(userId);
 
   return (
-    // Bottom padding clears the floating BottomNav (visible on /create as
-    // of 2026-08-24) rather than the Create button sitting underneath it —
-    // see BottomNav.tsx's comment for the 92px figure.
-    <div
-      className="flex min-h-0 flex-1 flex-col px-6 pt-6"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" }}
-    >
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-card bg-surface">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={previewUrl} alt="Captured photo" className="max-h-full max-w-full object-contain" />
