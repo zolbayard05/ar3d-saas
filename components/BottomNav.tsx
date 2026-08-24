@@ -29,10 +29,10 @@ export function BottomNav({ hasActiveJob }: BottomNavProps) {
   // /create used to be hidden for the same reason (its own bottom-docked
   // shutter/Create buttons), but that meant there was no way back out of
   // the flow except finishing it — overridden 2026-08-24: the nav stays
-  // visible there too now, and CaptureStep.tsx/ConfirmStep.tsx each reserve
-  // bottom clearance (92px = this nav's own 24px offset + 56px height +
-  // 12px gap, same figure InstallPrompt.tsx computes) so their own
-  // bottom-docked buttons don't sit underneath it.
+  // visible there too now, and CaptureFlow.tsx reserves bottom clearance
+  // (92px = this nav's own 24px offset + 56px height + 12px gap, same
+  // figure InstallPrompt.tsx computes) once for whichever phase is
+  // showing, so its bottom-docked buttons don't sit underneath it.
   if (pathname?.startsWith("/models/")) return null;
 
   return (

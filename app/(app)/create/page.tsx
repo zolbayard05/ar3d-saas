@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CaptureFlow } from "@/components/CaptureFlow";
 
-// CaptureFlow needs the caller's own id for ConfirmStep's credits line
+// CaptureFlow needs the caller's own id for CaptureChoice's credits line
 // (useCredits), not just auth — same reason app/(app)/library/page.tsx
 // calls getUser() directly rather than relying on the (app) layout's own
 // check alone (rule 30).

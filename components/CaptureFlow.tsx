@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ActiveGenerationBanner } from "@/components/ActiveGenerationBanner";
 import { CaptureChoice } from "@/components/CaptureChoice";
 import { CaptureStep } from "@/components/CaptureStep";
-import { ConfirmStep } from "@/components/ConfirmStep";
 import { GeneratingStep } from "@/components/GeneratingStep";
 import { ResultStep } from "@/components/ResultStep";
 import { useUpload } from "@/hooks/useUpload";
@@ -26,19 +25,21 @@ interface GeneratingModel {
   createdAt: string;
 }
 
-// The Take Photo / Upload Photo cards stay on screen the whole time
-// (2026-08-24) — everything after choosing a photo (Confirm, Generating,
-// the Save/Delete result) renders below them in this same screen instead of
-// swapping out to a separate full-screen step. Only the live camera (its
-// own immersive full-screen view — a two-card picker plus a viewfinder
-// wouldn't fit together) is still a distinct step. Nothing is uploaded
-// until Create is actually pressed on Confirm; capturing/choosing a photo
-// alone spends no credit and touches no server. A finished model only
-// reaches My Models (library/page.tsx's status filter is no protection
-// here; the row is already `ready` the moment generation succeeds) once
-// ResultStep's own Save is pressed — Delete there removes it via the same
-// lib/deleteModel.ts every other delete action uses, same as never having
-// kept it.
+// CaptureChoice.tsx owns the Photo/Camera picker, the chosen-photo preview,
+// and the persistent Create button as one unit (2026-08-24 — Tripo's own
+// reference: Create exists from the start, and picking a photo replaces the
+// tiles with the photo in the same slot rather than both staying visible).
+// Generating and the Save/Delete result each take over that whole area
+// instead — Create's job is done by then, there's nothing left to pick.
+// Only the live camera is still a separate full-screen step (its own
+// immersive view; a two-card picker and a viewfinder don't fit together).
+// Nothing is uploaded until Create is actually pressed; capturing/choosing
+// a photo alone spends no credit and touches no server. A finished model
+// only reaches My Models (library/page.tsx's status filter is no
+// protection here; the row is already `ready` the moment generation
+// succeeds) once ResultStep's own Save is pressed — Delete there removes it
+// via the same lib/deleteModel.ts every other delete action uses, same as
+// never having kept it.
 export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("choice");
@@ -49,9 +50,9 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const [resultModel, setResultModel] = useState<ModelRow | null>(null);
   const { upload } = useUpload();
 
-  // Owned here, not inside ConfirmStep — GeneratingStep needs the same
-  // preview after ConfirmStep itself has unmounted, so the blob URL has to
-  // outlive that one step rather than being revoked with it.
+  // Owned here, not inside CaptureChoice — GeneratingStep needs the same
+  // preview after CaptureChoice's photo slot has moved on, so the blob URL
+  // has to outlive that one state rather than being revoked with it.
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   useEffect(() => {
     return () => {
@@ -105,10 +106,6 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     }
   }
 
-  function handleRetake() {
-    setFile(null);
-  }
-
   function resetToChoice() {
     setFile(null);
     setGeneratingModel(null);
@@ -120,41 +117,49 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     return <CaptureStep onCaptured={setFile} onBack={() => setMode("choice")} />;
   }
 
-  return (
-    <div
-      className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" }}
-    >
-      <CaptureChoice onTakePhoto={() => setMode("camera")} onFileChosen={setFile} />
+  const wrapperClassName = "flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4";
+  const wrapperStyle = { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" };
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        {resultModel ? (
-          <ResultStep
-            model={resultModel}
-            onSaved={() => router.push(`/models/${resultModel.id}`)}
-            onDeleted={resetToChoice}
-          />
-        ) : generatingModel && previewUrl ? (
-          <GeneratingStep
-            modelId={generatingModel.id}
-            previewUrl={previewUrl}
-            createdAt={generatingModel.createdAt}
-            onReady={setResultModel}
-            onFailed={() => router.push(`/models/${generatingModel.id}`)}
-          />
-        ) : file && previewUrl ? (
-          <ConfirmStep
-            previewUrl={previewUrl}
-            userId={userId}
-            onRetake={handleRetake}
-            onCreate={handleCreate}
-            creating={creating}
-            error={error}
-          />
-        ) : (
-          initialActiveModel && <ActiveGenerationBanner initialModel={initialActiveModel} />
-        )}
+  if (resultModel) {
+    return (
+      <div className={wrapperClassName} style={wrapperStyle}>
+        <ResultStep
+          model={resultModel}
+          onSaved={() => router.push(`/models/${resultModel.id}`)}
+          onDeleted={resetToChoice}
+        />
       </div>
+    );
+  }
+
+  if (generatingModel && previewUrl) {
+    return (
+      <div className={wrapperClassName} style={wrapperStyle}>
+        <GeneratingStep
+          modelId={generatingModel.id}
+          previewUrl={previewUrl}
+          createdAt={generatingModel.createdAt}
+          onReady={setResultModel}
+          onFailed={() => router.push(`/models/${generatingModel.id}`)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={wrapperClassName} style={wrapperStyle}>
+      <CaptureChoice
+        userId={userId}
+        onTakePhoto={() => setMode("camera")}
+        file={file}
+        previewUrl={previewUrl}
+        onFileChosen={setFile}
+        onRetake={() => setFile(null)}
+        onCreate={handleCreate}
+        creating={creating}
+        error={error}
+      />
+      {!file && initialActiveModel && <ActiveGenerationBanner initialModel={initialActiveModel} />}
     </div>
   );
 }
