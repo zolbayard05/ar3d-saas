@@ -64,17 +64,22 @@ export function CaptureChoice({
   const entered = useSlotEnter(file ? "photo" : "cards");
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex flex-col gap-3">
+      {/* Not flex-1 — sized to its own content (cards' aspect-square, or the
+          photo's fixed aspect-[2/1] approximating the two-card row's own
+          footprint) so Create sits immediately below it, the way the
+          reference has it, instead of stretching to fill the screen and
+          pushing Create down to the very bottom. */}
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col transition-all duration-300 ease-out",
+          "transition-all duration-300 ease-out",
           entered ? "scale-100 opacity-100" : "scale-95 opacity-0",
         )}
       >
         {previewUrl ? (
-          <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-card bg-surface">
+          <div className="relative aspect-[2/1] w-full overflow-hidden rounded-card bg-surface">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="Captured photo" className="max-h-full max-w-full object-contain" />
+            <img src={previewUrl} alt="Captured photo" className="size-full object-cover" />
             <button
               type="button"
               onClick={onRetake}
@@ -120,31 +125,32 @@ export function CaptureChoice({
         }}
       />
 
-      <div className="flex flex-col items-center gap-2">
+      <button
+        type="button"
+        onClick={onCreate}
+        disabled={!file || creating}
+        className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-40"
+      >
+        {creating ? (
+          <Spinner size="sm" />
+        ) : (
+          <>
+            Create
+            <span className="flex items-center gap-1 rounded-full bg-accent-text/10 px-2 py-0.5 text-small normal-case tracking-normal">
+              <Zap className="size-3.5" />
+              {CREDIT_COST}
+            </span>
+          </>
+        )}
+      </button>
+
+      <div className="flex flex-col items-center gap-1">
         {!loading && (
           <p className="text-small uppercase tracking-wide text-text-muted">
             {credits ?? 0} credits remaining
           </p>
         )}
         {error && <p className="text-small text-danger">{error}</p>}
-        <button
-          type="button"
-          onClick={onCreate}
-          disabled={!file || creating}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-40"
-        >
-          {creating ? (
-            <Spinner size="sm" />
-          ) : (
-            <>
-              Create
-              <span className="flex items-center gap-1 rounded-full bg-accent-text/10 px-2 py-0.5 text-small normal-case tracking-normal">
-                <Zap className="size-3.5" />
-                {CREDIT_COST}
-              </span>
-            </>
-          )}
-        </button>
       </div>
     </div>
   );
