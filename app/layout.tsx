@@ -46,24 +46,31 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      data-theme="dark"
-      className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
-    >
-      {/* h-dvh, not min-h-full: min-height is a floor, and a floor lets body
-          render taller than the CURRENTLY live dvh value whenever the two
-          diverge even briefly (e.g. right after a client-only child like
-          InstallPrompt mounts and inserts new fixed content post-hydration).
-          When that happens body itself becomes scrollable, which shifts
-          (app)/layout.tsx's in-flow feed relative to BottomNav (fixed,
-          tracks the real viewport, unaffected by body's scroll) — the same
-          min vs h footgun that div's own comment already documents, one
-          level up, previously dormant here because body only ever had one
-          child (already itself h-dvh-sized) until InstallPrompt became a
-          second one. h-dvh on both html and body removes the ambiguity
-          entirely: every level of the chain reports the same live value. */}
-      <body className="flex h-dvh flex-col">
+    <html lang="en" data-theme="dark" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      {/* No explicit height here (not h-dvh, not min-h-full) — deliberately.
+          h-dvh looked right (every descendant gets "a real ceiling to size
+          against") but doesn't hold up on iOS Safari specifically: dvh is
+          defined to live-track the browser chrome as it collapses/expands
+          during scroll, and there's a currently-open, widely-reported WebKit
+          bug (bugs.webkit.org #297779; multiple Apple developer forum
+          threads, including one on apple.com's own site) where
+          `position: fixed` elements don't reliably stay in sync with that
+          live-changing value — the exact BottomNav-vs-feed mismatch this
+          project kept hitting. No CSS height unit fixes a bug in how the
+          browser positions `fixed` elements relative to it.
+
+          The actual fix lives in app/(app)/layout.tsx: that group's own
+          wrapper is `fixed inset-0` now, not height-based at all — `inset:0`
+          on a fixed element is computed directly against the real viewport
+          edges on every paint, the same mechanism BottomNav's own `fixed`
+          positioning already uses, rather than a cached height value that
+          has to stay in sync with a second, independently-computed one.
+          Because that div escapes the flow entirely (fixed, not in normal
+          flow), body's own height is irrelevant to it — body is left with
+          no explicit height so other route groups ((model), (auth), the
+          landing page) keep their existing natural-page-scroll behavior,
+          each sized with their own min-h-dvh main, untouched by this. */}
+      <body className="flex flex-col">
         <ServiceWorkerRegister />
         <InstallPrompt />
         {children}

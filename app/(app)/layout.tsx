@@ -22,27 +22,33 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     .in("status", ["pending", "processing"])
     .limit(1);
 
-  // BottomNav is now `fixed` (rule 39) — out of normal flow regardless of
-  // this wrapper's own display type, so it no longer occupies a row in this
-  // flex column the way the old full-width bar did.
+  // BottomNav is `fixed` (rule 39) — out of normal flow regardless of this
+  // wrapper's own display type, so it no longer occupies a row in this flex
+  // column the way the old full-width bar did.
   //
-  // `h-dvh`, not `min-h-dvh`: a min-height is a floor, not a ceiling, and
-  // gives this div nothing to actually cap against. Screens under this
-  // group (HomeFeed, LibraryFeed) have their own inner `flex-1 min-h-0
-  // overflow-y-auto` scroll container specifically so BottomNav's fixed
-  // overlay always sits over that container's own reserved bottom padding,
-  // never over card content — but that pattern only works if some ancestor
-  // in the chain is actually height-*constrained*. With `min-h-dvh`, this
-  // div (and `main`, and body) just grow to fit content instead, the inner
-  // div's `overflow-y-auto` never has anything to overflow *within itself*
-  // so it never engages, and the whole *page* scrolls instead — at which
-  // point BottomNav (fixed to the viewport) ends up sitting over whatever
-  // card happens to be at its screen position, not over blank padding.
-  // `h-dvh` gives every descendant in that chain a real ceiling to size
-  // against; content shorter than the viewport is fine (`overflow` is never
-  // set to `hidden` anywhere in this chain), it just leaves blank bg below.
+  // `fixed inset-0`, not a height unit (h-dvh, min-h-dvh, or otherwise): the
+  // inner `flex-1 min-h-0 overflow-y-auto` scroll container (HomeFeed,
+  // LibraryFeed) needs SOME ancestor to be a real, definite-height ceiling
+  // for its own overflow to actually engage — that part of the original
+  // reasoning was right. What was wrong was assuming a `dvh`-based height
+  // was a stable way to provide that ceiling on iOS Safari: dvh is defined
+  // to live-track the browser chrome collapsing/expanding on scroll, and
+  // there's a currently open WebKit bug (bugs.webkit.org #297779) where
+  // `position: fixed` elements — BottomNav, right here — don't reliably
+  // stay in sync with that live value, so the "ceiling" and the "floor"
+  // drift apart specifically WHILE the user scrolls, which is exactly when
+  // it's most visible.
+  //
+  // `inset: 0` on a `fixed` element sidesteps the whole class of bug: it's
+  // computed directly against the real viewport edges on every paint, not
+  // cached as a height value that a second, independent calculation (dvh)
+  // has to stay synchronized with. This is the same mechanism BottomNav's
+  // own `fixed` positioning already relies on — now both this div's box and
+  // BottomNav's position are defined the same way, against the same live
+  // viewport, instead of one being viewport-relative (fixed) and the other
+  // being a periodically-recomputed height (dvh).
   return (
-    <div className="flex h-dvh flex-col bg-bg">
+    <div className="fixed inset-0 flex flex-col bg-bg">
       <main className="flex min-h-0 flex-1 flex-col">{children}</main>
       <BottomNav hasActiveJob={(activeJobs?.length ?? 0) > 0} />
     </div>

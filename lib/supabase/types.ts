@@ -46,6 +46,8 @@ export interface Database {
           bbox_width_m: number | null;
           bbox_depth_m: number | null;
           bbox_height_m: number | null;
+          source_image_width: number | null;
+          source_image_height: number | null;
           scale: number;
           error: string | null;
           created_at: string;
@@ -68,6 +70,8 @@ export interface Database {
           bbox_width_m?: number | null;
           bbox_depth_m?: number | null;
           bbox_height_m?: number | null;
+          source_image_width?: number | null;
+          source_image_height?: number | null;
           scale?: number;
           error?: string | null;
           created_at?: string;

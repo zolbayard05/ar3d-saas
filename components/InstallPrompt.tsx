@@ -160,9 +160,11 @@ export function InstallPrompt() {
     setInstalling(false);
   }
 
-  // Fixed overlay, not a normal-flow banner — see app/layout.tsx's own
-  // comment on why body is h-dvh: nothing outside that chain should ever
-  // consume flex space, in-flow or not.
+  // Fixed overlay, not a normal-flow banner: it renders as a sibling of
+  // (app)/layout.tsx's own `fixed inset-0` div (see that file's comment),
+  // not a descendant of it — a flow element here would have nothing to do
+  // with that div's own sizing either way, but fixed keeps this consistent
+  // with BottomNav's positioning mechanism rather than mixing two models.
   //
   // Bottom, not top: sits just above BottomNav's floating buttons (rule 39:
   // size-14 = 56px, offset env(safe-area-inset-bottom) + 24px), with a 12px

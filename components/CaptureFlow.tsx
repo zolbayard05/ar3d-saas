@@ -29,13 +29,36 @@ export function CaptureFlow({ userId }: CaptureFlowProps) {
     setCreating(true);
     setError(null);
     try {
+      // MasonryGrid needs the photo's real pixel aspect ratio to balance
+      // columns by expected card height up front (see that file) — reading
+      // it here, once, at the one point a File object exists for either
+      // capture path (camera canvas blob or gallery pick), rather than
+      // duplicating it in CaptureStep for each. Best-effort: a decode
+      // failure shouldn't block generation, just means this model falls
+      // back to MasonryGrid's neutral default ratio.
+      let sourceImageWidth: number | undefined;
+      let sourceImageHeight: number | undefined;
+      try {
+        const bitmap = await createImageBitmap(file);
+        sourceImageWidth = bitmap.width;
+        sourceImageHeight = bitmap.height;
+        bitmap.close();
+      } catch {
+        // fall through with both undefined
+      }
+
       const uploaded = await upload(file);
       if (!uploaded) throw new Error("Upload failed");
 
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceImageKey: uploaded.key, idempotencyKey: crypto.randomUUID() }),
+        body: JSON.stringify({
+          sourceImageKey: uploaded.key,
+          idempotencyKey: crypto.randomUUID(),
+          sourceImageWidth,
+          sourceImageHeight,
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Failed to start generation (${res.status})`);

@@ -26,6 +26,42 @@ export function buildModelUrl(key: string): string {
  * before migration 0008, or where bbox extraction failed — see
  * lib/glbCompress.ts's catch.
  */
+// MasonryGrid.tsx: cards without a stored aspect ratio (pre-migration-0012
+// rows, or a client-side decode failure) fall back to this rather than
+// guessing wildly — a common-ish "landscape product photo" ratio, not 1:1
+// (most captured objects are wider than tall in-frame) and not extreme.
+const DEFAULT_SOURCE_ASPECT_RATIO = 4 / 3;
+
+// Arbitrary but consistent — every card uses the same assumed column width,
+// so it cancels out in the relative comparison MasonryGrid actually does
+// (which column's running total is smaller), regardless of the real
+// rendered pixel width.
+const ASSUMED_COLUMN_WIDTH_PX = 200;
+
+// Rough constant for the metadata row below the image (title, and for a
+// non-ready card the status line) — deliberately not trying to model the
+// real variance between a one-line "ready" title and a two-line "failed"
+// status block; the image aspect ratio already dominates the estimate, this
+// just keeps very-square photos from being weighted as if they had zero
+// metadata footprint.
+const METADATA_ROW_HEIGHT_PX = 48;
+
+/**
+ * Expected rendered card height in the feed, from data already on the row —
+ * no post-render measurement. See MasonryGrid.tsx for why this needs to be
+ * knowable before placement, not after.
+ */
+export function estimateCardHeight(model: {
+  source_image_width: number | null;
+  source_image_height: number | null;
+}): number {
+  const aspect =
+    model.source_image_width && model.source_image_height
+      ? model.source_image_width / model.source_image_height
+      : DEFAULT_SOURCE_ASPECT_RATIO;
+  return ASSUMED_COLUMN_WIDTH_PX / aspect + METADATA_ROW_HEIGHT_PX;
+}
+
 export function formatDimensionsCm(model: {
   bbox_width_m: number | null;
   bbox_depth_m: number | null;

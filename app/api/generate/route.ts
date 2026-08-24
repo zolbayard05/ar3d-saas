@@ -46,10 +46,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { sourceImageKey, idempotencyKey } = (body ?? {}) as {
+  const { sourceImageKey, idempotencyKey, sourceImageWidth, sourceImageHeight } = (body ?? {}) as {
     sourceImageKey?: unknown;
     idempotencyKey?: unknown;
+    sourceImageWidth?: unknown;
+    sourceImageHeight?: unknown;
   };
+
+  // Optional — CaptureFlow.tsx sends these best-effort (a decode failure
+  // there just omits them); MasonryGrid falls back to a neutral ratio for
+  // rows without them. Validated the same way as any other client-supplied
+  // number would be: must actually be a positive integer if present at all.
+  const validDimension = (value: unknown): number | null =>
+    typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+  const imageWidth = validDimension(sourceImageWidth);
+  const imageHeight = validDimension(sourceImageHeight);
 
   // Must be a key this route itself could only have handed out via
   // /api/upload-url, which always derives it as uploads/{userId}/{uuid}.ext
@@ -106,6 +117,8 @@ export async function POST(request: Request) {
       status: "pending",
       provider: "tripo",
       idempotency_key: idempotencyKey,
+      source_image_width: imageWidth,
+      source_image_height: imageHeight,
     })
     .select("id")
     .single();
