@@ -267,20 +267,6 @@ export function ModelDetail({
               <Box className="size-5" />
               View in your room
             </button>
-            {/* Rule 10 — the AR button (default or, here, our custom one) can
-                grey out after a prior iOS AR session until Safari's cache is
-                cleared, with no way for the user to tell why. This link is
-                independent of that button's internal state: Safari launches
-                AR Quick Look for a direct navigation to a URL serving
-                `.usdz` (rule 2's Content-Type is what makes that recognition
-                work), so it still works when the button doesn't. No
-                reference screen shows this — it must exist anyway. */}
-            <a
-              href={buildModelUrl(model.usdz_url as string)}
-              className="text-center text-small text-text-muted underline underline-offset-2 hover:text-text"
-            >
-              AR button not responding? Tap here to open the model directly.
-            </a>
           </div>
         </div>
       )}

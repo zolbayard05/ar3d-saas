@@ -40,8 +40,12 @@ Numbered so they can be referenced from code comments (e.g. "see rule 30").
    leaves our app during the session. Never build features that assume
    in-AR callbacks.
 10. **Known iOS bug**: the AR button can grey out after a prior AR session
-    until cache is cleared. Always provide a visible fallback so a user is
-    never dead-ended.
+    until cache is cleared. `ModelDetail.tsx` had a visible fallback link for
+    this (direct navigation to the `.usdz` URL, independent of the button's
+    JS state) — removed 2026-08-24 by explicit product decision, accepting
+    the dead-end risk for a cleaner screen. Don't re-add it reflexively
+    citing this rule; if the grey-out turns out to actually bite users,
+    that's a fresh product call, not an automatic revert.
 11. **`<model-viewer>` must be a client component, dynamically imported** —
     it touches `window`/custom elements and will break SSR otherwise.
 
