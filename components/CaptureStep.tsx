@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, X } from "lucide-react";
+import { ArrowLeft, Check, X } from "lucide-react";
 import { ALLOWED_IMAGE_TYPES } from "@/lib/uploads";
 import { cn } from "@/lib/utils";
 
 export interface CaptureStepProps {
   onCaptured: (file: File) => void;
+  onBack: () => void;
 }
 
 // getUserMedia needs a secure context (https, or localhost in dev) — true
 // for both this project's Vercel deployment and `next dev` locally, so no
 // separate insecure-context fallback path is needed beyond permission/
 // no-camera handling below.
-export function CaptureStep({ onCaptured }: CaptureStepProps) {
+export function CaptureStep({ onCaptured, onBack }: CaptureStepProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -66,6 +67,18 @@ export function CaptureStep({ onCaptured }: CaptureStepProps) {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden bg-bg">
       <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
+
+      {/* No way back to the choice screen otherwise — the shutter/gallery
+          group is the only other control, and neither one is "go back." */}
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Back"
+        className="absolute left-4 z-10 flex size-9 items-center justify-center rounded-full bg-bg/60 text-text hover:bg-bg/80"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+      >
+        <ArrowLeft className="size-5" />
+      </button>
 
       {cameraError && (
         <p className="absolute top-1/2 z-10 max-w-xs -translate-y-1/2 px-6 text-center text-small text-text-muted">

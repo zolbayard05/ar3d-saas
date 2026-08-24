@@ -105,7 +105,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   }
 
   if (!file) {
-    if (mode === "camera") return <CaptureStep onCaptured={setFile} />;
+    if (mode === "camera") return <CaptureStep onCaptured={setFile} onBack={() => setMode("choice")} />;
     return (
       <CaptureChoice
         onTakePhoto={() => setMode("camera")}
