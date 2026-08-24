@@ -89,7 +89,13 @@ export function CaptureStep({ onCaptured }: CaptureStepProps) {
         <p className="text-small uppercase tracking-wide text-text-muted">Center the object in frame</p>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4 pb-8">
+      {/* Bottom offset clears the floating BottomNav (visible on /create as
+          of 2026-08-24) rather than "Choose from gallery" sitting
+          underneath it — see BottomNav.tsx's comment for the 92px figure. */}
+      <div
+        className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" }}
+      >
         {/* Three tiny reference thumbnails — illustrative placeholders, not
             real photos (same caveat components/UploadDropzone.tsx's
             ExampleGuidance already carries: swap in real before/after shots

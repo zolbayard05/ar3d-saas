@@ -33,7 +33,13 @@ export function ConfirmStep({ previewUrl, userId, onRetake, onCreate, creating, 
   const { credits, loading } = useCredits(userId);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col p-6">
+    // Bottom padding clears the floating BottomNav (visible on /create as
+    // of 2026-08-24) rather than the Create button sitting underneath it —
+    // see BottomNav.tsx's comment for the 92px figure.
+    <div
+      className="flex min-h-0 flex-1 flex-col px-6 pt-6"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" }}
+    >
       <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-card bg-surface">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={previewUrl} alt="Captured photo" className="max-h-full max-w-full object-contain" />

@@ -24,11 +24,16 @@ export function BottomNav({ hasActiveJob }: BottomNavProps) {
   // design/02-detail.png is edge-to-edge with a single bottom-docked AR CTA
   // in the nav's own screen position — a floating nav group stacked over
   // that button would reintroduce the equal-weight problem the detail view
-  // is specifically designed to avoid. /create is the same story: a
-  // full-screen camera with its own bottom-docked shutter button, then a
-  // Confirm step with its own bottom-docked Create button — the floating
-  // nav has nowhere to sit on either without competing with them.
-  if (pathname?.startsWith("/models/") || pathname === "/create") return null;
+  // is specifically designed to avoid.
+  //
+  // /create used to be hidden for the same reason (its own bottom-docked
+  // shutter/Create buttons), but that meant there was no way back out of
+  // the flow except finishing it — overridden 2026-08-24: the nav stays
+  // visible there too now, and CaptureStep.tsx/ConfirmStep.tsx each reserve
+  // bottom clearance (92px = this nav's own 24px offset + 56px height +
+  // 12px gap, same figure InstallPrompt.tsx computes) so their own
+  // bottom-docked buttons don't sit underneath it.
+  if (pathname?.startsWith("/models/")) return null;
 
   return (
     // pointer-events-none on the row, -auto on each button: the row spans
