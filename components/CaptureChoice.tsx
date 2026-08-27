@@ -1,135 +1,63 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Camera, ImageUp, X, Zap } from "lucide-react";
+import { useRef } from "react";
+import { Camera, ImageUp, Zap } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { useCredits } from "@/hooks/useCredits";
 import { ALLOWED_IMAGE_TYPES } from "@/lib/uploads";
-import { cn } from "@/lib/utils";
 
 export interface CaptureChoiceProps {
   userId: string;
   file: File | null;
-  previewUrl: string | null;
   onFileChosen: (file: File) => void;
-  onRetake: () => void;
   onCreate: () => void;
   creating: boolean;
+  /** True while a previous generation is still being reviewed (Generating/Result) — Create stays disabled until that's resolved. */
+  busy: boolean;
   error: string | null;
 }
 
 const CREDIT_COST = 1;
 
-// Reference: two Tripo screenshots (2026-08-24) — Create exists as a
-// persistent button from the very start (a "1 model = 1 credit" cue, not
-// something that only appears once a photo is picked), and choosing a
-// photo replaces the Photo/Camera tiles with the photo itself in the same
-// spot rather than both staying on screen. Both behaviors reproduced here
-// with this app's own tokens: the picker cards and the photo preview share
-// one slot (animated on swap — see useSlotEnter below), and Create sits
-// fixed underneath either state, disabled with no file yet.
-function useSlotEnter(key: string) {
-  const [entered, setEntered] = useState(false);
-  // Reset synchronously during render when the key changes — the React-
-  // documented pattern for "adjust state when a prop changes" — rather
-  // than in the effect body, which react-hooks/set-state-in-effect flags.
-  const [prevKey, setPrevKey] = useState(key);
-  if (key !== prevKey) {
-    setPrevKey(key);
-    setEntered(false);
-  }
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setEntered(true));
-    return () => cancelAnimationFrame(id);
-  }, [key]);
-
-  return entered;
-}
-
-export function CaptureChoice({
-  userId,
-  file,
-  previewUrl,
-  onFileChosen,
-  onRetake,
-  onCreate,
-  creating,
-  error,
-}: CaptureChoiceProps) {
+// Take Photo, Upload Photo, and Create stay fixed on screen the whole time
+// (2026-08-24, reverting the "photo replaces the cards" version tried
+// earlier this session) — whatever's happening (a chosen-but-not-yet-
+// created photo, Generating, the Save/Delete Result) renders below this
+// row in CaptureFlow.tsx instead of swapping this row out. Create is
+// disabled with no file chosen yet, or while a previous generation is
+// still being reviewed (`busy`) — one at a time.
+export function CaptureChoice({ userId, file, onFileChosen, onCreate, creating, busy, error }: CaptureChoiceProps) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const { credits, loading } = useCredits(userId);
-  const entered = useSlotEnter(file ? "photo" : "cards");
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Not flex-1 — sized to its own content so Create sits immediately
-          below it, the way the reference has it, instead of stretching to
-          fill the screen and pushing Create down to the very bottom.
-          rounded-sm on all three tappable pieces here — radius only, not
-          size (that stays fixed). */}
-      <div
-        className={cn(
-          "transition-all duration-300 ease-out",
-          entered ? "scale-100 opacity-100" : "scale-95 opacity-0",
-        )}
-      >
-        {previewUrl ? (
-          // No forced aspect ratio here (2026-08-24, fixed a real bug: a
-          // fixed wide aspect-[2/1] box left a real phone's typically
-          // portrait photo rendered as a thin sliver down the middle via
-          // object-contain — technically not distorted, but reads as
-          // "squished," and only ever showed up on real phone photos since
-          // desktop testing here used square/landscape test images). Photo
-          // sizes at its own real aspect ratio, capped at max-h-72 so it
-          // can't dominate the screen either way.
-          <div className="relative w-full overflow-hidden rounded-sm bg-surface">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Captured photo"
-              className="mx-auto block max-h-72 w-auto max-w-full object-contain"
-            />
-            <button
-              type="button"
-              onClick={onRetake}
-              disabled={creating}
-              aria-label="Retake"
-              className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-bg/80 text-text hover:bg-bg disabled:opacity-50"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
-              className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
-            >
-              <Camera className="size-8" />
-              <span className="text-small uppercase tracking-wide">Take Photo</span>
-            </button>
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => cameraInputRef.current?.click()}
+          className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
+        >
+          <Camera className="size-8" />
+          <span className="text-small uppercase tracking-wide">Take Photo</span>
+        </button>
 
-            <button
-              type="button"
-              onClick={() => galleryInputRef.current?.click()}
-              className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
-            >
-              <ImageUp className="size-8" />
-              <span className="text-small uppercase tracking-wide">Upload Photo</span>
-            </button>
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => galleryInputRef.current?.click()}
+          className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
+        >
+          <ImageUp className="size-8" />
+          <span className="text-small uppercase tracking-wide">Upload Photo</span>
+        </button>
       </div>
 
       {/* capture="environment" is what actually opens the native OS camera
           (reference: 2026-08-24 iOS screenshots — flash/zoom controls, the
           native shutter, then its own Retake/Use Photo confirmation) rather
           than a custom getUserMedia view; Android's browsers honor it the
-          same way. No custom camera UI to build or maintain on either
-          platform. */}
+          same way. */}
       <input
         ref={cameraInputRef}
         type="file"
@@ -157,7 +85,7 @@ export function CaptureChoice({
       <button
         type="button"
         onClick={onCreate}
-        disabled={!file || creating}
+        disabled={!file || creating || busy}
         className="flex h-11 w-full items-center justify-center gap-2 rounded-sm bg-accent text-small font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-40"
       >
         {creating ? (
