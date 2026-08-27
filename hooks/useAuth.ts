@@ -109,5 +109,54 @@ export function useAuth() {
     router.refresh();
   }, [router]);
 
-  return { status, error, signInWithGoogle, signInOrSignUp, signOut };
+  // redirectTo reuses /auth/confirm the same way signInWithGoogle does —
+  // Supabase's reset email links there with a `code` (or `token_hash`+
+  // `type=recovery`) that route already knows how to exchange for a
+  // session; `next` sends the browser on to /auth/reset-password once
+  // that's done, where the user actually sets a new password.
+  const sendPasswordReset = useCallback(async (email: string) => {
+    setStatus("sending");
+    setError(null);
+
+    const supabase = createClient();
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/confirm?next=/auth/reset-password`,
+    });
+
+    if (resetError) {
+      setStatus("error");
+      setError(resetError.message);
+      return false;
+    }
+
+    setStatus("idle");
+    return true;
+  }, []);
+
+  // Only reachable via the reset-password link's own established session
+  // (app/(auth)/reset-password/page.tsx) — updateUser() here just needs
+  // that session to exist, not the old password.
+  const updatePassword = useCallback(
+    async (password: string) => {
+      setStatus("sending");
+      setError(null);
+
+      const supabase = createClient();
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+
+      if (updateError) {
+        setStatus("error");
+        setError(updateError.message);
+        return false;
+      }
+
+      setStatus("idle");
+      router.push("/dashboard");
+      router.refresh();
+      return true;
+    },
+    [router],
+  );
+
+  return { status, error, signInWithGoogle, signInOrSignUp, signOut, sendPasswordReset, updatePassword };
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { GoogleIcon } from "@/components/GoogleIcon";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -51,6 +53,12 @@ export default function LoginPage() {
           <Button type="submit" variant="primary" className="w-full" loading={status === "sending"}>
             Continue
           </Button>
+          <Link
+            href="/auth/forgot-password"
+            className="text-center text-small text-text-muted underline underline-offset-2 hover:text-text"
+          >
+            Forgot password?
+          </Link>
         </form>
 
         <div className="flex w-full items-center gap-3 text-small uppercase tracking-wide text-text-muted">
@@ -66,6 +74,7 @@ export default function LoginPage() {
           loading={status === "sending"}
           onClick={() => void signInWithGoogle()}
         >
+          <GoogleIcon className="size-5" />
           Continue with Google
         </Button>
 
