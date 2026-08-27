@@ -137,11 +137,14 @@ to which stage it belongs to.
 - `TRIPO_MODEL_VERSION` — optional, defaults to `v2.5-20250123` in code (see
   `lib/tripo.ts`) if unset.
 
-`glb_url`/`usdz_url` on a `ready` model currently store the bare R2 **key**
-(e.g. `models/<id>.glb`), not a full URL — `NEXT_PUBLIC_MODELS_CDN_URL` isn't
-live yet (see the status note below), so there's nothing real to prefix onto
-them yet. Phase 4 is responsible for joining `NEXT_PUBLIC_MODELS_CDN_URL` +
-key at render time; nothing here needs to change once the domain exists.
+`glb_url`/`usdz_url` on a `ready` model store the bare R2 **key** (e.g.
+`models/<id>.glb`), not a full URL — `lib/models.ts`'s `buildModelUrl()`
+joins that key onto `NEXT_PUBLIC_MODELS_CDN_URL` at render time (falling
+back to the `/api/models` proxy route when that env var is unset, e.g. a
+fresh local checkout with no CDN configured yet). The var itself is live in
+production (see the R2 setup section below), so this is the real path
+`<model-viewer>`'s `src`/`ios-src` resolve through today, not a
+Phase-4-pending placeholder.
 
 Endpoint/field names and the webhook signature scheme in `lib/tripo.ts` are
 sourced from Tripo's V3 OpenAPI spec as reconstructed by
@@ -153,14 +156,19 @@ relying on this in production.
 
 ## R2 setup (custom domain for model files)
 
-> **Status: not started — no production domain yet.** `NEXT_PUBLIC_MODELS_CDN_URL` is
-> unset, and the `models` bucket has no custom domain bound. **Phase 4 (AR viewer) is
-> blocked on this** — it needs a live, non-`r2.dev` URL to put in `<model-viewer>`'s
-> `src`/`ios-src`. Do not work around this by pointing at the bucket's `*.r2.dev`
-> public development URL, even temporarily: rule 4 exists because `r2.dev` is
-> rate-limited, and code that reads from it in dev tends to survive into production.
-> Once a domain is registered, follow the steps below — DNS/SSL provisioning takes a
-> few minutes, so do it before Phase 4 needs it live.
+> **Status: live in production.** `NEXT_PUBLIC_MODELS_CDN_URL` is set in Vercel
+> (Production + Preview) and the `models` bucket has a custom domain bound —
+> Phase 4 (AR viewer) is unblocked, `<model-viewer>`'s `src`/`ios-src` resolve
+> through it today (see `buildModelUrl()` above). `.env.local` leaves the var
+> unset by design: local dev falls back to the `/api/models` proxy route
+> instead of needing every contributor to own a Cloudflare-zoned domain just
+> to run the app. The steps below are for
+> setting up a **new** environment (a fork, a second Cloudflare account,
+> etc.) from scratch — do not redo them against the existing production
+> domain, and do not point anything at the bucket's `*.r2.dev` public
+> development URL even temporarily: rule 4 exists because `r2.dev` is
+> rate-limited, and code that reads from it in dev tends to survive into
+> production.
 
 Constraint: generated `.glb`/`.usdz` files must never be served from the `*.r2.dev` domain in
 production (it's rate-limited) — they're served from `NEXT_PUBLIC_MODELS_CDN_URL`
