@@ -259,7 +259,16 @@ export function ModelDetail({
             </div>
           )}
 
-          <div className="mt-auto flex flex-col gap-2 px-4 pb-4 pt-2">
+          {/* Bottom padding grows by --install-bar-reserve (InstallPrompt.tsx)
+              whenever that fixed-position banner is actually showing — this
+              screen has no scroll container of its own to carry that
+              reserve the way HomeFeed/LibraryFeed do, so the AR button was
+              sitting directly underneath the banner instead. 1rem matches
+              the previous flat pb-4 baseline when no banner is up. */}
+          <div
+            className="mt-auto flex flex-col gap-2 px-4 pt-2"
+            style={{ paddingBottom: "calc(1rem + var(--install-bar-reserve, 0px))" }}
+          >
             <button
               type="button"
               onClick={() => arViewerRef.current?.activateAR()}
