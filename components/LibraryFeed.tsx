@@ -76,8 +76,14 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
           pattern rather than inventing new spacing. "Нэмэх" now links to
           /credits (components/BuyCredits.tsx) — real checkout isn't wired
           up yet (pending wire.mn merchant approval), but the pack-browsing
-          screen itself is real, not a placeholder link. */}
-      <div className="flex shrink-0 flex-col gap-1 px-2 pt-4 pb-3">
+          screen itself is real, not a placeholder link. Stays visible at
+          lg+ (unlike HomeFeed's own wordmark header, which hides there) —
+          the credit count and "Нэмэх" link are page-specific information
+          Sidebar doesn't carry, not a duplicate brand mark, so hiding it
+          would lose real content, not just repetition. Just capped/
+          centered at lg+ to match the grid below (rule 40 — HomeFeed.tsx
+          established this max-w-feed convention, reused exactly here). */}
+      <div className="flex shrink-0 flex-col gap-1 px-2 pt-4 pb-3 lg:mx-auto lg:w-full lg:max-w-feed lg:px-6 lg:pt-6">
         <p className="text-body font-semibold text-text">Миний Model</p>
         <div className="flex items-center gap-2">
           <p className="text-small uppercase tracking-wide text-text-muted">
@@ -89,29 +95,36 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
         </div>
       </div>
 
-      {retryError && <p className="px-2 py-2 text-small text-danger">{retryError}</p>}
+      {retryError && <p className="px-2 py-2 text-small text-danger lg:px-6">{retryError}</p>}
 
       <div
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-        // See components/InstallPrompt.tsx's setFeedBottomReserve — 0px
-        // whenever no install bar is showing.
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:pt-6"
+        // --bottom-nav-reserve (styles/tokens.css) is 6rem on mobile,
+        // clearing BottomNav, and 2.5rem at lg+ (Sidebar replaces
+        // BottomNav there — see HomeFeed.tsx's identical comment on why
+        // this has to be a CSS variable rather than a Tailwind lg: class).
+        // var(--install-bar-reserve) is 0px whenever
+        // components/InstallPrompt.tsx isn't showing a bar.
         style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem + var(--install-bar-reserve, 0px))",
+          paddingBottom:
+            "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve) + var(--install-bar-reserve, 0px))",
         }}
       >
-        {models.length === 0 ? (
-          <EmptyState
-            className="m-4"
-            title="Эхний model-оо үүсгээрэй"
-            action={
-              <Link href="/create" className={buttonVariants({ variant: "primary", size: "md" })}>
-                Үүсгэх
-              </Link>
-            }
-          />
-        ) : (
-          <MasonryGrid models={models} onRetry={handleRetry} onDelete={handleDelete} />
-        )}
+        <div className="w-full lg:mx-auto lg:max-w-feed">
+          {models.length === 0 ? (
+            <EmptyState
+              className="m-4 lg:mx-6 lg:mt-16 lg:max-w-md"
+              title="Эхний model-оо үүсгээрэй"
+              action={
+                <Link href="/create" className={buttonVariants({ variant: "primary", size: "md" })}>
+                  Үүсгэх
+                </Link>
+              }
+            />
+          ) : (
+            <MasonryGrid models={models} onRetry={handleRetry} onDelete={handleDelete} />
+          )}
+        </div>
 
         {/* Bottom: three small grey text links — no settings list, no
             avatar, no display name (nothing to show anyway; rule 38/40 kept

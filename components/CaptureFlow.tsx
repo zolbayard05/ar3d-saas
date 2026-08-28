@@ -132,9 +132,19 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const busy = !!generatingModel || !!resultModel;
 
   return (
+    // lg:max-w-xl (Tailwind's own scale, 36rem/576px — not an invented
+    // value) centers this as a single focused column at lg+ rather than
+    // stretching the picker cards/preview/result to the full width beside
+    // Sidebar — unlike Home/Library this screen is one task, not a browse
+    // grid, so it doesn't want the extra width at all.
     <div
-      className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" }}
+      className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 lg:mx-auto lg:w-full lg:max-w-xl lg:px-0 lg:pt-10"
+      // --bottom-nav-reserve (styles/tokens.css) — same token
+      // HomeFeed/LibraryFeed use: 6rem (~92-96px, close enough to this
+      // screen's previously-hardcoded 92px to consolidate into one shared
+      // value) on mobile to clear BottomNav, 2.5rem at lg+ where Sidebar
+      // replaces it and there's nothing bottom-docked left to clear.
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve))" }}
     >
       <CaptureChoice
         userId={userId}

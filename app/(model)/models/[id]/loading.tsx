@@ -1,5 +1,5 @@
-import { PageLoading } from "@/components/ui/PageLoading";
+import { DetailSkeleton } from "@/components/ui/DetailSkeleton";
 
 export default function ModelDetailLoading() {
-  return <PageLoading />;
+  return <DetailSkeleton />;
 }
