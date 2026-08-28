@@ -15,7 +15,7 @@ export function SignOutButton() {
       onClick={() => void signOut()}
       className="text-small uppercase tracking-wide text-text-muted hover:text-text"
     >
-      Sign out
+      Гарах
     </button>
   );
 }

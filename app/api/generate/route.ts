@@ -36,14 +36,14 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Нэвтрээгүй байна" }, { status: 401 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json({ error: "Буруу JSON бие" }, { status: 400 });
   }
 
   const { sourceImageKey, idempotencyKey, sourceImageWidth, sourceImageHeight } = (body ?? {}) as {
@@ -71,11 +71,11 @@ export async function POST(request: Request) {
     typeof sourceImageKey !== "string" ||
     !sourceImageKey.startsWith(`uploads/${user.id}/`)
   ) {
-    return NextResponse.json({ error: "Invalid or missing sourceImageKey" }, { status: 400 });
+    return NextResponse.json({ error: "sourceImageKey буруу эсвэл дутуу байна" }, { status: 400 });
   }
 
   if (typeof idempotencyKey !== "string" || !UUID_RE.test(idempotencyKey)) {
-    return NextResponse.json({ error: "Invalid or missing idempotencyKey (must be a UUID)" }, { status: 400 });
+    return NextResponse.json({ error: "idempotencyKey буруу эсвэл дутуу байна (UUID байх ёстой)" }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -98,10 +98,10 @@ export async function POST(request: Request) {
     uid: user.id,
   });
   if (consumeError) {
-    return NextResponse.json({ error: "Failed to check credit balance" }, { status: 500 });
+    return NextResponse.json({ error: "Кредитийн үлдэгдэл шалгахад алдаа гарлаа" }, { status: 500 });
   }
   if (!consumed) {
-    return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
+    return NextResponse.json({ error: "Кредит хүрэлцэхгүй байна" }, { status: 402 });
   }
 
   // Insert always goes through service_role: RLS/column grants no longer
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
         await admin.from("profiles").update({ credits: profile.credits + 1 }).eq("id", user.id);
       }
     }
-    return NextResponse.json({ error: "Failed to create model" }, { status: 500 });
+    return NextResponse.json({ error: "Model үүсгэхэд алдаа гарлаа" }, { status: 500 });
   }
 
   const sourceImageUrl = await getSignedUrl(
@@ -191,7 +191,7 @@ export async function POST(request: Request) {
       model_id: model.id,
       failure_reason: err instanceof Error ? err.message : "Tripo submission failed",
     });
-    return NextResponse.json({ error: "Failed to start generation" }, { status: 502 });
+    return NextResponse.json({ error: "Үүсгэлт эхлүүлэхэд алдаа гарлаа" }, { status: 502 });
   }
 
   return NextResponse.json({ modelId: model.id }, { status: 202 });

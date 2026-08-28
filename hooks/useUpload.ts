@@ -42,19 +42,19 @@ export function useUpload() {
     setStatus("validating");
 
     if (!isAllowedImageType(file.type)) {
-      const message = `Unsupported file type. Use: ${Object.keys(ALLOWED_IMAGE_TYPES).join(", ")}`;
+      const message = `Дэмжигдэхгүй файлын төрөл. Ашиглах: ${Object.keys(ALLOWED_IMAGE_TYPES).join(", ")}`;
       setStatus("error");
       setError(message);
       return undefined;
     }
     if (file.size === 0) {
       setStatus("error");
-      setError("File is empty");
+      setError("Файл хоосон байна");
       return undefined;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       setStatus("error");
-      setError(`File is too large — max ${Math.floor(MAX_UPLOAD_BYTES / (1024 * 1024))} MB`);
+      setError(`Файл хэт том байна — дээд тал нь ${Math.floor(MAX_UPLOAD_BYTES / (1024 * 1024))} MB`);
       return undefined;
     }
 
@@ -69,13 +69,13 @@ export function useUpload() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(body.error ?? `Failed to get an upload URL (${res.status})`);
+        throw new Error(body.error ?? `Байршуулах линк авахад алдаа гарлаа (${res.status})`);
       }
       uploadUrl = body.uploadUrl;
       key = body.key;
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Failed to get an upload URL");
+      setError(err instanceof Error ? err.message : "Байршуулах линк авахад алдаа гарлаа");
       return undefined;
     }
 
@@ -84,7 +84,7 @@ export function useUpload() {
       await putWithProgress(uploadUrl, file, setProgress);
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(err instanceof Error ? err.message : "Байршуулахад алдаа гарлаа");
       return undefined;
     }
 
@@ -120,7 +120,7 @@ function putWithProgress(
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
       } else {
-        reject(new Error(`Upload failed (${xhr.status})`));
+        reject(new Error(`Байршуулахад алдаа гарлаа (${xhr.status})`));
       }
     };
 
@@ -140,7 +140,7 @@ function putWithProgress(
             "the Network tab for a failed OPTIONS preflight to *.r2.cloudflarestorage.com), not a rejected file.",
         ),
       );
-    xhr.onabort = () => reject(new Error("Upload cancelled"));
+    xhr.onabort = () => reject(new Error("Байршуулалт цуцлагдлаа"));
 
     xhr.send(file);
   });

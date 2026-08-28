@@ -32,7 +32,7 @@ const ARViewer = dynamic(() => import("@/components/ARViewer").then((m) => m.ARV
         background: "radial-gradient(circle at 50% 38%, var(--color-surface-hover), var(--color-bg) 75%)",
       }}
     >
-      <Spinner size="lg" label="Loading viewer" />
+      <Spinner size="lg" label="Ачаалж байна" />
     </div>
   ),
 });
@@ -106,7 +106,7 @@ export function ModelDetail({
             redirect-to-/login link. */}
         <Link
           href={hasSession ? "/dashboard" : "/"}
-          aria-label="Back"
+          aria-label="Буцах"
           className="text-text-muted hover:text-text"
         >
           <ArrowLeft className="size-5" />
@@ -114,7 +114,7 @@ export function ModelDetail({
         <button
           type="button"
           onClick={handleShare}
-          aria-label="Share"
+          aria-label="Хуваалцах"
           className="text-text-muted hover:text-text"
         >
           <Share2 className="size-5" />
@@ -123,15 +123,15 @@ export function ModelDetail({
 
       {model.status === "failed" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-          <p className="text-body text-text">Generation failed.</p>
+          <p className="text-body text-text">Үүсгэлт амжилтгүй боллоо.</p>
           {model.error && <p className="text-small text-text-muted">{model.error}</p>}
           {isOwner && <DeleteAction deleting={deleting} onDelete={handleDelete} className="mt-4" />}
         </div>
       ) : !ready ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
-          <Spinner size="lg" label="Generating model" />
+          <Spinner size="lg" label="Model үүсгэж байна" />
           <p className="text-small text-text-muted">
-            Generating your model — this usually takes 30 to 100 seconds.
+            Таны model үүсгэгдэж байна — ихэвчлэн 30-100 секунд шаардагдана.
           </p>
           {isOwner && <DeleteAction deleting={deleting} onDelete={handleDelete} className="mt-4" />}
         </div>
@@ -166,11 +166,11 @@ export function ModelDetail({
                 onKeyDown={(event) => {
                   if (event.key === "Enter") event.currentTarget.blur();
                 }}
-                placeholder="Untitled"
+                placeholder="Нэргүй"
                 className="bg-transparent text-heading font-semibold text-text placeholder:text-text-muted focus:outline-none"
               />
             ) : (
-              <p className="text-heading font-semibold text-text">{title || "Untitled"}</p>
+              <p className="text-heading font-semibold text-text">{title || "Нэргүй"}</p>
             )}
             {formatDimensionsCm(model) && (
               <p className="text-small uppercase tracking-wide text-text-muted">
@@ -189,7 +189,7 @@ export function ModelDetail({
               className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
             >
               <QrCode className="size-5" />
-              <span className="text-small uppercase tracking-wide">Share</span>
+              <span className="text-small uppercase tracking-wide">Хуваалцах</span>
             </button>
             <button
               type="button"
@@ -198,7 +198,7 @@ export function ModelDetail({
               className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
             >
               <Ruler className="size-5" />
-              <span className="text-small uppercase tracking-wide">Scale</span>
+              <span className="text-small uppercase tracking-wide">Хэмжээ</span>
             </button>
             {/* Original photo and both downloads are owner-only: the source
                 photo lives in the private `uploads` bucket behind its own
@@ -219,7 +219,7 @@ export function ModelDetail({
                   className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
                 >
                   <ImageIcon className="size-5" />
-                  <span className="text-small uppercase tracking-wide">Original photo</span>
+                  <span className="text-small uppercase tracking-wide">Эх зураг</span>
                 </a>
                 <a
                   href={buildModelUrl(model.glb_url as string)}
@@ -275,7 +275,7 @@ export function ModelDetail({
               className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover"
             >
               <Box className="size-5" />
-              View in your room
+              Өрөөндөө байрлуулах
             </button>
           </div>
         </div>
@@ -303,7 +303,7 @@ function DeleteAction({
         className,
       )}
     >
-      {deleting ? "Deleting…" : "Delete model"}
+      {deleting ? "Устгаж байна…" : "Model устгах"}
     </button>
   );
 }

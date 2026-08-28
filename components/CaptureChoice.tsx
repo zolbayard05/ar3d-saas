@@ -40,7 +40,7 @@ export function CaptureChoice({ userId, file, onFileChosen, onCreate, creating, 
           className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
         >
           <Camera className="size-8" />
-          <span className="text-small uppercase tracking-wide">Take Photo</span>
+          <span className="text-small uppercase tracking-wide">Зураг авах</span>
         </button>
 
         <button
@@ -49,7 +49,7 @@ export function CaptureChoice({ userId, file, onFileChosen, onCreate, creating, 
           className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
         >
           <ImageUp className="size-8" />
-          <span className="text-small uppercase tracking-wide">Upload Photo</span>
+          <span className="text-small uppercase tracking-wide">Зураг оруулах</span>
         </button>
       </div>
 
@@ -92,7 +92,7 @@ export function CaptureChoice({ userId, file, onFileChosen, onCreate, creating, 
           <Spinner size="sm" />
         ) : (
           <>
-            Create
+            Үүсгэх
             <span className="flex items-center gap-1 rounded-full bg-accent-text/10 px-2 py-0.5 text-small normal-case tracking-normal">
               <Zap className="size-3.5" />
               {CREDIT_COST}
@@ -104,7 +104,7 @@ export function CaptureChoice({ userId, file, onFileChosen, onCreate, creating, 
       <div className="flex flex-col items-center gap-1">
         {!loading && (
           <p className="text-small uppercase tracking-wide text-text-muted">
-            {credits ?? 0} credits remaining
+            {credits ?? 0} кредит үлдсэн
           </p>
         )}
         {error && <p className="text-small text-danger">{error}</p>}

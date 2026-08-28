@@ -15,15 +15,15 @@ export default function Home() {
       <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
         <div className="flex max-w-xs flex-col gap-4">
           <h1 className="text-display font-semibold text-text">
-            Turn a photo into something you can place in your room.
+            Зургаа өрөөндөө байрлуулж болох зүйл болгоорой.
           </h1>
           <p className="text-body text-text-muted">
-            Snap a photo, get a 3D model, view it in AR — right from your phone.
+            Зураг ав, 3D model үүсгэ, AR-аар харах — бүгд утаснаасаа шууд.
           </p>
         </div>
 
         <Link href="/login" className={buttonVariants({ variant: "primary", size: "lg", className: "w-full max-w-xs" })}>
-          Get started
+          Эхлэх
         </Link>
       </div>
     </main>

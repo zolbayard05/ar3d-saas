@@ -35,7 +35,7 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
         body: JSON.stringify({ sourceImageKey: model.source_image_key, idempotencyKey: crypto.randomUUID() }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? `Failed to retry (${res.status})`);
+      if (!res.ok) throw new Error(body.error ?? `Дахин оролдоход алдаа гарлаа (${res.status})`);
 
       setModels((prev) => [
         {
@@ -59,7 +59,7 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
         ...prev,
       ]);
     } catch (err) {
-      setRetryError(err instanceof Error ? err.message : "Failed to retry");
+      setRetryError(err instanceof Error ? err.message : "Дахин оролдоход алдаа гарлаа");
     }
   }
 
@@ -78,12 +78,12 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
           so it's present but visibly inert rather than a dead link, same
           call as BottomNav's library icon before this screen existed. */}
       <div className="flex shrink-0 flex-col gap-1 px-2 pt-4 pb-3">
-        <p className="text-body font-semibold text-text">My Models</p>
+        <p className="text-body font-semibold text-text">Миний Model</p>
         <div className="flex items-center gap-2">
           <p className="text-small uppercase tracking-wide text-text-muted">
-            {loading ? "…" : `${credits ?? 0} credits remaining`}
+            {loading ? "…" : `${credits ?? 0} кредит үлдсэн`}
           </p>
-          <span className="text-small uppercase tracking-wide text-text-muted opacity-40">· Add</span>
+          <span className="text-small uppercase tracking-wide text-text-muted opacity-40">· Нэмэх</span>
         </div>
       </div>
 
@@ -100,10 +100,10 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
         {models.length === 0 ? (
           <EmptyState
             className="m-4"
-            title="Create your first model"
+            title="Эхний model-оо үүсгээрэй"
             action={
               <Link href="/create" className={buttonVariants({ variant: "primary", size: "md" })}>
-                Create
+                Үүсгэх
               </Link>
             }
           />
@@ -116,10 +116,10 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
             this screen to exactly what was asked for). */}
         <div className="mt-auto flex items-center justify-center gap-6 pt-8">
           <button type="button" className="text-small uppercase tracking-wide text-text-muted hover:text-text">
-            Plan
+            Багц
           </button>
           <button type="button" className="text-small uppercase tracking-wide text-text-muted hover:text-text">
-            Help
+            Тусламж
           </button>
           <SignOutButton />
         </div>

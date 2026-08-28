@@ -26,14 +26,14 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Нэвтрээгүй байна" }, { status: 401 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json({ error: "Буруу JSON бие" }, { status: 400 });
   }
 
   const { contentType, contentLength } = (body ?? {}) as {
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   if (typeof contentType !== "string" || !isAllowedImageType(contentType)) {
     return NextResponse.json(
       {
-        error: `Unsupported contentType. Allowed: ${Object.keys(ALLOWED_IMAGE_TYPES).join(", ")}`,
+        error: `Дэмжигдэхгүй contentType. Зөвшөөрөгдсөн: ${Object.keys(ALLOWED_IMAGE_TYPES).join(", ")}`,
       },
       { status: 400 },
     );
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     contentLength > MAX_UPLOAD_BYTES
   ) {
     return NextResponse.json(
-      { error: `contentLength must be a positive integer up to ${MAX_UPLOAD_BYTES} bytes` },
+      { error: `contentLength нь ${MAX_UPLOAD_BYTES} байтаас хэтрэхгүй эерэг бүхэл тоо байх ёстой` },
       { status: 400 },
     );
   }

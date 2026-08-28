@@ -13,9 +13,9 @@ export interface BottomNavProps {
 // CLAUDE.md rules 39/40: three separate floating rounded-square buttons,
 // not a merged bar, reused as-is on every screen — never a second variant.
 const ITEMS = [
-  { href: "/dashboard", icon: LayoutGrid, label: "Home" },
-  { href: "/create", icon: Plus, label: "Create" },
-  { href: "/library", icon: Columns2, label: "My Models" },
+  { href: "/dashboard", icon: LayoutGrid, label: "Нүүр", key: "home" },
+  { href: "/create", icon: Plus, label: "Үүсгэх", key: "create" },
+  { href: "/library", icon: Columns2, label: "Миний Model", key: "library" },
 ] as const;
 
 export function BottomNav({ hasActiveJob }: BottomNavProps) {
@@ -45,13 +45,13 @@ export function BottomNav({ hasActiveJob }: BottomNavProps) {
       className="pointer-events-none fixed inset-x-0 z-10 flex items-center justify-center gap-3"
       style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
     >
-      {ITEMS.map(({ href, icon: Icon, label }, i) => {
+      {ITEMS.map(({ href, icon: Icon, label, key }, i) => {
         const active = pathname === href;
-        const isCreate = label === "Create";
+        const isCreate = key === "create";
 
         return (
           <Link
-            key={label + i}
+            key={key + i}
             href={href}
             aria-label={label}
             aria-current={active ? "page" : undefined}

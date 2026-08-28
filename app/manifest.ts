@@ -10,7 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Realify",
     short_name: "Realify",
-    description: "Turn a photo into a 3D model you can place in AR.",
+    description: "Зургаа AR-аар байрлуулж болох 3D model болгоорой.",
+    lang: "mn",
     start_url: "/",
     display: "standalone",
     background_color: "#050505",

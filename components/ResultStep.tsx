@@ -22,7 +22,7 @@ const ARViewer = dynamic(() => import("@/components/ARViewer").then((m) => m.ARV
         background: "radial-gradient(circle at 50% 38%, var(--color-surface-hover), var(--color-bg) 75%)",
       }}
     >
-      <Spinner size="lg" label="Loading viewer" />
+      <Spinner size="lg" label="Ачаалж байна" />
     </div>
   ),
 });
@@ -69,7 +69,7 @@ export function ResultStep({ model, onSaved, onDeleted }: ResultStepProps) {
       />
 
       <div className="flex flex-col gap-1 pt-4">
-        <p className="text-heading font-semibold text-text">{model.title || "Untitled"}</p>
+        <p className="text-heading font-semibold text-text">{model.title || "Нэргүй"}</p>
         {dims && <p className="text-small uppercase tracking-wide text-text-muted">{dims}</p>}
       </div>
 
@@ -81,7 +81,7 @@ export function ResultStep({ model, onSaved, onDeleted }: ResultStepProps) {
           className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-surface-hover text-body font-semibold uppercase tracking-wide text-text hover:opacity-90 disabled:opacity-50"
         >
           {deleting ? <Spinner size="sm" /> : <Trash2 className="size-5" />}
-          Delete
+          Устгах
         </button>
         <button
           type="button"
@@ -90,7 +90,7 @@ export function ResultStep({ model, onSaved, onDeleted }: ResultStepProps) {
           className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-50"
         >
           <Check className="size-5" />
-          Save
+          Хадгалах
         </button>
       </div>
     </div>

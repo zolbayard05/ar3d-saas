@@ -52,7 +52,7 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
         ...prev,
       ]);
     } catch (err) {
-      setRetryError(err instanceof Error ? err.message : "Failed to retry");
+      setRetryError(err instanceof Error ? err.message : "Дахин оролдоход алдаа гарлаа");
     }
   }
 
@@ -81,8 +81,8 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
       {models.length === 0 ? (
         <EmptyState
           className="m-4"
-          title="No models yet"
-          description="Tap create to generate your first 3D model."
+          title="Model хараахан байхгүй байна"
+          description="Эхний 3D model-оо үүсгэхийн тулд үүсгэх товч дараарай."
         />
       ) : (
         // CLAUDE.md rule 39: the floating nav sits over this scroll area, so

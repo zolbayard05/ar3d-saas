@@ -152,7 +152,7 @@ export function ModelShare({ title }: ModelShareProps) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={qrDataUrl}
-          alt={`QR code for ${title || "this model"}`}
+          alt={`${title || "энэ model"}-ийн QR код`}
           className="size-44 rounded-md shadow-card"
         />
       ) : (
@@ -166,7 +166,7 @@ export function ModelShare({ title }: ModelShareProps) {
           className="flex flex-1 items-center justify-center gap-2 rounded-md bg-surface-hover py-2.5 text-small font-semibold text-text hover:opacity-90"
         >
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-          {copied ? "Copied" : "Copy"}
+          {copied ? "Хуулагдлаа" : "Хуулах"}
         </button>
         <button
           type="button"
@@ -174,7 +174,7 @@ export function ModelShare({ title }: ModelShareProps) {
           className="flex flex-1 items-center justify-center gap-2 rounded-md bg-surface-hover py-2.5 text-small font-semibold text-text hover:opacity-90"
         >
           <Share2 className="size-4" />
-          Share
+          Хуваалцах
         </button>
         {qrDataUrl && (
           <button
@@ -183,7 +183,7 @@ export function ModelShare({ title }: ModelShareProps) {
             className="flex flex-1 items-center justify-center gap-2 rounded-md bg-surface-hover py-2.5 text-small font-semibold text-text hover:opacity-90"
           >
             <Download className="size-4" />
-            Save
+            Хадгалах
           </button>
         )}
       </div>

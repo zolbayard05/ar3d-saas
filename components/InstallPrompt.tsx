@@ -180,14 +180,14 @@ export function InstallPrompt() {
   if (showAndroidBar) {
     return (
       <div className={overlayClass} style={overlayStyle}>
-        <p className="text-small text-text">Install Realify for full-screen AR.</p>
+        <p className="text-small text-text">Бүтэн дэлгэцийн AR-ийн тулд Realify-г суулгаарай.</p>
         <div className="flex shrink-0 items-center gap-2">
           <Button size="sm" variant="primary" loading={installing} onClick={() => void handleAndroidInstall()}>
-            Install
+            Суулгах
           </Button>
           <button
             type="button"
-            aria-label="Dismiss"
+            aria-label="Хаах"
             onClick={() => setDeferredPrompt(null)}
             className="text-text-muted hover:text-text"
           >
@@ -202,11 +202,11 @@ export function InstallPrompt() {
     return (
       <div className={overlayClass} style={overlayStyle}>
         <p className="flex min-w-0 items-center gap-1 text-small text-text">
-          Tap <Share2 size={14} className="shrink-0 text-text-muted" /> then “Add to Home Screen”
+          <Share2 size={14} className="shrink-0 text-text-muted" /> дараад “Add to Home Screen”-г сонгоно уу
         </p>
         <button
           type="button"
-          aria-label="Dismiss"
+          aria-label="Хаах"
           onClick={dismissIosInstallHint}
           className="shrink-0 text-text-muted hover:text-text"
         >

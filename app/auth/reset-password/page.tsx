@@ -24,21 +24,21 @@ export default function ResetPasswordPage() {
         <div className="flex flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon-192.png" alt="Realify" className="size-16 rounded-md" />
-          <h1 className="text-center text-display font-semibold text-text">Set a new password</h1>
+          <h1 className="text-center text-display font-semibold text-text">Шинэ нууц үг тохируулах</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
           <Input
             type="password"
-            aria-label="New password"
-            placeholder="New password"
+            aria-label="Шинэ нууц үг"
+            placeholder="Шинэ нууц үг"
             required
             minLength={6}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
           <Button type="submit" variant="primary" className="w-full" loading={status === "sending"}>
-            Update password
+            Нууц үг шинэчлэх
           </Button>
           {status === "error" && <p className="text-small text-danger">{error}</p>}
         </form>

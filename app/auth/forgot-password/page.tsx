@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
         <div className="flex flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon-192.png" alt="Realify" className="size-16 rounded-md" />
-          <h1 className="text-center text-display font-semibold text-text">Reset password</h1>
+          <h1 className="text-center text-display font-semibold text-text">Нууц үг сэргээх</h1>
         </div>
 
         {sent ? (
@@ -34,20 +34,20 @@ export default function ForgotPasswordPage() {
           // resetPasswordForEmail doesn't reveal that either way, and
           // neither should this.
           <p className="text-center text-body text-text-muted">
-            If an account exists for {email}, a reset link is on its way — check your email.
+            {email} хаягтай бүртгэл байвал сэргээх линк илгээгдлээ — имэйлээ шалгана уу.
           </p>
         ) : (
           <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
             <Input
               type="email"
-              aria-label="Email"
+              aria-label="Имэйл"
               placeholder="you@example.com"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
             <Button type="submit" variant="primary" className="w-full" loading={status === "sending"}>
-              Send reset link
+              Сэргээх линк илгээх
             </Button>
             {status === "error" && <p className="text-small text-danger">{error}</p>}
           </form>
@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
           href="/login"
           className="text-small uppercase tracking-wide text-text-muted underline underline-offset-2 hover:text-text"
         >
-          Back to log in
+          Нэвтрэх хуудас руу буцах
         </Link>
       </div>
     </main>

@@ -30,13 +30,13 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon-192.png" alt="Realify" className="size-16 rounded-md" />
-          <h1 className="text-center text-display font-semibold text-text">Log in or sign up</h1>
+          <h1 className="text-center text-display font-semibold text-text">Нэвтрэх эсвэл бүртгүүлэх</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
           <Input
             type="email"
-            aria-label="Email"
+            aria-label="Имэйл"
             placeholder="you@example.com"
             required
             value={email}
@@ -44,26 +44,26 @@ export default function LoginPage() {
           />
           <Input
             type="password"
-            aria-label="Password"
-            placeholder="Password"
+            aria-label="Нууц үг"
+            placeholder="Нууц үг"
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
           <Button type="submit" variant="primary" className="w-full" loading={status === "sending"}>
-            Continue
+            Үргэлжлүүлэх
           </Button>
           <Link
             href="/auth/forgot-password"
             className="text-center text-small text-text-muted underline underline-offset-2 hover:text-text"
           >
-            Forgot password?
+            Нууц үгээ мартсан уу?
           </Link>
         </form>
 
         <div className="flex w-full items-center gap-3 text-small uppercase tracking-wide text-text-muted">
           <div className="h-px flex-1 bg-border-subtle" />
-          Or
+          Эсвэл
           <div className="h-px flex-1 bg-border-subtle" />
         </div>
 
@@ -75,7 +75,7 @@ export default function LoginPage() {
           onClick={() => void signInWithGoogle()}
         >
           <GoogleIcon className="size-5" />
-          Continue with Google
+          Google-ээр үргэлжлүүлэх
         </Button>
 
         {status === "error" && <p className="text-small text-danger">{error}</p>}

@@ -101,7 +101,7 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
         )}
         {model.status === "failed" && (
           <div className="absolute inset-0 flex items-center justify-center bg-bg/70">
-            <p className="text-small uppercase tracking-wide text-text-muted">Couldn&apos;t generate</p>
+            <p className="text-small uppercase tracking-wide text-text-muted">Үүсгэж чадсангүй</p>
           </div>
         )}
         {dims && (
@@ -115,7 +115,7 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
           (rule 37). No bg-* class here on purpose. Dimensions render as the
           on-image chip above, not a second line here. */}
       <div className="flex flex-col gap-1 pt-2">
-        <p className="text-body text-text">{model.title || "Untitled"}</p>
+        <p className="text-body text-text">{model.title || "Нэргүй"}</p>
         {model.status !== "ready" && <StatusLine model={model} onRetry={onRetry} onDelete={onDelete} />}
       </div>
     </div>
@@ -144,7 +144,7 @@ function StatusLine({
   if (model.status === "failed") {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-small uppercase tracking-wide text-text-muted">Credit refunded</p>
+        <p className="text-small uppercase tracking-wide text-text-muted">Кредит буцаагдсан</p>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -154,7 +154,7 @@ function StatusLine({
             }}
             className="w-fit text-small uppercase tracking-wide text-text underline underline-offset-2"
           >
-            Try again
+            Дахин оролдох
           </button>
           <button
             type="button"
@@ -164,7 +164,7 @@ function StatusLine({
             }}
             className="w-fit text-small uppercase tracking-wide text-text-muted underline underline-offset-2 hover:text-text"
           >
-            Delete
+            Устгах
           </button>
         </div>
       </div>
@@ -176,5 +176,5 @@ function StatusLine({
 
 function GeneratingLine({ createdAt }: { createdAt: string }) {
   const elapsed = useElapsedTime(createdAt);
-  return <p className="text-small uppercase tracking-wide text-text-muted">Generating · {elapsed}</p>;
+  return <p className="text-small uppercase tracking-wide text-text-muted">Үүсгэж байна · {elapsed}</p>;
 }

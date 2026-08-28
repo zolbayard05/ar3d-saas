@@ -103,7 +103,7 @@ export const ARViewer = forwardRef<ARViewerHandle, ARViewerProps>(function ARVie
       </model-viewer>
       {!loaded && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <Spinner size="lg" label="Loading model" />
+          <Spinner size="lg" label="Model ачаалж байна" />
         </div>
       )}
     </div>

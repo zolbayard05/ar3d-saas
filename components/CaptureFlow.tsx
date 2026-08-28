@@ -94,7 +94,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       }
 
       const uploaded = await upload(file);
-      if (!uploaded) throw new Error("Upload failed");
+      if (!uploaded) throw new Error("Оруулахад алдаа гарлаа");
 
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -107,7 +107,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
         }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? `Failed to start generation (${res.status})`);
+      if (!res.ok) throw new Error(body.error ?? `Үүсгэлт эхлүүлэхэд алдаа гарлаа (${res.status})`);
 
       // file stays set (not cleared here) — clearing it now would flip the
       // previewUrl memo to null on the next render, and the cleanup effect
@@ -117,7 +117,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       setGeneratingModel({ id: body.modelId, createdAt: new Date().toISOString() });
       setGeneratingPreviewUrl(previewUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start generation");
+      setError(err instanceof Error ? err.message : "Үүсгэлт эхлүүлэхэд алдаа гарлаа");
       setCreating(false);
     }
   }
@@ -151,14 +151,14 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl}
-            alt="Chosen photo"
+            alt="Сонгосон зураг"
             className="mx-auto block max-h-72 w-auto max-w-full object-contain"
           />
           <button
             type="button"
             onClick={() => setFile(null)}
             disabled={creating}
-            aria-label="Retake"
+            aria-label="Дахин авах"
             className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-bg/80 text-text hover:bg-bg disabled:opacity-50"
           >
             <X className="size-4" />

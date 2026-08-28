@@ -9,7 +9,7 @@
  * building one just for this would be more than the task needs.
  */
 export async function deleteModel(id: string): Promise<boolean> {
-  if (!window.confirm("Delete this model? This can't be undone.")) return false;
+  if (!window.confirm("Энэ model-ийг устгах уу? Буцаах боломжгүй.")) return false;
 
   const res = await fetch(`/api/models/delete?id=${id}`, { method: "DELETE" });
   return res.ok;

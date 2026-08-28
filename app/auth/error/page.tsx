@@ -7,14 +7,14 @@ export default function AuthErrorPage() {
     <main className="flex min-h-dvh items-center justify-center bg-bg p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign-in link expired</CardTitle>
+          <CardTitle>Нэвтрэх линкийн хугацаа дууссан</CardTitle>
           <CardDescription>
-            That link is no longer valid. Request a new one to sign in.
+            Энэ линк хүчингүй болсон байна. Дахин нэвтрэхийн тулд шинэ линк хүсэлт гаргана уу.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Link href="/login" className={buttonVariants({ variant: "primary", size: "md" })}>
-            Back to sign in
+            Нэвтрэх хуудас руу буцах
           </Link>
         </CardContent>
       </Card>

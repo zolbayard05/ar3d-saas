@@ -63,7 +63,7 @@ export function GeneratingStep({ modelId, previewUrl, createdAt, onReady, onFail
         </div>
       </div>
       <div className="flex flex-col items-center gap-1">
-        <p className="text-body text-text">Generating your model</p>
+        <p className="text-body text-text">Таны model үүсгэгдэж байна</p>
         <p className="text-small uppercase tracking-wide text-text-muted">{elapsed}</p>
       </div>
     </div>

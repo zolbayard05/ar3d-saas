@@ -77,7 +77,7 @@ export function useAuth() {
 
       if (signUpError?.code === "user_already_exists") {
         setStatus("error");
-        setError("Incorrect email or password.");
+        setError("Имэйл эсвэл нууц үг буруу байна.");
         return;
       }
 
@@ -97,7 +97,7 @@ export function useAuth() {
       // confirmation-disabled signUp returns a session immediately. Only
       // reachable if that dashboard setting gets flipped back on later.
       setStatus("error");
-      setError("Check your email to confirm your account before signing in.");
+      setError("Нэвтрэхээсээ өмнө бүртгэлээ баталгаажуулахын тулд имэйлээ шалгана уу.");
     },
     [router],
   );

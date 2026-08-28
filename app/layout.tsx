@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Realify",
-  description: "Turn a photo into a 3D model you can place in AR.",
+  description: "Зургаа AR-аар байрлуулж болох 3D model болгоорой.",
   // capable + title auto-generate apple-mobile-web-app-capable and
   // apple-mobile-web-app-title — the two meta tags that make "Add to Home
   // Screen" launch full-screen with no browser chrome, independent of
@@ -46,7 +46,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" data-theme="dark" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="mn" data-theme="dark" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       {/* No explicit height here (not h-dvh, not min-h-full) — deliberately.
           h-dvh looked right (every descendant gets "a real ceiling to size
           against") but doesn't hold up on iOS Safari specifically: dvh is
