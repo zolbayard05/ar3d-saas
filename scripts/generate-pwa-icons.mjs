@@ -11,6 +11,7 @@
 // their own icon mask, and baking in a corner radius here would double up
 // with (or fight against) that.
 import sharp from "sharp";
+import pngToIco from "png-to-ico";
 import { writeFileSync } from "fs";
 import { join } from "path";
 
@@ -53,6 +54,17 @@ function framedRSvg(size) {
   </svg>`;
 }
 
+// No frame here, unlike the app icons above — favicon.ico is shown at 16px
+// in a browser tab, and the framed version tested busy/illegible at sizes
+// far larger than that (see HomeFeed.tsx's own header-icon history). Plain
+// glyph, bigger relative font-size, same background/foreground tokens.
+function plainRSvg(size) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <rect width="${size}" height="${size}" fill="${BG}"/>
+    ${rGlyph(size, 0.66, 4)}
+  </svg>`;
+}
+
 const targets = [
   { size: 192, out: join("public", "icon-192.png") },
   { size: 512, out: join("public", "icon-512.png") },
@@ -64,3 +76,13 @@ for (const { size, out } of targets) {
   writeFileSync(out, buf);
   console.log(`wrote ${out} (${size}x${size}, framed R)`);
 }
+
+// favicon.ico bundles a few resolutions in one file — browsers pick
+// whichever fits (typically 16 or 32px for a tab icon).
+const faviconSizes = [16, 32, 48];
+const faviconPngs = await Promise.all(
+  faviconSizes.map((size) => sharp(Buffer.from(plainRSvg(size))).png().toBuffer()),
+);
+const icoBuf = await pngToIco(faviconPngs);
+writeFileSync(join("app", "favicon.ico"), icoBuf);
+console.log(`wrote app/favicon.ico (${faviconSizes.join("/")}, plain R)`);
