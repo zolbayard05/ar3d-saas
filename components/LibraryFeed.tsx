@@ -73,17 +73,19 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
           (rule 38) but reading "My Models" — this screen's own identity,
           not a duplicate of the home feed's. Title + metadata line stacked
           with gap-1 reuses ModelDetail.tsx's exact title/dimensions
-          pattern rather than inventing new spacing. "Add" has nowhere real
-          to go yet (no billing flow exists — Phase 6/Stripe isn't built),
-          so it's present but visibly inert rather than a dead link, same
-          call as BottomNav's library icon before this screen existed. */}
+          pattern rather than inventing new spacing. "Нэмэх" now links to
+          /credits (components/BuyCredits.tsx) — real checkout isn't wired
+          up yet (pending wire.mn merchant approval), but the pack-browsing
+          screen itself is real, not a placeholder link. */}
       <div className="flex shrink-0 flex-col gap-1 px-2 pt-4 pb-3">
         <p className="text-body font-semibold text-text">Миний Model</p>
         <div className="flex items-center gap-2">
           <p className="text-small uppercase tracking-wide text-text-muted">
             {loading ? "…" : `${credits ?? 0} кредит үлдсэн`}
           </p>
-          <span className="text-small uppercase tracking-wide text-text-muted opacity-40">· Нэмэх</span>
+          <Link href="/credits" className="text-small uppercase tracking-wide text-text-muted hover:text-text">
+            · Нэмэх
+          </Link>
         </div>
       </div>
 

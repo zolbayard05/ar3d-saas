@@ -10,7 +10,7 @@ import type { Database } from "@/lib/supabase/types";
 // check, never by proxy itself (a real, if inert, gap: proxy is UX-only per
 // rule 30, but "gated" should mean gated at every layer that claims to,
 // this file included).
-const PROTECTED_PREFIXES = ["/library", "/create", "/models"];
+const PROTECTED_PREFIXES = ["/library", "/create", "/models", "/credits"];
 const AUTH_PAGES = ["/login"];
 
 // Shared model links (QR codes, "send to a friend") must open for a
