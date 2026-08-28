@@ -26,7 +26,15 @@ const CREDIT_COST = 1;
 // row in CaptureFlow.tsx instead of swapping this row out. Create is
 // disabled with no file chosen yet, or while a previous generation is
 // still being reviewed (`busy`) — one at a time.
-export function CaptureChoice({ userId, file, onFileChosen, onCreate, creating, busy, error }: CaptureChoiceProps) {
+export function CaptureChoice({
+  userId,
+  file,
+  onFileChosen,
+  onCreate,
+  creating,
+  busy,
+  error,
+}: CaptureChoiceProps) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const { credits, loading } = useCredits(userId);
@@ -51,11 +59,20 @@ export function CaptureChoice({ userId, file, onFileChosen, onCreate, creating, 
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+        {/* lg:hidden — capture="environment" opens the native OS camera on
+            phones, but desktop browsers just ignore that attribute and fall
+            back to a plain file picker, making this button a second,
+            confusing copy of "Зураг оруулах" right next to it (caught
+            2026-08-29, live on the desktop layout). A viewport breakpoint,
+            not a getUserMedia/device capability check — matches every other
+            mobile-vs-desktop decision in this app (Sidebar/BottomNav,
+            hooks/useColumnCount.ts) and doesn't need a camera-permission
+            prompt just to decide what a button should say. */}
         <button
           type="button"
           onClick={() => cameraInputRef.current?.click()}
-          className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
+          className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90 lg:hidden"
         >
           <Camera className="size-8" />
           <span className="text-small uppercase tracking-wide">Зураг авах</span>
@@ -64,10 +81,12 @@ export function CaptureChoice({ userId, file, onFileChosen, onCreate, creating, 
         <button
           type="button"
           onClick={() => galleryInputRef.current?.click()}
-          className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90"
+          className="flex aspect-square flex-col items-center justify-center gap-3 rounded-sm bg-surface-hover text-text hover:opacity-90 lg:aspect-video"
         >
           <ImageUp className="size-8" />
-          <span className="text-small uppercase tracking-wide">Зураг оруулах</span>
+          <span className="text-small uppercase tracking-wide">
+            Зураг оруулах
+          </span>
         </button>
       </div>
 
