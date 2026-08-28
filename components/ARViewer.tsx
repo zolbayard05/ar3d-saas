@@ -1,6 +1,12 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import "@google/model-viewer";
 import { buildModelUrl } from "@/lib/models";
 import { Spinner } from "@/components/ui/Spinner";
@@ -17,7 +23,10 @@ export interface ARViewerHandle {
   activateAR: () => void;
 }
 
-type ModelViewerElement = HTMLElement & { activateAR: () => Promise<void>; loaded: boolean };
+type ModelViewerElement = HTMLElement & {
+  activateAR: () => Promise<void>;
+  loaded: boolean;
+};
 
 /**
  * CLAUDE.md rule 11 — this file imports "@google/model-viewer" for its
@@ -41,71 +50,98 @@ type ModelViewerElement = HTMLElement & { activateAR: () => Promise<void>; loade
  * which this never touches. An empty slotted button suppresses model-viewer's
  * own default corner AR icon so there's exactly one visible AR trigger.
  */
-export const ARViewer = forwardRef<ARViewerHandle, ARViewerProps>(function ARViewer(
-  { glbKey, usdzKey, scale, alt, className },
-  ref,
-) {
-  const viewerRef = useRef<ModelViewerElement>(null);
-  const [loaded, setLoaded] = useState(false);
+export const ARViewer = forwardRef<ARViewerHandle, ARViewerProps>(
+  function ARViewer({ glbKey, usdzKey, scale, alt, className }, ref) {
+    const viewerRef = useRef<ModelViewerElement>(null);
+    const [loaded, setLoaded] = useState(false);
 
-  useImperativeHandle(ref, () => ({
-    activateAR: () => void viewerRef.current?.activateAR(),
-  }));
+    useImperativeHandle(ref, () => ({
+      activateAR: () => void viewerRef.current?.activateAR(),
+    }));
 
-  // model-viewer mounts and renders an empty/transparent canvas well before
-  // the GLB itself has finished fetching — over the gradient backdrop that
-  // reads as "there's no model here" rather than "still loading." Its own
-  // "load" event is the real ready signal (fires once the asset is decoded
-  // and about to be revealed), not the dynamic-import fallback one level up
-  // in ModelDetail.tsx, which only covers the @google/model-viewer chunk
-  // itself. The synchronous `.loaded` check right after attaching guards
-  // the case where the model already finished (e.g. browser cache) before
-  // this effect's listener could attach — same race ModelCard.tsx's image
-  // ref callback exists to close.
-  useEffect(() => {
-    setLoaded(false);
-    const el = viewerRef.current;
-    if (!el) return;
-    function onLoad() {
-      setLoaded(true);
-    }
-    el.addEventListener("load", onLoad);
-    if (el.loaded) setLoaded(true);
-    return () => el.removeEventListener("load", onLoad);
-  }, [glbKey]);
+    // model-viewer mounts and renders an empty/transparent canvas well before
+    // the GLB itself has finished fetching — over the gradient backdrop that
+    // reads as "there's no model here" rather than "still loading." Its own
+    // "load" event is the real ready signal (fires once the asset is decoded
+    // and about to be revealed), not the dynamic-import fallback one level up
+    // in ModelDetail.tsx, which only covers the @google/model-viewer chunk
+    // itself. The synchronous `.loaded` check right after attaching guards
+    // the case where the model already finished (e.g. browser cache) before
+    // this effect's listener could attach — same race ModelCard.tsx's image
+    // ref callback exists to close.
+    useEffect(() => {
+      setLoaded(false);
+      const el = viewerRef.current;
+      if (!el) return;
+      function onLoad() {
+        setLoaded(true);
+      }
+      el.addEventListener("load", onLoad);
+      if (el.loaded) setLoaded(true);
+      return () => el.removeEventListener("load", onLoad);
+    }, [glbKey]);
 
-  const glbUrl = buildModelUrl(glbKey);
-  const usdzUrl = buildModelUrl(usdzKey);
-  const scaleAttr = `${scale} ${scale} ${scale}`;
+    const glbUrl = buildModelUrl(glbKey);
+    const usdzUrl = buildModelUrl(usdzKey);
+    const scaleAttr = `${scale} ${scale} ${scale}`;
 
-  return (
-    <div className="relative">
-      <model-viewer
-        ref={viewerRef}
-        src={glbUrl}
-        ios-src={usdzUrl}
-        ar
-        ar-modes="webxr scene-viewer quick-look"
-        camera-controls
-        auto-rotate
-        scale={scaleAttr}
-        alt={alt || "3D model"}
-        shadow-intensity="1"
-        className={className}
-        // Subtle radial gradient instead of a flat surface color so the model
-        // has visual depth to sit against — tokens only (rule from
-        // styles/tokens.css's header comment), no raw hex.
-        style={{
-          background: "radial-gradient(circle at 50% 38%, var(--color-surface-hover), var(--color-bg) 75%)",
-        }}
-      >
-        <button slot="ar-button" aria-hidden="true" tabIndex={-1} style={{ display: "none" }} />
-      </model-viewer>
-      {!loaded && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <Spinner size="lg" label="Model ачаалж байна" />
-        </div>
-      )}
-    </div>
-  );
-});
+    return (
+      <div className="relative">
+        <model-viewer
+          ref={viewerRef}
+          src={glbUrl}
+          ios-src={usdzUrl}
+          ar
+          ar-modes="webxr scene-viewer quick-look"
+          camera-controls
+          auto-rotate
+          scale={scaleAttr}
+          alt={alt || "3D model"}
+          shadow-intensity="1"
+          className={className}
+          // Subtle radial gradient instead of a flat surface color so the model
+          // has visual depth to sit against — tokens only (rule from
+          // styles/tokens.css's header comment), no raw hex.
+          style={{
+            background:
+              "radial-gradient(circle at 50% 38%, var(--color-surface-hover), var(--color-bg) 75%)",
+          }}
+        >
+          <button
+            slot="ar-button"
+            aria-hidden="true"
+            tabIndex={-1}
+            style={{ display: "none" }}
+          />
+        </model-viewer>
+        {/* Presence ring (2026-08-29) — a soft ambient glow near the base of
+          the viewer, reinforcing "this object is floating in space" (the
+          whole point of AR — see this file's own header comment). Model-
+          viewer renders an opaque WebGL canvas filling its box, so this
+          can't sit visually BEHIND the model inside that canvas; it's a
+          later DOM sibling instead, painting on top at low opacity + blur,
+          which reads as ambient light rather than obscuring anything.
+          pointer-events-none so it never blocks the model's own
+          orbit-drag/camera-controls interaction. animate-breathe (globals.css)
+          is a slow 4s pulse — deliberately calmer than the fast
+          Tailwind-builtin animate-pulse ModelCard.tsx uses for "actively
+          generating", since this is decorative/ambient, not a status signal. */}
+        {loaded && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-8 mx-auto h-1/4 w-2/3 animate-breathe rounded-full opacity-20 blur-xl lg:bottom-12"
+            style={{
+              background:
+                "radial-gradient(ellipse at center, var(--color-text) 0%, transparent 70%)",
+            }}
+          />
+        )}
+        {!loaded && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <Spinner size="lg" label="Model ачаалж байна" />
+          </div>
+        )}
+      </div>
+    );
+  },
+);

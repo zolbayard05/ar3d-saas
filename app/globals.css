@@ -63,6 +63,32 @@
   --max-width-feed: var(--max-width-feed);
 }
 
+/* Plain @theme (not @theme inline) — this declares a genuinely NEW value
+ * (an animation), not an alias of an existing tokens.css variable, so it
+ * follows this file's own documented distinction between the two forms.
+ * Registers `animate-breathe` as a real Tailwind utility (Tailwind v4's
+ * --animate-* namespace), the same way --radius-sm etc. above become
+ * rounded-sm — used by components/ARViewer.tsx's presence-ring glow
+ * (2026-08-29) for a slow ambient pulse, distinct from the much faster
+ * Tailwind-builtin animate-pulse already used for the "generating" state
+ * elsewhere (ModelCard.tsx) — that one signals active work, this one is
+ * decorative/ambient, so it needs its own, calmer timing.
+ */
+@theme {
+  --animate-breathe: breathe 4s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
 body {
   background: var(--color-bg);
   color: var(--color-text);
