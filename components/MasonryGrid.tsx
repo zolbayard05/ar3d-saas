@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { ModelCard } from "@/components/ModelCard";
+import { useColumnCount } from "@/hooks/useColumnCount";
 import { estimateCardHeight } from "@/lib/models";
 import type { Database } from "@/lib/supabase/types";
 
@@ -32,8 +33,11 @@ export interface MasonryGridProps {
 // giving up stability, as long as the PACKING ORDER itself never changes
 // for existing cards — see assignColumns below for how that's kept true
 // even though HomeFeed's handleRetry prepends new rows to the front of
-// `models`.
-function assignColumns(models: ModelRow[]): Map<string, 0 | 1> {
+// `models`. columnCount is a parameter (not fixed at 2) so a viewport-width
+// change (useColumnCount, 2/3/4 by breakpoint) reflows cleanly — a change
+// in COUNT is a one-time full repack, distinct from the ordering guarantee
+// above, which is about not reshuffling existing cards at a fixed count.
+function assignColumns(models: ModelRow[], columnCount: number): Map<string, number> {
   // Sorted oldest-first, not in `models`' own (display, newest-first) order.
   // A model's created_at never changes once set, so this ordering is stable
   // regardless of what handleRetry prepends to the front of the display
@@ -44,11 +48,14 @@ function assignColumns(models: ModelRow[]): Map<string, 0 | 1> {
   // being independent of order entirely.
   const oldestFirst = [...models].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
-  const columnHeights: [number, number] = [0, 0];
-  const assignment = new Map<string, 0 | 1>();
+  const columnHeights = new Array(columnCount).fill(0);
+  const assignment = new Map<string, number>();
 
   for (const model of oldestFirst) {
-    const col: 0 | 1 = columnHeights[0] <= columnHeights[1] ? 0 : 1;
+    let col = 0;
+    for (let i = 1; i < columnCount; i++) {
+      if (columnHeights[i] < columnHeights[col]) col = i;
+    }
     assignment.set(model.id, col);
     columnHeights[col] += estimateCardHeight(model);
   }
@@ -57,12 +64,13 @@ function assignColumns(models: ModelRow[]): Map<string, 0 | 1> {
 }
 
 export function MasonryGrid({ models, onRetry, onDelete }: MasonryGridProps) {
-  const columnOf = useMemo(() => assignColumns(models), [models]);
+  const columnCount = useColumnCount();
+  const columnOf = useMemo(() => assignColumns(models, columnCount), [models, columnCount]);
 
   return (
-    <div className="flex gap-2 px-2">
-      {([0, 1] as const).map((col) => (
-        <div key={col} className="flex flex-1 flex-col gap-2">
+    <div className="flex gap-2 px-2 lg:gap-4 lg:px-6">
+      {Array.from({ length: columnCount }, (_, col) => (
+        <div key={col} className="flex flex-1 flex-col gap-2 lg:gap-4">
           {models
             .filter((model) => columnOf.get(model.id) === col)
             .map((model) => (

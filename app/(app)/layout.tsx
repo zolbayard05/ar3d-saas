@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { BottomNav } from "@/components/BottomNav";
+import { Sidebar } from "@/components/Sidebar";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -54,7 +55,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // being a periodically-recomputed height (dvh).
   return (
     <div className="fixed inset-0 flex flex-col bg-bg">
-      <main className="flex min-h-0 flex-1 flex-col">{children}</main>
+      {/* lg:pl-60 clears Sidebar's fixed w-60 rail — BottomNav needs no
+          equivalent since it's centered over the full-width viewport, not
+          docked to one edge. */}
+      <main className="flex min-h-0 flex-1 flex-col lg:pl-60">{children}</main>
+      <Sidebar hasActiveJob={(activeJobs?.length ?? 0) > 0} />
       <BottomNav hasActiveJob={(activeJobs?.length ?? 0) > 0} />
     </div>
   );

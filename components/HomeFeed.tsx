@@ -69,18 +69,21 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
           with the content below (it's inside the same scroll container, not
           a separate sticky element). Icon before the name — the actual
           PWA app icon (icon-192.png, framed R), sized up to size-9 (36px)
-          so the frame stays legible (checked down to 32px). */}
-      <div className="flex shrink-0 items-center gap-2 px-2 pt-4 pb-3">
+          so the frame stays legible (checked down to 32px). lg:hidden — at
+          that width Sidebar (components/Sidebar.tsx) carries the same
+          wordmark persistently in its own rail, so repeating it here would
+          just be a duplicate brand mark stacked above the grid. */}
+      <div className="flex shrink-0 items-center gap-2 px-2 pt-4 pb-3 lg:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icon-192.png" alt="" className="size-9 rounded-md" />
         <p className="text-heading font-semibold text-text">Realify</p>
       </div>
 
-      {retryError && <p className="px-2 py-2 text-small text-danger">{retryError}</p>}
+      {retryError && <p className="px-2 py-2 text-small text-danger lg:px-6">{retryError}</p>}
 
       {models.length === 0 ? (
         <EmptyState
-          className="m-4"
+          className="m-4 lg:mx-auto lg:mt-24 lg:max-w-md"
           title="Model хараахан байхгүй байна"
           description="Эхний 3D model-оо үүсгэхийн тулд үүсгэх товч дараарай."
         />
@@ -100,15 +103,28 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
         // (LibraryFeed.tsx's equivalent div already has these — this was the
         // one place that didn't.)
         <div
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-          // The extra var(--install-bar-reserve) term is 0px whenever
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:pt-10"
+          // --bottom-nav-reserve (styles/tokens.css) is 6rem on mobile,
+          // clearing BottomNav, and 2.5rem at lg+ (Sidebar replaces
+          // BottomNav there, so there's nothing bottom-docked left to
+          // clear) — a responsive CSS variable rather than a Tailwind lg:
+          // class because this composes into a `style` prop alongside
+          // env()/var(--install-bar-reserve), which Tailwind's arbitrary
+          // values can't express and which a class could never override
+          // anyway (inline style always wins specificity over a class,
+          // variant or not). var(--install-bar-reserve) is 0px whenever
           // components/InstallPrompt.tsx isn't showing a bar (it clears the
-          // property on unmount/hide) — see that file's setFeedBottomReserve.
+          // property on unmount/hide) — see that file's
+          // setFeedBottomReserve; InstallPrompt is itself mobile-only, so
+          // this term is always 0 at lg+ regardless.
           style={{
-            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem + var(--install-bar-reserve, 0px))",
+            paddingBottom:
+              "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve) + var(--install-bar-reserve, 0px))",
           }}
         >
-          <MasonryGrid models={models} onRetry={handleRetry} onDelete={handleDelete} />
+          <div className="w-full lg:mx-auto lg:max-w-feed">
+            <MasonryGrid models={models} onRetry={handleRetry} onDelete={handleDelete} />
+          </div>
         </div>
       )}
     </div>

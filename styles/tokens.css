@@ -79,4 +79,28 @@
    * over. Don't reuse this number for a Cyrillic variant without checking.
    */
   --tracking-wide: 0.08em;
+
+  /* ---- Feed content width & bottom-nav reserve (desktop, 2026-08-28) ----
+   * --max-width-feed: caps HomeFeed's masonry grid on very wide monitors
+   * so cards don't stretch to unreadable widths — aliased into Tailwind's
+   * max-width namespace via app/globals.css's @theme inline block, so
+   * components use `max-w-feed`, never a raw arbitrary value (banned by
+   * eslint.config.mjs's no-restricted-syntax rule).
+   * --bottom-nav-reserve: HomeFeed's scroll container needs bottom padding
+   * clearing BottomNav on mobile (6rem) but NOT at lg+, where Sidebar
+   * replaces it and there's nothing bottom-docked to clear. This has to be
+   * a responsive CSS variable rather than a Tailwind lg: class because it
+   * composes into a `style` prop alongside env()/var(--install-bar-reserve)
+   * — arbitrary calc() Tailwind can't express, and a lg: utility class can
+   * never win against a plain inline style's specificity regardless of
+   * variant, so the breakpoint has to live in the variable's own value.
+   */
+  --max-width-feed: 87.5rem; /* 1400px */
+  --bottom-nav-reserve: 6rem;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --bottom-nav-reserve: 2.5rem;
+  }
 }
