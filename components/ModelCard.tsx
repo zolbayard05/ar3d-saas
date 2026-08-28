@@ -60,18 +60,30 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
         <img
           src={thumbnailSrc}
           alt=""
-          // onLoad alone misses an image the browser already had cached —
-          // its `load` event can fire before this listener is even
-          // attached, leaving imageLoaded stuck false and the image stuck
-          // at opacity-0 forever (caught live: real cards with
-          // img.complete === true but opacity "0"). The ref callback runs
-          // synchronously once the node exists and checks what the browser
-          // already knows, covering exactly that case; onLoad still covers
-          // the normal not-yet-cached one.
+          loading="lazy"
+          decoding="async"
+          // React's onLoad prop alone isn't enough here, for two separate
+          // reasons that both leave imageLoaded stuck false and the image
+          // stuck at opacity-0 forever (both caught live, not theoretical):
+          // (1) an image the browser already had cached can fire `load`
+          // before the listener is even attached; (2) with loading="lazy"
+          // added, the browser defers starting the fetch until its own
+          // (React-uncontrolled) heuristic decides to — by the time that
+          // happens, node.complete can flip true, or `load` can fire, at a
+          // point this ref callback (which only ever ran once, at mount)
+          // has long since stopped checking. Fix for both: attach a real
+          // native listener imperatively, which catches the event whenever
+          // the browser actually dispatches it, plus an immediate check for
+          // the already-complete-at-attach case (re-runs on every mount,
+          // including the lazy image's own deferred one).
           ref={(node) => {
-            if (node?.complete) setImageLoaded(true);
+            if (!node) return;
+            if (node.complete) {
+              setImageLoaded(true);
+              return;
+            }
+            node.addEventListener("load", () => setImageLoaded(true), { once: true });
           }}
-          onLoad={() => setImageLoaded(true)}
           className={cn(
             "block size-full object-cover transition-opacity duration-300",
             !imageLoaded && "opacity-0",

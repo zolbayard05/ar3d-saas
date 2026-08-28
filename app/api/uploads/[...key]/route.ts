@@ -74,9 +74,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ key
   return new NextResponse(Buffer.from(bytes), {
     headers: {
       "Content-Type": object.ContentType || "application/octet-stream",
-      // Private and user-specific — never cache-shared the way models/ is
-      // (rule 3 is about the public models bucket; this is the opposite).
-      "Cache-Control": "private, no-store",
+      // `private` — never cache-shared the way models/ is (rule 3 is about
+      // the public models bucket; this is the opposite) — but NOT no-store:
+      // every request here was a fresh getUser() + DB check + R2 read with
+      // zero caching at all, on the hot path of both feeds' every card
+      // thumbnail. `private` scopes the cache to the requester's own
+      // browser only (no shared/CDN layer involved, so this doesn't weaken
+      // the ownership check above — that still runs on every miss), and
+      // the object itself is immutable once uploaded (a given
+      // source_image_key's bytes never change), so a long max-age is
+      // correct, not just fast — same reasoning as rule 3's own
+      // immutable models cache, adapted to a private (not shared) scope.
+      "Cache-Control": "private, max-age=31536000, immutable",
     },
   });
 }
