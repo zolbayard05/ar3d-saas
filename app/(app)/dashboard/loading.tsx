@@ -1,5 +1,5 @@
-import { PageLoading } from "@/components/ui/PageLoading";
+import { FeedSkeleton } from "@/components/ui/FeedSkeleton";
 
 export default function DashboardLoading() {
-  return <PageLoading />;
+  return <FeedSkeleton />;
 }

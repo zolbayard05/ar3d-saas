@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Camera, ImageUp, Zap } from "lucide-react";
+import { Camera, ImageUp, Zap, CheckCircle2, XCircle } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { useCredits } from "@/hooks/useCredits";
 import { ALLOWED_IMAGE_TYPES } from "@/lib/uploads";
@@ -33,6 +33,24 @@ export function CaptureChoice({ userId, file, onFileChosen, onCreate, creating, 
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Rule 20 — "show example good/bad reference images". No real
+          before/after photo assets exist for this yet, so a short
+          checklist stands in for them (cheap to keep accurate, no image
+          pipeline to maintain); swap for real reference photos if/when
+          those get shot. Point is stopping avoidable failed generations
+          (blurry/multi-object shots) before a credit gets spent, not
+          exhaustive photography advice. */}
+      <div className="flex flex-col gap-1.5 rounded-sm bg-surface-hover/40 px-3 py-2.5">
+        <div className="flex items-center gap-1.5 text-small text-text-muted">
+          <CheckCircle2 className="size-3.5 shrink-0 text-success" />
+          <span>Нэг тод объект, сайн гэрэлтэй, ойрхоноос</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-small text-text-muted">
+          <XCircle className="size-3.5 shrink-0 text-danger" />
+          <span>Бүрхэг, харанхуй, олон объект нэг зурган дээр</span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"

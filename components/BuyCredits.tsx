@@ -25,6 +25,7 @@ export function BuyCredits() {
 
       <div className="flex flex-col gap-4 px-4 pt-2">
         <p className="text-body font-semibold text-text">Кредит нэмэх</p>
+        <p className="text-small text-text-muted">1 кредит = 1 3D загвар (GLB + USDZ, AR-д бэлэн).</p>
         <p className="text-small text-text-muted">
           Төлбөрийн систем тун удахгүй нэмэгдэнэ. Доорх багцууд нь эцсийн үнэ биш, зөвхөн жишээ.
         </p>
