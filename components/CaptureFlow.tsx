@@ -51,11 +51,21 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const [file, setFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [generatingModel, setGeneratingModel] = useState<GeneratingModel | null>(() =>
-    initialActiveModel ? { id: initialActiveModel.id, createdAt: initialActiveModel.created_at } : null,
-  );
-  const [generatingPreviewUrl, setGeneratingPreviewUrl] = useState<string | null>(() =>
-    initialActiveModel ? `/api/uploads/${initialActiveModel.source_image_key}` : null,
+  const [generatingModel, setGeneratingModel] =
+    useState<GeneratingModel | null>(() =>
+      initialActiveModel
+        ? {
+            id: initialActiveModel.id,
+            createdAt: initialActiveModel.created_at,
+          }
+        : null,
+    );
+  const [generatingPreviewUrl, setGeneratingPreviewUrl] = useState<
+    string | null
+  >(() =>
+    initialActiveModel
+      ? `/api/uploads/${initialActiveModel.source_image_key}`
+      : null,
   );
   const [resultModel, setResultModel] = useState<ModelRow | null>(null);
   const { upload } = useUpload();
@@ -63,7 +73,10 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   // GeneratingStep needs the same preview after the chosen-photo block
   // below has moved on, so the blob URL has to outlive that render rather
   // than being revoked with it.
-  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  const previewUrl = useMemo(
+    () => (file ? URL.createObjectURL(file) : null),
+    [file],
+  );
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -107,17 +120,25 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
         }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? `Үүсгэлт эхлүүлэхэд алдаа гарлаа (${res.status})`);
+      if (!res.ok)
+        throw new Error(
+          body.error ?? `Үүсгэлт эхлүүлэхэд алдаа гарлаа (${res.status})`,
+        );
 
       // file stays set (not cleared here) — clearing it now would flip the
       // previewUrl memo to null on the next render, and the cleanup effect
       // tied to that memo would revoke this exact blob URL out from under
       // GeneratingStep, which just received the same string. Cleared in
       // resetAfterResult instead, once nothing downstream needs it.
-      setGeneratingModel({ id: body.modelId, createdAt: new Date().toISOString() });
+      setGeneratingModel({
+        id: body.modelId,
+        createdAt: new Date().toISOString(),
+      });
       setGeneratingPreviewUrl(previewUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Үүсгэлт эхлүүлэхэд алдаа гарлаа");
+      setError(
+        err instanceof Error ? err.message : "Үүсгэлт эхлүүлэхэд алдаа гарлаа",
+      );
       setCreating(false);
     }
   }
@@ -136,15 +157,24 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     // value) centers this as a single focused column at lg+ rather than
     // stretching the picker cards/preview/result to the full width beside
     // Sidebar — unlike Home/Library this screen is one task, not a browse
-    // grid, so it doesn't want the extra width at all.
+    // grid, so it doesn't want the extra width at all. lg:flex-none +
+    // lg:my-auto (overriding the mobile flex-1 fill) vertically centers
+    // this short column in the available height too, instead of it sitting
+    // pinned to the top with a wall of empty page below (feedback: "хэт
+    // хоосон/уйтгартай") — flex-1's grow and an auto margin on the same
+    // axis fight each other if both are present, so flex-1 has to be
+    // cancelled here, not just added to.
     <div
-      className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 lg:mx-auto lg:w-full lg:max-w-xl lg:px-0 lg:pt-10"
+      className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 lg:mx-auto lg:my-auto lg:w-full lg:max-w-xl lg:flex-none lg:px-0"
       // --bottom-nav-reserve (styles/tokens.css) — same token
       // HomeFeed/LibraryFeed use: 6rem (~92-96px, close enough to this
       // screen's previously-hardcoded 92px to consolidate into one shared
       // value) on mobile to clear BottomNav, 2.5rem at lg+ where Sidebar
       // replaces it and there's nothing bottom-docked left to clear.
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve))" }}
+      style={{
+        paddingBottom:
+          "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve))",
+      }}
     >
       <CaptureChoice
         userId={userId}

@@ -21,7 +21,11 @@ export interface LibraryFeedProps {
 // not a parallel version. Retry logic here matches HomeFeed.tsx's exactly:
 // a retry is a genuinely new /api/generate call (own idempotency key, own
 // credit deduction), not a resumption of the failed row.
-export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFeedProps) {
+export function LibraryFeed({
+  userId,
+  initialModels,
+  initialCredits,
+}: LibraryFeedProps) {
   const [models, setModels] = useState(initialModels);
   const [retryError, setRetryError] = useState<string | null>(null);
   const { credits, loading } = useCredits(userId, initialCredits);
@@ -32,10 +36,16 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceImageKey: model.source_image_key, idempotencyKey: crypto.randomUUID() }),
+        body: JSON.stringify({
+          sourceImageKey: model.source_image_key,
+          idempotencyKey: crypto.randomUUID(),
+        }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? `Дахин оролдоход алдаа гарлаа (${res.status})`);
+      if (!res.ok)
+        throw new Error(
+          body.error ?? `Дахин оролдоход алдаа гарлаа (${res.status})`,
+        );
 
       setModels((prev) => [
         {
@@ -59,7 +69,9 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
         ...prev,
       ]);
     } catch (err) {
-      setRetryError(err instanceof Error ? err.message : "Дахин оролдоход алдаа гарлаа");
+      setRetryError(
+        err instanceof Error ? err.message : "Дахин оролдоход алдаа гарлаа",
+      );
     }
   }
 
@@ -89,13 +101,18 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
           <p className="text-small uppercase tracking-wide text-text-muted">
             {loading ? "…" : `${credits ?? 0} кредит үлдсэн`}
           </p>
-          <Link href="/credits" className="text-small uppercase tracking-wide text-text-muted hover:text-text">
+          <Link
+            href="/credits"
+            className="text-small uppercase tracking-wide text-text-muted hover:text-text"
+          >
             · Нэмэх
           </Link>
         </div>
       </div>
 
-      {retryError && <p className="px-2 py-2 text-small text-danger lg:px-6">{retryError}</p>}
+      {retryError && (
+        <p className="px-2 py-2 text-small text-danger lg:px-6">{retryError}</p>
+      )}
 
       <div
         className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:pt-6"
@@ -110,19 +127,33 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
             "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve) + var(--install-bar-reserve, 0px))",
         }}
       >
-        <div className="w-full lg:mx-auto lg:max-w-feed">
+        {/* lg:my-auto — same auto-margin centering as HomeFeed.tsx (see its
+            identical comment on why not justify-center); competes for
+            space with the footer's own lg:mt-auto below, which in practice
+            reads as "content settles a bit below the top instead of
+            pinned flush to it, footer still anchors the very bottom" —
+            still a real improvement over a short list sitting at the top
+            of a mostly-empty tall column. */}
+        <div className="w-full lg:mx-auto lg:my-auto lg:max-w-feed">
           {models.length === 0 ? (
             <EmptyState
               className="m-4 lg:mx-6 lg:mt-16 lg:max-w-md"
               title="Эхний model-оо үүсгээрэй"
               action={
-                <Link href="/create" className={buttonVariants({ variant: "primary", size: "md" })}>
+                <Link
+                  href="/create"
+                  className={buttonVariants({ variant: "primary", size: "md" })}
+                >
                   Үүсгэх
                 </Link>
               }
             />
           ) : (
-            <MasonryGrid models={models} onRetry={handleRetry} onDelete={handleDelete} />
+            <MasonryGrid
+              models={models}
+              onRetry={handleRetry}
+              onDelete={handleDelete}
+            />
           )}
         </div>
 
@@ -130,10 +161,16 @@ export function LibraryFeed({ userId, initialModels, initialCredits }: LibraryFe
             avatar, no display name (nothing to show anyway; rule 38/40 kept
             this screen to exactly what was asked for). */}
         <div className="mt-auto flex items-center justify-center gap-6 pt-8">
-          <button type="button" className="text-small uppercase tracking-wide text-text-muted hover:text-text">
+          <button
+            type="button"
+            className="text-small uppercase tracking-wide text-text-muted hover:text-text"
+          >
             Багц
           </button>
-          <button type="button" className="text-small uppercase tracking-wide text-text-muted hover:text-text">
+          <button
+            type="button"
+            className="text-small uppercase tracking-wide text-text-muted hover:text-text"
+          >
             Тусламж
           </button>
           <SignOutButton />

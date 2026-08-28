@@ -59,7 +59,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           equivalent since it's centered over the full-width viewport, not
           docked to one edge. */}
       <main className="flex min-h-0 flex-1 flex-col lg:pl-60">{children}</main>
-      <Sidebar hasActiveJob={(activeJobs?.length ?? 0) > 0} />
+      <Sidebar hasActiveJob={(activeJobs?.length ?? 0) > 0} userId={user?.id} />
       <BottomNav hasActiveJob={(activeJobs?.length ?? 0) > 0} />
     </div>
   );

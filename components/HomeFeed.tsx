@@ -20,10 +20,14 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceImageKey: model.source_image_key, idempotencyKey: crypto.randomUUID() }),
+        body: JSON.stringify({
+          sourceImageKey: model.source_image_key,
+          idempotencyKey: crypto.randomUUID(),
+        }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? `Failed to retry (${res.status})`);
+      if (!res.ok)
+        throw new Error(body.error ?? `Failed to retry (${res.status})`);
 
       // A retry is a genuinely new /api/generate call (own idempotency key,
       // own credit deduction) - not resuming the failed row, which stays
@@ -52,7 +56,9 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
         ...prev,
       ]);
     } catch (err) {
-      setRetryError(err instanceof Error ? err.message : "Дахин оролдоход алдаа гарлаа");
+      setRetryError(
+        err instanceof Error ? err.message : "Дахин оролдоход алдаа гарлаа",
+      );
     }
   }
 
@@ -79,7 +85,9 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
         <p className="text-heading font-semibold text-text">Realify</p>
       </div>
 
-      {retryError && <p className="px-2 py-2 text-small text-danger lg:px-6">{retryError}</p>}
+      {retryError && (
+        <p className="px-2 py-2 text-small text-danger lg:px-6">{retryError}</p>
+      )}
 
       {models.length === 0 ? (
         <EmptyState
@@ -122,8 +130,22 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
               "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve) + var(--install-bar-reserve, 0px))",
           }}
         >
-          <div className="w-full lg:mx-auto lg:max-w-feed">
-            <MasonryGrid models={models} onRetry={handleRetry} onDelete={handleDelete} />
+          {/* lg:my-auto — vertical auto-margin centering, not
+              justify-center on the scroll container: justify-center has a
+              well-known bug where content taller than the container clips
+              its top (the centering offset goes negative, which
+              overflow-y-auto can't scroll up into). Auto margins collapse
+              to 0 the same case instead, so a full feed still scrolls
+              normally from the top — only a short feed (few models) gets
+              centered in the leftover space, instead of pinned to the top
+              with a wall of empty page below it (feedback: "хэт
+              хоосон/уйтгартай"). */}
+          <div className="w-full lg:mx-auto lg:my-auto lg:max-w-feed">
+            <MasonryGrid
+              models={models}
+              onRetry={handleRetry}
+              onDelete={handleDelete}
+            />
           </div>
         </div>
       )}

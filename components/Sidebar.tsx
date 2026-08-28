@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Zap } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/navItems";
+import { useCredits } from "@/hooks/useCredits";
 import { cn } from "@/lib/utils";
 
 export interface SidebarProps {
   hasActiveJob?: boolean;
+  /** Signed-out visitor on the public /dashboard showcase has no credits to show — omit to hide the bottom credits row entirely. */
+  userId?: string;
 }
 
 // Desktop-only (lg+) counterpart to BottomNav — a new breakpoint dimension
@@ -18,8 +22,11 @@ export interface SidebarProps {
 // desktop layout pass yet, and the reasoning — a bottom-docked AR CTA that
 // a nav would visually collide with — is content this page owns, not a
 // mobile-only concern that stops applying here).
-export function Sidebar({ hasActiveJob }: SidebarProps) {
+export function Sidebar({ hasActiveJob, userId }: SidebarProps) {
   const pathname = usePathname();
+  // Hooks can't be called conditionally — useCredits(userId ?? "") with a
+  // skip flag is the standard escape hatch, not a real fetch for "".
+  const { credits, loading } = useCredits(userId ?? "");
 
   if (pathname?.startsWith("/models/")) return null;
 
@@ -48,13 +55,42 @@ export function Sidebar({ hasActiveJob }: SidebarProps) {
             <span className="relative flex">
               <Icon className="size-5" />
               {isCreate && hasActiveJob && (
-                <span className="absolute -right-0.5 -top-0.5 size-1.5 bg-text" aria-hidden="true" />
+                <span
+                  className="absolute -right-0.5 -top-0.5 size-1.5 bg-text"
+                  aria-hidden="true"
+                />
               )}
             </span>
             {label}
           </Link>
         );
       })}
+
+      {/* Bottom credits row (2026-08-29) — the rail read as sparse/empty
+          with just 4 items in a full-height column (feedback: "хэт
+          хоосон/уйтгартай"); this both fills that space with something
+          real (not decorative filler) and gives credits/Buy-Credits a
+          persistent, always-visible home on desktop the way the mobile
+          Library header already has, instead of only surfacing there.
+          userId is absent for a signed-out visitor on the public
+          /dashboard showcase — nothing to show, so the row is omitted
+          rather than rendering a meaningless "0 кредит". */}
+      {userId && (
+        <div className="mt-auto border-t border-border-subtle pt-4">
+          <Link
+            href="/credits"
+            className="flex items-center justify-between rounded-md px-3 py-2.5 text-small text-text-muted hover:bg-surface-hover hover:text-text"
+          >
+            <span className="flex items-center gap-2 uppercase tracking-wide">
+              <Zap className="size-4" />
+              {loading ? "…" : `${credits ?? 0} кредит`}
+            </span>
+            <span className="uppercase tracking-wide underline underline-offset-2">
+              Нэмэх
+            </span>
+          </Link>
+        </div>
+      )}
     </nav>
   );
 }

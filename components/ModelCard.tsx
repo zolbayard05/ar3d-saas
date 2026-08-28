@@ -32,7 +32,8 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
   // stored output are untouched — this only changes what's displayed, not
   // whether the render pipeline runs or what's kept in R2/render_url.
   const thumbnailSrc = `/api/uploads/${model.source_image_key}`;
-  const generating = model.status === "pending" || model.status === "processing";
+  const generating =
+    model.status === "pending" || model.status === "processing";
 
   // Reserved up front from the same stored aspect ratio MasonryGrid.tsx
   // already uses to balance columns (migration 0012) — an <img> with no
@@ -55,7 +56,17 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
 
   const content = (
     <div>
-      <div className="relative overflow-hidden rounded-card bg-surface-hover" style={{ aspectRatio }}>
+      {/* border-border-subtle + shadow-card (2026-08-29) — previously just a
+          flat bg-surface-hover fill with nothing distinguishing it from the
+          near-black page behind it (rule 38's greyscale convention), which
+          read as depth-less/flat rather than deliberately minimal. Both
+          tokens already existed and are used elsewhere (components/ui/
+          Card.tsx, Dialog.tsx) — this is reusing them here, not inventing
+          anything new. */}
+      <div
+        className="relative overflow-hidden rounded-card border border-border-subtle bg-surface-hover shadow-card"
+        style={{ aspectRatio }}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={thumbnailSrc}
@@ -82,7 +93,9 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
               setImageLoaded(true);
               return;
             }
-            node.addEventListener("load", () => setImageLoaded(true), { once: true });
+            node.addEventListener("load", () => setImageLoaded(true), {
+              once: true,
+            });
           }}
           className={cn(
             "block size-full object-cover transition-opacity duration-300",
@@ -101,7 +114,11 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
                 which a continuously-rotating "R" wouldn't. */}
             <div className="absolute inset-0 flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon-192.png" alt="" className="size-12 animate-pulse rounded-md" />
+              <img
+                src="/icon-192.png"
+                alt=""
+                className="size-12 animate-pulse rounded-md"
+              />
             </div>
             {/* Thin indeterminate progress line — Tripo gives us start/complete
                 events, never a real percentage, so an animated-but-unspecific
@@ -113,12 +130,16 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
         )}
         {model.status === "failed" && (
           <div className="absolute inset-0 flex items-center justify-center bg-bg/70">
-            <p className="text-small uppercase tracking-wide text-text-muted">Үүсгэж чадсангүй</p>
+            <p className="text-small uppercase tracking-wide text-text-muted">
+              Үүсгэж чадсангүй
+            </p>
           </div>
         )}
         {dims && (
           <div className="absolute bottom-2 left-2 rounded-full bg-bg/80 px-2.5 py-1">
-            <p className="text-small uppercase tracking-wide text-text">{dims}</p>
+            <p className="text-small uppercase tracking-wide text-text">
+              {dims}
+            </p>
           </div>
         )}
       </div>
@@ -128,7 +149,9 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
           on-image chip above, not a second line here. */}
       <div className="flex flex-col gap-1 pt-2">
         <p className="text-body text-text">{model.title || "Нэргүй"}</p>
-        {model.status !== "ready" && <StatusLine model={model} onRetry={onRetry} onDelete={onDelete} />}
+        {model.status !== "ready" && (
+          <StatusLine model={model} onRetry={onRetry} onDelete={onDelete} />
+        )}
       </div>
     </div>
   );
@@ -156,7 +179,9 @@ function StatusLine({
   if (model.status === "failed") {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-small uppercase tracking-wide text-text-muted">Кредит буцаагдсан</p>
+        <p className="text-small uppercase tracking-wide text-text-muted">
+          Кредит буцаагдсан
+        </p>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -188,5 +213,9 @@ function StatusLine({
 
 function GeneratingLine({ createdAt }: { createdAt: string }) {
   const elapsed = useElapsedTime(createdAt);
-  return <p className="text-small uppercase tracking-wide text-text-muted">Үүсгэж байна · {elapsed}</p>;
+  return (
+    <p className="text-small uppercase tracking-wide text-text-muted">
+      Үүсгэж байна · {elapsed}
+    </p>
+  );
 }
