@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { isMobileUserAgent } from "@/lib/isMobileUserAgent";
 
 // Non-standard event — not in lib.dom.d.ts. Chrome/Edge/Android only.
 interface BeforeInstallPromptEvent extends Event {
@@ -15,6 +16,7 @@ const IOS_HINT_DISMISSED_KEY = "ar3d-ios-install-hint-dismissed";
 interface ClientDetection {
   standalone: boolean;
   isIOS: boolean;
+  isMobile: boolean;
   iosHintDismissed: boolean;
 }
 
@@ -41,6 +43,14 @@ function computeDetection(): ClientDetection {
   const next: ClientDetection = {
     standalone: isStandaloneDisplay(),
     isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent) && !("MSStream" in window),
+    // Reproduced live (2026-08-29): desktop Chrome fires beforeinstallprompt
+    // too, and without this check showAndroidBar would offer to "install"
+    // the app to a desktop visitor who — per lib/supabase/proxy.ts's device
+    // gate — would just land back on this same marketing landing after
+    // installing it. Same lib/isMobileUserAgent.ts the proxy gate uses, so
+    // this component and the gate can never disagree about what counts as
+    // a phone.
+    isMobile: isMobileUserAgent(navigator.userAgent),
     iosHintDismissed: window.localStorage.getItem(IOS_HINT_DISMISSED_KEY) === "1",
   };
   // Stable reference when nothing actually changed — useSyncExternalStore
@@ -50,6 +60,7 @@ function computeDetection(): ClientDetection {
     cachedDetection &&
     cachedDetection.standalone === next.standalone &&
     cachedDetection.isIOS === next.isIOS &&
+    cachedDetection.isMobile === next.isMobile &&
     cachedDetection.iosHintDismissed === next.iosHintDismissed
   ) {
     return cachedDetection;
@@ -61,7 +72,12 @@ function computeDetection(): ClientDetection {
 // Must be a stable reference, same rule as computeDetection's cache below —
 // a fresh literal on every call is exactly what React's own
 // "getServerSnapshot should be cached" warning is flagging.
-const SERVER_SNAPSHOT: ClientDetection = { standalone: false, isIOS: false, iosHintDismissed: true };
+const SERVER_SNAPSHOT: ClientDetection = {
+  standalone: false,
+  isIOS: false,
+  isMobile: false,
+  iosHintDismissed: true,
+};
 
 function getServerSnapshot(): ClientDetection {
   return SERVER_SNAPSHOT;
@@ -124,7 +140,7 @@ function setFeedBottomReserve(px: number) {
  *   every visit instead.
  */
 export function InstallPrompt() {
-  const { standalone, isIOS, iosHintDismissed } = useSyncExternalStore(
+  const { standalone, isIOS, isMobile, iosHintDismissed } = useSyncExternalStore(
     subscribeDetection,
     computeDetection,
     getServerSnapshot,
@@ -141,7 +157,7 @@ export function InstallPrompt() {
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
   }, []);
 
-  const showAndroidBar = !standalone && !!deferredPrompt;
+  const showAndroidBar = !standalone && isMobile && !!deferredPrompt;
   const showIosBar = !standalone && !deferredPrompt && isIOS && !iosHintDismissed;
 
   useEffect(() => {

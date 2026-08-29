@@ -1,5 +1,8 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/Button";
+import { DesktopLanding } from "@/components/DesktopLanding";
+import { isMobileUserAgent } from "@/lib/isMobileUserAgent";
 
 // CLAUDE.md rule 40: one job (understand + go to /login in ~3s), reusing
 // the login page's exact shell/button-width convention and the feed's
@@ -7,7 +10,15 @@ import { buttonVariants } from "@/components/ui/Button";
 // CTA goes to /login, not a public feed — /dashboard and /models stay
 // auth-gated (proxy.ts PROTECTED_PREFIXES); a public showcase or public
 // /models/[id] is a separate, later decision, not this screen's job.
-export default function Home() {
+//
+// Desktop branch (2026-08-29) — lib/supabase/proxy.ts's device gate
+// redirects every non-mobile-UA request for any other route to "/", so
+// this is the ONE place a desktop visitor ever lands. Mobile's own splash
+// below is untouched — same JSX it always was.
+export default async function Home() {
+  const userAgent = (await headers()).get("user-agent") ?? "";
+  if (!isMobileUserAgent(userAgent)) return <DesktopLanding />;
+
   return (
     <main className="flex min-h-dvh flex-col bg-bg p-6">
       <p className="text-body font-semibold text-text">Realify</p>
