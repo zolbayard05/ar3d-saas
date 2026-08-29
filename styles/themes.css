@@ -83,11 +83,17 @@
    * cards read as glass rather than a flat fill; --shadow-glow-ring is the
    * hover/focus state, a bright hairline ring plus a soft bloom.
    */
-  --color-glow-strong: rgb(255 255 255 / 0.16);
-  --color-glow-soft: rgb(255 255 255 / 0.07);
-  --color-glow-faint: rgb(255 255 255 / 0.035);
-  --color-glass-border: rgb(255 255 255 / 0.09);
-  --color-glass-border-hover: rgb(255 255 255 / 0.24);
+  /* Bumped 2026-08-29 (v2) — the original 0.03-0.16 range was tuned by eye
+   * in an isolated mockup and read as basically invisible against the
+   * app's real (often light/white-background) product photos once
+   * shipped — confirmed live on production (Buy Credits' corner glow was
+   * imperceptible at normal viewing distance). Raised across the board;
+   * still white-only, no hue. */
+  --color-glow-strong: rgb(255 255 255 / 0.28);
+  --color-glow-soft: rgb(255 255 255 / 0.14);
+  --color-glow-faint: rgb(255 255 255 / 0.07);
+  --color-glass-border: rgb(255 255 255 / 0.14);
+  --color-glass-border-hover: rgb(255 255 255 / 0.4);
   --shadow-glass-card: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.05);
   --shadow-glow-ring:
     0 0 0 1px var(--color-glass-border-hover),

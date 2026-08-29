@@ -105,7 +105,11 @@ export function BuyCredits() {
                   )}
                 />
                 <div className="relative flex items-start justify-between">
-                  <span className="flex items-center gap-1 rounded-full bg-accent-text/10 px-2 py-0.5 text-small text-text">
+                  {/* Was bg-accent-text/10 — near-black at 10% opacity on an
+                      already-dark card, functionally invisible. Glass pill
+                      (glow-soft fill + hairline border) so this badge is
+                      actually visible, matching the design proposal. */}
+                  <span className="flex items-center gap-1 rounded-full border border-glass-border bg-glow-soft px-2 py-0.5 text-small text-text">
                     <Zap className="size-3.5" />
                     {pack.credits}
                   </span>
