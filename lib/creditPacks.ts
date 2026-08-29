@@ -1,14 +1,11 @@
-// Placeholder catalogue — the real numbers are still an unmade business
-// decision (wire.mn merchant approval came through 2026-08-29, but the
-// per-transaction fee tier / payout schedule from the actual contract
-// hasn't been priced against yet). amountMnt here is a rough
-// per-credit-times-10 guess, NOT a quoted price — every card built from
-// this list must make that visibly clear (see components/BuyCredits.tsx's
-// "Тун удахгүй" note) rather than implying a real checkout is one tap away.
-// app/api/checkout/route.ts already reads `id` and `amountMnt` from here as
-// the real amount to charge once that UI note is lifted, so these IDs are
-// now load-bearing, not just display data — don't rename/remove one
-// without checking that route.
+// LIVE pricing (2026-08-29) — checkout is wired up (components/BuyCredits.tsx,
+// app/api/checkout/route.ts) and wire.mn merchant + operator activation are
+// both complete, so amountMnt here is what actually gets charged, not a
+// placeholder. The per-credit rate (1000₮/credit at pack-5, cheaper per
+// credit on the larger packs) was never independently priced against
+// wire.mn's actual per-transaction fee — revisit once real fee/payout data
+// is available. `id` is load-bearing (app/api/checkout/route.ts looks packs
+// up by it) — don't rename/remove one without checking that route.
 export interface CreditPack {
   id: string;
   credits: number;

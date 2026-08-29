@@ -1,19 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Zap } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/utils";
 import { CREDIT_PACKS } from "@/lib/creditPacks";
 
-// Reuses ModelDetail.tsx's exact h-12 back-arrow header bar (rule 40:
-// no new header pattern per screen). No checkout wiring yet — the
-// wire.mn integration is deliberately deferred (2026-08-28) until (a)
-// merchant approval comes back and (b) the real API is read directly
-// against a sandbox key, per this project's established pattern of not
-// building against unverified third-party API assumptions (see the
-// Tripo integration's own caveats). Every pack is disabled and labeled
-// "Тун удахгүй" so this reads as a real, if unfinished, screen — not a
-// dead end pretending to be live.
+// Reuses ModelDetail.tsx's exact h-12 back-arrow header bar (rule 40: no
+// new header pattern per screen).
 //
 // Bento-grid layout (2026-08-29, Pinterest research into current dark-UI
 // pricing patterns): the highlighted pack spans both columns as a larger
@@ -21,7 +16,47 @@ import { CREDIT_PACKS } from "@/lib/creditPacks";
 // instead of a uniform stacked list, still built entirely from existing
 // tokens (border-border-subtle, shadow-card, rounded-card) rather than
 // any new color/style.
+//
+// Live checkout (2026-08-29) — wire.mn merchant approval + operator
+// activation both completed, app/api/checkout/route.ts verified working
+// against the real API. amountMnt in lib/creditPacks.ts is what actually
+// gets charged now, not a placeholder — update that comment/these numbers
+// together if the pricing itself is still meant to change.
 export function BuyCredits() {
+  const [pendingPackId, setPendingPackId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleBuy(packId: string) {
+    setError(null);
+    setPendingPackId(packId);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packId, idempotencyKey: crypto.randomUUID() }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(
+          body.error ?? `Төлбөр эхлүүлэхэд алдаа гарлаа (${res.status})`,
+        );
+
+      // Full navigation, not a client-side route change — the destination
+      // is pay.wire.mn, a different origin entirely. .assign(), not a
+      // `window.location.href =` property write — the latter trips this
+      // project's react-hooks/immutability lint rule ("modifying a
+      // variable defined outside a component"), which reads a plain
+      // assignment as component-render-time state mutation even though
+      // this only ever runs inside an event handler, well after render.
+      window.location.assign(body.url);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Төлбөр эхлүүлэхэд алдаа гарлаа",
+      );
+      setPendingPackId(null);
+    }
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-12 shrink-0 items-center px-4 lg:mx-auto lg:w-full lg:max-w-xl lg:px-0">
@@ -39,46 +74,52 @@ export function BuyCredits() {
         <p className="text-small text-text-muted">
           1 кредит = 1 3D загвар (GLB + USDZ, AR-д бэлэн).
         </p>
-        <p className="text-small text-text-muted">
-          Төлбөрийн систем тун удахгүй нэмэгдэнэ. Доорх багцууд нь эцсийн үнэ
-          биш, зөвхөн жишээ.
-        </p>
 
         <div className="grid grid-cols-2 gap-3">
-          {CREDIT_PACKS.map((pack) => (
-            <div
-              key={pack.id}
-              className={cn(
-                "flex flex-col justify-between gap-4 rounded-card border border-border-subtle bg-surface-hover p-5 opacity-60 shadow-card",
-                pack.highlight ? "col-span-2" : "col-span-1",
-              )}
-            >
-              <div className="flex items-start justify-between">
-                <span className="flex items-center gap-1 rounded-full bg-accent-text/10 px-2 py-0.5 text-small text-text">
-                  <Zap className="size-3.5" />
-                  {pack.credits}
-                </span>
-                {pack.highlight && (
-                  <span className="text-small uppercase tracking-wide text-text-muted">
-                    Түгээмэл
-                  </span>
-                )}
-              </div>
-              <span
+          {CREDIT_PACKS.map((pack) => {
+            const pending = pendingPackId === pack.id;
+            const disabled = pendingPackId !== null;
+
+            return (
+              <button
+                key={pack.id}
+                type="button"
+                onClick={() => handleBuy(pack.id)}
+                disabled={disabled}
                 className={cn(
-                  "font-medium text-text",
-                  pack.highlight ? "text-heading" : "text-body",
+                  "flex flex-col justify-between gap-4 rounded-card border border-border-subtle bg-surface-hover p-5 text-left shadow-card transition-opacity hover:opacity-90 disabled:opacity-40",
+                  pack.highlight ? "col-span-2" : "col-span-1",
                 )}
               >
-                {pack.amountMnt.toLocaleString("mn-MN")}₮
-              </span>
-            </div>
-          ))}
+                <div className="flex items-start justify-between">
+                  <span className="flex items-center gap-1 rounded-full bg-accent-text/10 px-2 py-0.5 text-small text-text">
+                    <Zap className="size-3.5" />
+                    {pack.credits}
+                  </span>
+                  {pack.highlight && (
+                    <span className="text-small uppercase tracking-wide text-text-muted">
+                      Түгээмэл
+                    </span>
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "flex items-center gap-2 font-medium text-text",
+                    pack.highlight ? "text-heading" : "text-body",
+                  )}
+                >
+                  {pending ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    `${pack.amountMnt.toLocaleString("mn-MN")}₮`
+                  )}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <p className="text-center text-small uppercase tracking-wide text-text-muted">
-          Тун удахгүй
-        </p>
+        {error && <p className="text-small text-danger">{error}</p>}
       </div>
     </div>
   );
