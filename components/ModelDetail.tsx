@@ -338,10 +338,15 @@ export function ModelDetail({
                   redesign) — same animate-breathe + radial-ellipse idiom as
                   ARViewer.tsx's own presence ring, reused here rather than a
                   new pattern, just now framing the button that actually
-                  launches AR instead of the viewer stage. */}
+                  launches AR instead of the viewer stage. Sized bigger than
+                  the button on every side (button is h-14/w-full solid
+                  white — a same-size glow sits almost entirely hidden
+                  behind it, confirmed live: only a sliver of blur escaped
+                  past the opaque edges) so the blur has real empty space to
+                  bloom into and actually reads as a halo. */}
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-8 top-2 h-14 animate-breathe rounded-full opacity-30 blur-xl lg:top-6"
+                className="pointer-events-none absolute -inset-x-4 -top-4 h-24 animate-breathe rounded-full opacity-40 blur-2xl lg:-top-2"
                 style={{
                   background:
                     "radial-gradient(ellipse at center, var(--color-glow-strong) 0%, transparent 70%)",
