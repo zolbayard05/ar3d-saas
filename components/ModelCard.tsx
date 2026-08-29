@@ -21,7 +21,14 @@ export interface ModelCardProps {
 // (dashboard feed, library). Extracted out of components/HomeFeed.tsx so
 // library reuses this directly rather than a parallel copy.
 export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
-  const model = useModelRealtime(initialModel.id, initialModel) ?? initialModel;
+  // Only a genuinely pending/processing card needs a live channel — see
+  // useModelRealtime's own comment. A ready/failed card (the overwhelming
+  // majority in a populated feed) gets a static snapshot with zero
+  // WebSocket overhead, since its fields can never change again.
+  const live =
+    initialModel.status === "pending" || initialModel.status === "processing";
+  const model =
+    useModelRealtime(initialModel.id, initialModel, { live }) ?? initialModel;
   const [imageLoaded, setImageLoaded] = useState(false);
 
   // Always the source photo, never render_url: the studio render sits on
@@ -137,7 +144,14 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
           </div>
         )}
         {dims && (
-          <div className="absolute bottom-2 left-2 rounded-full border border-glass-border bg-bg/60 px-2.5 py-1 backdrop-blur-md">
+          // backdrop-blur-md removed (2026-08-29) — backdrop-filter forces
+          // a real-time blur of everything behind each instance; with a
+          // few dozen cards in an unvirtualized masonry grid (see
+          // MasonryGrid.tsx), that's a few dozen simultaneous backdrop
+          // composites, a well-known mobile scroll-jank cause. bg-bg/80 is
+          // opaque enough on its own that the blur wasn't buying much
+          // legibility anyway.
+          <div className="absolute bottom-2 left-2 rounded-full border border-glass-border bg-bg/80 px-2.5 py-1">
             <p className="text-small uppercase tracking-wide text-text">
               {dims}
             </p>

@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { createClient } from "@/lib/supabase/server";
@@ -69,11 +70,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ key
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const bytes = await object.Body.transformToByteArray();
+  // Streamed (2026-08-29), not buffered — `transformToByteArray()`
+  // previously read the WHOLE object into memory before this function sent
+  // a single byte back, adding full-object latency (and, on a busy feed
+  // fetching a few dozen thumbnails at once, real memory pressure) to
+  // every one of this route's calls. object.Body is a Node Readable in
+  // this route's (default Node.js) runtime — Readable.toWeb() hands it
+  // straight to NextResponse, which starts forwarding bytes to the client
+  // as R2 delivers them instead of waiting for the full download first.
+  const stream = Readable.toWeb(object.Body as Readable) as ReadableStream;
 
-  return new NextResponse(Buffer.from(bytes), {
+  return new NextResponse(stream, {
     headers: {
       "Content-Type": object.ContentType || "application/octet-stream",
+      ...(object.ContentLength != null
+        ? { "Content-Length": String(object.ContentLength) }
+        : {}),
       // `private` — never cache-shared the way models/ is (rule 3 is about
       // the public models bucket; this is the opposite) — but NOT no-store:
       // every request here was a fresh getUser() + DB check + R2 read with
