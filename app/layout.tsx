@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { BfcacheReload } from "@/components/BfcacheReload";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
@@ -72,6 +73,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           each sized with their own min-h-dvh main, untouched by this. */}
       <body className="flex flex-col">
         <ServiceWorkerRegister />
+        <BfcacheReload />
         <InstallPrompt />
         {children}
       </body>
