@@ -113,6 +113,26 @@ export async function createPaymentIntent(params: {
   });
 }
 
+/**
+ * Fallback confirmation path (app/api/checkout/confirm/route.ts) — used
+ * because the webhook.mn webhook endpoint got stuck `pending` (created,
+ * updated, and URL-toggled four times over 10+ minutes; zero inbound
+ * requests ever showed up in Vercel's logs, so wire.mn itself never sent
+ * the verification ping — not something fixable from this side). Not just
+ * a workaround: docs.wire.mn/docs/guides/webhooks says outright that the
+ * webhook is supplementary — "Wire өөрөө оператороос статусыг шалгаж
+ * PaymentIntent-ээ шинэчилдэг тул төлбөр зөв бүртгэгдэнэ" (Wire itself
+ * polls the operator and keeps the PaymentIntent's status current
+ * regardless of whether any webhook is even configured) — so a single GET
+ * here, on the user's own return from checkout, is a real, documented way
+ * to confirm a payment, not a hack around a broken feature.
+ */
+export async function getPaymentIntent(id: string): Promise<WirePaymentIntent> {
+  return wireFetch<WirePaymentIntent>(`/payment_intents/${id}`, {
+    method: "GET",
+  });
+}
+
 export interface WireCheckoutSession {
   id: string;
   object: "checkout.session";

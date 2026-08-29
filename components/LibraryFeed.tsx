@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 import { MasonryGrid } from "@/components/MasonryGrid";
 import { SignOutButton } from "@/components/SignOutButton";
 import { useCredits } from "@/hooks/useCredits";
+import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
 
 type ModelRow = Database["public"]["Tables"]["models"]["Row"];
@@ -29,6 +31,58 @@ export function LibraryFeed({
   const [models, setModels] = useState(initialModels);
   const [retryError, setRetryError] = useState<string | null>(null);
   const { credits, loading } = useCredits(userId, initialCredits);
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const purchaseId = searchParams.get("purchase");
+  const [purchaseStatus, setPurchaseStatus] = useState<{
+    kind: "success" | "pending" | "error";
+    message: string;
+  } | null>(null);
+
+  // Fallback confirmation for a wire.mn purchase (app/api/checkout/confirm)
+  // — see lib/wire.ts's getPaymentIntent comment for why this exists at
+  // all (the webhook endpoint got stuck pending and wire.mn never sent it
+  // a single verification ping, confirmed via Vercel's own logs). Runs
+  // once per purchaseId: router.replace strips the query param immediately
+  // so a refresh doesn't re-trigger it, and complete_credit_purchase's own
+  // idempotency guard makes a genuine double-call harmless regardless.
+  // Credits themselves update via useCredits' existing Realtime
+  // subscription once the RPC lands — no need to also update `credits`
+  // locally here.
+  useEffect(() => {
+    if (!purchaseId) return;
+    router.replace("/library");
+
+    fetch("/api/checkout/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ purchaseId }),
+    })
+      .then((res) => res.json())
+      .then((body) => {
+        if (body.status === "completed") {
+          setPurchaseStatus({
+            kind: "success",
+            message: "Кредит амжилттай нэмэгдлээ!",
+          });
+        } else if (body.error) {
+          setPurchaseStatus({ kind: "error", message: body.error });
+        } else {
+          setPurchaseStatus({
+            kind: "pending",
+            message:
+              "Төлбөр боловсруулагдаж байна — түр хүлээгээд хуудсаа шинэчилнэ үү.",
+          });
+        }
+      })
+      .catch(() =>
+        setPurchaseStatus({
+          kind: "error",
+          message: "Төлбөрийг баталгаажуулахад алдаа гарлаа",
+        }),
+      );
+  }, [purchaseId, router]);
 
   async function handleRetry(model: ModelRow) {
     setRetryError(null);
@@ -109,6 +163,18 @@ export function LibraryFeed({
           </Link>
         </div>
       </div>
+
+      {purchaseStatus && (
+        <p
+          className={cn("px-2 py-2 text-small lg:px-6", {
+            "text-success": purchaseStatus.kind === "success",
+            "text-danger": purchaseStatus.kind === "error",
+            "text-text-muted": purchaseStatus.kind === "pending",
+          })}
+        >
+          {purchaseStatus.message}
+        </p>
+      )}
 
       {retryError && (
         <p className="px-2 py-2 text-small text-danger lg:px-6">{retryError}</p>

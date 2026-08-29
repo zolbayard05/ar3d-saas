@@ -124,7 +124,11 @@ export async function POST(request: Request) {
 
     const session = await createCheckoutSession({
       paymentIntentId: paymentIntent.id,
-      successUrl: `${origin}/library?purchase=success`,
+      // ?purchase=<id>, not a bare "success" flag — LibraryFeed.tsx needs
+      // the actual purchaseId to call app/api/checkout/confirm/route.ts's
+      // fallback confirmation on return (see lib/wire.ts's
+      // getPaymentIntent comment for why that fallback exists at all).
+      successUrl: `${origin}/library?purchase=${purchaseId}`,
       cancelUrl: `${origin}/credits`,
       idempotencyKey: `cs-${idempotencyKey}`,
     });
