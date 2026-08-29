@@ -32,11 +32,17 @@ export function getWireWebhookSecret(): string {
   return requiredEnv("WIRE_WEBHOOK_SECRET");
 }
 
-// "50000 гэдэг нь 500.00 ₮" (docs.wire.mn/docs/quickstart) — amounts are
-// always integer minor units, ratio 100 to MNT major units.
-export function mntToMinorUnits(mnt: number): number {
-  return Math.round(mnt * 100);
-}
+// CORRECTED 2026-08-29: docs.wire.mn/docs/quickstart states "50000 гэдэг нь
+// 500.00 ₮" (minor units, ratio 100:1) — but that does NOT match live
+// behavior. Verified directly against a real PaymentIntent created through
+// this app (pi_rg7avlb2lf3lxuk3xsywugzhni, a 5,000₮ pack): we sent
+// amount=500000 per the documented 100:1 ratio, GET /payment_intents/{id}
+// echoed back amount=500000 unchanged, and wire.mn's own hosted checkout
+// page displayed "500,000₮" — i.e. the raw value, un-divided. Same 100x
+// mismatch reproduced identically on two other packs (12000->1,200,000 and
+// 28000->2,800,000), ruling out a one-off fluke. The `amount` field is
+// whole MNT, not minor units, regardless of what the docs page says — send
+// it as-is.
 
 interface WireErrorBody {
   error?: {
@@ -95,7 +101,7 @@ export interface WirePaymentIntent {
  * docs.wire.mn/docs/concepts/test-mode.
  */
 export async function createPaymentIntent(params: {
-  amountMinorUnits: number;
+  amountMnt: number;
   description?: string;
   metadata?: Record<string, string>;
   idempotencyKey: string;
@@ -104,7 +110,7 @@ export async function createPaymentIntent(params: {
     method: "POST",
     idempotencyKey: params.idempotencyKey,
     body: {
-      amount: params.amountMinorUnits,
+      amount: params.amountMnt,
       currency: "MNT",
       description: params.description,
       automatic_operator: true,

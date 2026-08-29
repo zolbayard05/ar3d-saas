@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  createPaymentIntent,
-  createCheckoutSession,
-  mntToMinorUnits,
-} from "@/lib/wire";
+import { createPaymentIntent, createCheckoutSession } from "@/lib/wire";
 import { CREDIT_PACKS } from "@/lib/creditPacks";
 
 const UUID_RE =
@@ -112,7 +108,7 @@ export async function POST(request: Request) {
 
   try {
     const paymentIntent = await createPaymentIntent({
-      amountMinorUnits: mntToMinorUnits(pack.amountMnt),
+      amountMnt: pack.amountMnt,
       description: `${pack.credits} кредит — Realify`,
       metadata: { credit_purchase_id: purchaseId, user_id: user.id },
       // Namespaced under the purchase's own key — a distinct wire.mn
