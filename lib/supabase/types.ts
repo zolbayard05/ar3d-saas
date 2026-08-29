@@ -84,6 +84,34 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["models"]["Insert"]>;
         Relationships: [];
       };
+      credit_purchases: {
+        Row: {
+          id: string;
+          user_id: string;
+          credits: number;
+          amount_mnt: number;
+          status: string;
+          provider: string;
+          provider_payment_id: string | null;
+          idempotency_key: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          credits: number;
+          amount_mnt: number;
+          status?: string;
+          provider?: string;
+          provider_payment_id?: string | null;
+          idempotency_key: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["credit_purchases"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -93,6 +121,10 @@ export interface Database {
       };
       refund_credit: {
         Args: { model_id: string; failure_reason?: string | null };
+        Returns: boolean;
+      };
+      complete_credit_purchase: {
+        Args: { purchase_id: string; payment_id?: string | null };
         Returns: boolean;
       };
     };
