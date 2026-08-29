@@ -329,15 +329,28 @@ export function ModelDetail({
               sitting directly underneath the banner instead. 1rem matches
               the previous flat pb-4 baseline when no banner is up. */}
             <div
-              className="mt-auto flex flex-col gap-2 px-4 pt-2 lg:px-0 lg:pt-6"
+              className="relative mt-auto flex flex-col gap-2 px-4 pt-2 lg:px-0 lg:pt-6"
               style={{
                 paddingBottom: "calc(1rem + var(--install-bar-reserve, 0px))",
               }}
             >
+              {/* Breathing glow behind the AR CTA (2026-08-29, glow/glass
+                  redesign) — same animate-breathe + radial-ellipse idiom as
+                  ARViewer.tsx's own presence ring, reused here rather than a
+                  new pattern, just now framing the button that actually
+                  launches AR instead of the viewer stage. */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-8 top-2 h-14 animate-breathe rounded-full opacity-30 blur-xl lg:top-6"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at center, var(--color-glow-strong) 0%, transparent 70%)",
+                }}
+              />
               <button
                 type="button"
                 onClick={() => arViewerRef.current?.activateAR()}
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover"
+                className="relative flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover"
               >
                 <Box className="size-5" />
                 Өрөөндөө байрлуулах

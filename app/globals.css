@@ -35,6 +35,12 @@
   --color-focus-ring: var(--color-focus-ring);
   --color-nav-fill: var(--color-nav-fill);
 
+  --color-glow-strong: var(--color-glow-strong);
+  --color-glow-soft: var(--color-glow-soft);
+  --color-glow-faint: var(--color-glow-faint);
+  --color-glass-border: var(--color-glass-border);
+  --color-glass-border-hover: var(--color-glass-border-hover);
+
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
@@ -45,6 +51,8 @@
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
   --shadow-card: var(--shadow-card);
+  --shadow-glass-card: var(--shadow-glass-card);
+  --shadow-glow-ring: var(--shadow-glow-ring);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);

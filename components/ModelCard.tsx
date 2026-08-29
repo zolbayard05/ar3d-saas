@@ -56,15 +56,16 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
 
   const content = (
     <div>
-      {/* border-border-subtle + shadow-card (2026-08-29) — previously just a
-          flat bg-surface-hover fill with nothing distinguishing it from the
-          near-black page behind it (rule 38's greyscale convention), which
-          read as depth-less/flat rather than deliberately minimal. Both
-          tokens already existed and are used elsewhere (components/ui/
-          Card.tsx, Dialog.tsx) — this is reusing them here, not inventing
-          anything new. */}
+      {/* border-glass-border + shadow-glass-card (2026-08-29, glow/glass
+          redesign — see the published design proposal): a glass hairline
+          border plus an inset top highlight instead of the previous flat
+          border-border-subtle fill, so the card reads as a lit surface
+          rather than a flat block. group-hover/group-focus-visible only
+          matter for ready models (wrapped in a Link with the "group" class
+          below) — a non-ready card has nothing to hover into, so it just
+          never triggers those variants. */}
       <div
-        className="relative overflow-hidden rounded-card border border-border-subtle bg-surface-hover shadow-card"
+        className="relative overflow-hidden rounded-card border border-glass-border bg-surface-hover shadow-glass-card transition-shadow duration-300 group-hover:border-glass-border-hover group-hover:shadow-glow-ring group-focus-visible:border-glass-border-hover group-focus-visible:shadow-glow-ring"
         style={{ aspectRatio }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -136,7 +137,7 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
           </div>
         )}
         {dims && (
-          <div className="absolute bottom-2 left-2 rounded-full bg-bg/80 px-2.5 py-1">
+          <div className="absolute bottom-2 left-2 rounded-full border border-glass-border bg-bg/60 px-2.5 py-1 backdrop-blur-md">
             <p className="text-small uppercase tracking-wide text-text">
               {dims}
             </p>
@@ -159,7 +160,7 @@ export function ModelCard({ initialModel, onRetry, onDelete }: ModelCardProps) {
   if (model.status !== "ready") return content;
 
   return (
-    <Link href={`/models/${model.id}`} className="block">
+    <Link href={`/models/${model.id}`} className="group block">
       {content}
     </Link>
   );

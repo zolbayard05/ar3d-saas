@@ -87,11 +87,24 @@ export function BuyCredits() {
                 onClick={() => handleBuy(pack.id)}
                 disabled={disabled}
                 className={cn(
-                  "flex flex-col justify-between gap-4 rounded-card border border-border-subtle bg-surface-hover p-5 text-left shadow-card transition-opacity hover:opacity-90 disabled:opacity-40",
+                  "relative flex flex-col justify-between gap-4 overflow-hidden rounded-card border border-glass-border bg-surface-hover p-5 text-left shadow-glass-card transition-opacity hover:opacity-90 disabled:opacity-40",
                   pack.highlight ? "col-span-2" : "col-span-1",
                 )}
               >
-                <div className="flex items-start justify-between">
+                {/* Corner glow (2026-08-29, glow/glass redesign) — a very
+                    faint white bloom bleeding from one corner, brighter on
+                    the highlighted pack, so the tile reads as a lit
+                    surface rather than a flat block. Still no accent hue —
+                    bg-glow-soft/bg-glow-faint are pure white at low
+                    opacity, same rule --color-accent already established. */}
+                <div
+                  aria-hidden="true"
+                  className={cn(
+                    "pointer-events-none absolute -top-10 -right-8 size-32 rounded-full blur-2xl",
+                    pack.highlight ? "bg-glow-soft" : "bg-glow-faint",
+                  )}
+                />
+                <div className="relative flex items-start justify-between">
                   <span className="flex items-center gap-1 rounded-full bg-accent-text/10 px-2 py-0.5 text-small text-text">
                     <Zap className="size-3.5" />
                     {pack.credits}
@@ -104,7 +117,7 @@ export function BuyCredits() {
                 </div>
                 <span
                   className={cn(
-                    "flex items-center gap-2 font-medium text-text",
+                    "relative flex items-center gap-2 font-medium text-text",
                     pack.highlight ? "text-heading" : "text-body",
                   )}
                 >

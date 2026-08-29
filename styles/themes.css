@@ -73,4 +73,24 @@
   --color-nav-fill: oklch(0.2264 0 0);
 
   --shadow-color: 0 0% 0%;
+
+  /* Glow/glass layer (2026-08-29, Pinterest-informed redesign — see the
+   * published design proposal). Deliberately hue-free, same "no accent
+   * color, only white" rule --color-accent's comment already establishes:
+   * a card/button reads as a lit, translucent surface through opacity and
+   * blur alone, never a color shift. --shadow-glass-card extends
+   * --shadow-card (styles/tokens.css) with a soft inset top highlight so
+   * cards read as glass rather than a flat fill; --shadow-glow-ring is the
+   * hover/focus state, a bright hairline ring plus a soft bloom.
+   */
+  --color-glow-strong: rgb(255 255 255 / 0.16);
+  --color-glow-soft: rgb(255 255 255 / 0.07);
+  --color-glow-faint: rgb(255 255 255 / 0.035);
+  --color-glass-border: rgb(255 255 255 / 0.09);
+  --color-glass-border-hover: rgb(255 255 255 / 0.24);
+  --shadow-glass-card: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --shadow-glow-ring:
+    0 0 0 1px var(--color-glass-border-hover),
+    0 8px 28px -8px var(--color-glow-strong),
+    inset 0 1px 0 rgb(255 255 255 / 0.09);
 }
