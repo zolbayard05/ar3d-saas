@@ -112,10 +112,38 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["credit_purchases"]["Insert"]>;
         Relationships: [];
       };
+      api_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          token_hash: string;
+          token_last4: string;
+          label: string;
+          created_at: string;
+          last_used_at: string | null;
+          revoked_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          token_hash: string;
+          token_last4: string;
+          label?: string;
+          created_at?: string;
+          last_used_at?: string | null;
+          revoked_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["api_tokens"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
       consume_credit: {
+        Args: { uid: string };
+        Returns: boolean;
+      };
+      consume_credit_service: {
         Args: { uid: string };
         Returns: boolean;
       };

@@ -11,7 +11,7 @@ import type { Database } from "@/lib/supabase/types";
 // check, never by proxy itself (a real, if inert, gap: proxy is UX-only per
 // rule 30, but "gated" should mean gated at every layer that claims to,
 // this file included).
-const PROTECTED_PREFIXES = ["/library", "/create", "/models", "/credits"];
+const PROTECTED_PREFIXES = ["/library", "/create", "/models", "/credits", "/settings"];
 const AUTH_PAGES = ["/login"];
 
 // Shared model links (QR codes, "send to a friend") must open for a
@@ -94,11 +94,19 @@ export async function updateSession(request: NextRequest) {
   const isSubResourceRequest = fetchDest !== null && fetchDest !== "document";
 
   const userAgent = request.headers.get("user-agent") ?? "";
+  // /settings is exempt too (2026-08-31) — it's where a desktop visitor
+  // generates the personal access token the Chrome extension authenticates
+  // with (app/api/settings/api-token/route.ts). The extension itself is a
+  // desktop-only tool (right-click a product image while browsing on
+  // desktop Chrome), so unlike the rest of the app there genuinely is
+  // something for a desktop visitor to do here — this doesn't reopen
+  // dashboard/library/create/credits, which stay gated.
   const isExemptFromDeviceGate =
     isSubResourceRequest ||
     pathname === "/" ||
     pathname.startsWith("/auth/") ||
-    pathname.startsWith("/api/");
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/settings");
 
   if (!isMobileUserAgent(userAgent) && !isExemptFromDeviceGate) {
     const url = request.nextUrl.clone();

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap } from "lucide-react";
+import { Settings, Zap } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/navItems";
 import { useCredits } from "@/hooks/useCredits";
 import { cn } from "@/lib/utils";
@@ -88,6 +88,14 @@ export function Sidebar({ hasActiveJob, userId }: SidebarProps) {
             <span className="uppercase tracking-wide underline underline-offset-2">
               Нэмэх
             </span>
+          </Link>
+          <Link
+            href="/settings"
+            aria-current={pathname === "/settings" ? "page" : undefined}
+            className="mt-1 flex items-center gap-2 rounded-md px-3 py-2.5 text-small uppercase tracking-wide text-text-muted hover:bg-surface-hover hover:text-text"
+          >
+            <Settings className="size-4" />
+            Тохиргоо
           </Link>
         </div>
       )}
