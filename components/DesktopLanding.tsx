@@ -1,6 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
-import { DesktopQrCard } from "@/components/DesktopQrCard";
-import { DesktopLandingViewerLoader as DesktopLandingViewer } from "@/components/DesktopLandingViewerLoader";
+import { DesktopHeroTumble } from "@/components/DesktopHeroTumble";
+import { DesktopIntroSection } from "@/components/DesktopIntroSection";
+import { DesktopProcessSection } from "@/components/DesktopProcessSection";
+import { DesktopCategoriesSection } from "@/components/DesktopCategoriesSection";
+import { DesktopBentoSection } from "@/components/DesktopBentoSection";
+import { DesktopFinalCta } from "@/components/DesktopFinalCta";
 
 /**
  * Desktop's entire experience (app/page.tsx branches here for any non-mobile
@@ -11,75 +14,73 @@ import { DesktopLandingViewerLoader as DesktopLandingViewer } from "@/components
  * right in the hero section so visitors see it immediately, no scrolling
  * required").
  *
- * Same query app/(app)/dashboard/page.tsx already runs (is_showcase=true,
- * ready) — the most recent showcase row is the hero; the next few become
- * the supporting strip. No new "is_hero" flag for now — a future
- * refinement, not required to ship this.
+ * The mockup (realify-landing-v3.html) is now cloned 1:1, colors and models
+ * included — not adapted to the app's own dark/no-accent-hue tokens
+ * anymore (that adaptation was reverted; CLAUDE.md's now-deleted Design
+ * system rules used to require it). Every landing color lives under the
+ * --color-landing-* namespace (app/globals.css) so it never touches the
+ * shared tokens the rest of the product still uses.
+ *
+ * The mockup used two specific real models throughout — a black tufted
+ * leather armchair everywhere except the process section, and a white
+ * boucle sofa (its own photo *and* its own 3D result) only in the process
+ * section — not any row from the app's own `models` table (an earlier
+ * pass here wired up the DB's existing "Wooden Dining Chair"/"Modern
+ * Wooden Sofa" showcase rows by title-guessing; completely different,
+ * unrelated furniture, corrected). These two were never run through the
+ * real generate pipeline at all — they're marketing-only assets, not user
+ * content — so they're not `models` rows or GLB either: `objUrl`s the
+ * raw OBJ + diffuse PNG the mockup itself renders (`public/icons/mockup/`,
+ * extracted from `realify-landing-v3.html`'s `objSrc`/`texDiffuseB64` and
+ * `sofaObjSrc`/`sofaTexDiffuseB64`), rendered by `DesktopMockupObject`
+ * with the mockup's own Three.js recipe (see that file for why: a GLB/
+ * model-viewer conversion of the exact same geometry+texture kept coming
+ * out visibly aliased in a way the mockup's own render never was).
  */
+
 export async function DesktopLanding() {
-  const supabase = await createClient();
-  const { data: models } = await supabase
-    .from("models")
-    .select("*")
-    .eq("status", "ready")
-    .eq("is_showcase", true)
-    .order("created_at", { ascending: false })
-    .limit(5);
-
-  const [hero, ...rest] = models ?? [];
-
   return (
-    <main className="flex min-h-dvh flex-col bg-bg">
-      <div className="flex shrink-0 items-center gap-2 px-6 pt-6 lg:px-12">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon-192.png" alt="" className="size-9 rounded-md" />
-        <p className="text-heading font-semibold text-text">Realify</p>
-      </div>
-
-      <div className="mx-auto flex w-full max-w-feed flex-1 flex-col items-center justify-center gap-12 px-6 py-16 lg:flex-row lg:gap-20 lg:px-12">
-        <div className="flex w-full max-w-md flex-col items-center gap-6 text-center lg:items-start lg:text-left">
-          <h1 className="text-display font-semibold text-text text-balance">
-            Зургаа өрөөндөө байрлуулж болох зүйл болгоорой.
-          </h1>
-          <p className="text-body text-text-muted">
-            Realify нэг зурганаас бодит хэмжээтэй 3D model үүсгэдэг —
-            дараа нь өөрийн утсаараа AR-аар өрөөндөө шууд байрлуулж
-            үзнэ. Энэ туршлага зөвхөн утсан дээр л боломжтой тул QR
-            кодыг уншуулаарай.
-          </p>
-          <DesktopQrCard />
+    <main className="relative flex min-h-dvh flex-col bg-landing-bg">
+      {/* Fixed, mix-blend-difference nav with a right-side AR hint — the
+          mockup's exact nav treatment. */}
+      <nav className="fixed inset-x-0 top-0 z-50 mix-blend-difference flex items-center justify-between px-6 py-5 lg:px-12">
+        <div className="flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-192.png" alt="" className="size-6 rounded-md" />
+          <p className="text-body font-bold uppercase tracking-wide text-landing-text">Realify</p>
         </div>
+        <p className="text-small uppercase tracking-wide text-landing-text">
+          Утсандаа нээж AR-аар үзээрэй →
+        </p>
+      </nav>
 
-        <div className="w-full max-w-md lg:max-w-lg">
-          {hero ? (
-            <DesktopLandingViewer
-              glbKey={hero.glb_url as string}
-              alt={hero.title || undefined}
-              className="aspect-square! h-auto! w-full rounded-card! overflow-hidden!"
-            />
-          ) : (
-            <div className="aspect-square w-full rounded-card bg-surface-hover" />
-          )}
-        </div>
-      </div>
+      {/* Page-wide film grain (mockup's `.grain`) — the one texture that
+          separates a "premium" flat-dark UI from a plain one per the
+          mockup's own research notes. Achromatic SVG turbulence, fixed,
+          very low opacity — no accent hue introduced. Painted after the nav
+          (same z-50, later in DOM wins the tie) so it sits above it, same
+          as the mockup's higher z-index — z-60 isn't a real Tailwind scale
+          step, so stacking order does the same job instead of an arbitrary
+          value. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-50 opacity-5 mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        }}
+      />
 
-      {rest.length > 0 && (
-        <div className="mx-auto flex w-full max-w-feed flex-wrap justify-center gap-3 px-6 pb-16 lg:justify-start lg:px-12">
-          {rest.map((model) => (
-            <div
-              key={model.id}
-              className="size-24 overflow-hidden rounded-card border border-glass-border bg-surface-hover lg:size-28"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/api/uploads/${model.source_image_key}`}
-                alt={model.title || ""}
-                className="size-full object-cover"
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <DesktopHeroTumble />
+
+      <DesktopIntroSection />
+      <DesktopProcessSection
+        sourceImageSrc="/icons/mockup/sofa_photo.png"
+        title="White Boucle Sofa"
+      />
+      <DesktopCategoriesSection />
+      <DesktopBentoSection />
+      <DesktopFinalCta />
     </main>
   );
 }
