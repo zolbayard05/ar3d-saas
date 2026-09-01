@@ -22,5 +22,5 @@
     "service_worker": "background.js"
   },
   "permissions": ["contextMenus", "storage", "alarms", "notifications"],
-  "host_permissions": ["http://localhost:3000/*", "http://*/*", "https://*/*"]
+  "host_permissions": ["http://*/*", "https://*/*"]
 }

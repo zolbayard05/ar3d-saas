@@ -1,7 +1,10 @@
 // No framework, no build step — matches how the rest of this extension is
 // plain script files. One small state machine rendered into #app.
 
-const ALLOWED_IMAGE_TYPES = { "image/jpeg": true, "image/png": true, "image/webp": true };
+// guessContentType/hasKnownUnsupportedExtension/MAX_UPLOAD_BYTES live in
+// lib.js (loaded before this file in popup.html) — split out purely so
+// they're unit-testable (extension/lib.test.mjs) without a DOM/chrome.*
+// mock; nothing here should redefine them.
 const POLL_INTERVAL_MS = 2500;
 const MAX_POLL_MS = 3 * 60 * 1000; // generation is documented as 30-100s; give real headroom before giving up
 
@@ -174,6 +177,13 @@ const VIEWS = {
     return el("div", { class: "card" }, [
       frame,
       el("button", { onclick: () => void startGeneration(), text: "3D болгох" }),
+      // CLAUDE.md rule 20's upload-quality guidance (single clear subject,
+      // no heavy shadow/blur) only ever lived in the main app's upload
+      // screen before this — right-clicking an arbitrary web photo skips
+      // that screen entirely, so this is the one place left to say it,
+      // even though there's no way here to preview/crop before spending
+      // the credit the way the app's own capture flow allows.
+      el("p", { style: "font-size: 11.5px;", text: "Хамгийн сайн үр дүнд: тод, ганц объект дүрсэлсэн, бүдэг биш зураг сонго." }),
       el("p", { style: "font-size: 11.5px;", text: "1 кредит зарцуулна" }),
       el("button", { class: "link", onclick: forgetToken, text: "Токен солих" }),
     ]);
@@ -245,15 +255,6 @@ async function resetToIdle() {
 
 // ------------------------------------------------------------- generate
 
-function guessContentType(blob, srcUrl) {
-  if (ALLOWED_IMAGE_TYPES[blob.type]) return blob.type;
-  const ext = (srcUrl.split("?")[0].split(".").pop() || "").toLowerCase();
-  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  return null;
-}
-
 function readImageDimensions(blob) {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(blob);
@@ -273,6 +274,17 @@ function readImageDimensions(blob) {
 async function startGeneration() {
   const srcUrl = state.image.srcUrl;
   const image = { srcUrl };
+
+  // Cheap, URL-only check before spending a network round trip: Chrome's
+  // contextMenus API can't filter which images get the menu item by
+  // format, so this is the earliest point a clearly-unsupported image
+  // (favicon, SVG/GIF icon, ...) can be caught.
+  if (RealifyLib.hasKnownUnsupportedExtension(srcUrl)) {
+    state = { view: "error", message: "Энэ зургийн формат дэмжигдэхгүй (JPEG/PNG/WEBP л дэмжигдэнэ). Бүтээгдэхүүний жинхэнэ зурган дээр right-click хийнэ үү." };
+    render();
+    return;
+  }
+
   state = { view: "working", message: "Зургийг татаж байна…", image };
   render();
 
@@ -292,8 +304,16 @@ async function startGeneration() {
     if (!imgRes.ok) throw new Error("Энэ зургийг татаж чадсангүй. Өөр зураг дээр оролдоно уу.");
     const blob = await imgRes.blob();
 
-    const contentType = guessContentType(blob, srcUrl);
+    const contentType = RealifyLib.guessContentType(blob.type, srcUrl);
     if (!contentType) throw new Error("Дэмжигдэхгүй зургийн формат (JPEG/PNG/WEBP л дэмжигдэнэ).");
+
+    // Checked here, right after download, rather than letting
+    // /api/extension/upload-url's own MAX_UPLOAD_BYTES check catch it —
+    // that would mean the full (possibly large) download already
+    // happened for nothing before the user sees any error.
+    if (blob.size > RealifyLib.MAX_UPLOAD_BYTES) {
+      throw new Error(`Зураг хэт том байна (${(blob.size / 1024 / 1024).toFixed(1)}MB, ${RealifyLib.MAX_UPLOAD_BYTES / 1024 / 1024}MB хүртэл). Өөр зураг дээр оролдоно уу.`);
+    }
 
     const { width, height } = await readImageDimensions(blob);
 

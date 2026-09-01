@@ -159,9 +159,13 @@ export interface Database {
         Args: { uid: string };
         Returns: undefined;
       };
-      rotate_api_token: {
+      issue_api_token: {
         Args: { uid: string; new_hash: string; new_last4: string; new_label: string };
         Returns: string;
+      };
+      revoke_api_token: {
+        Args: { uid: string; token_id: string };
+        Returns: boolean;
       };
     };
   };

@@ -111,13 +111,17 @@ export async function updateSession(request: NextRequest) {
   // desktop visitor clicking the landing page's own "Нэвтрэх" CTA hit this
   // gate on /login itself and got bounced straight back to "/", with no
   // way to ever sign in on desktop and reach /settings at all.
+  // /privacy is exempt too — Chrome Web Store's listing requires a linked,
+  // publicly-reachable privacy policy URL, and a reviewer opening that link
+  // is almost certainly on desktop.
   const isExemptFromDeviceGate =
     isSubResourceRequest ||
     pathname === "/" ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/settings") ||
-    pathname.startsWith("/login");
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/privacy");
 
   if (!isMobileUserAgent(userAgent) && !isExemptFromDeviceGate) {
     const url = request.nextUrl.clone();

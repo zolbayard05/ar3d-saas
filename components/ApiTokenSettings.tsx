@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Copy, KeyRound } from "lucide-react";
+import { ArrowLeft, Check, Copy, KeyRound, Trash2 } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 
-interface ExistingToken {
+interface TokenRow {
   id: string;
   label: string;
   token_last4: string;
@@ -14,38 +14,54 @@ interface ExistingToken {
 }
 
 /**
- * Issues/shows/revokes the personal access token the Chrome extension
+ * Issues/lists/revokes the personal access tokens the Chrome extension
  * authenticates with (app/api/settings/api-token/route.ts). Same
  * h-12 back-arrow header + glass-card tokens as BuyCredits.tsx (rule 40:
  * no new header pattern per screen).
+ *
+ * Multiple tokens can be active at once — one per device (e.g. "Windows",
+ * "iMac") — labeled and independently revocable, after "issuing a new one
+ * silently kills the last one" turned out to be a real problem the moment
+ * a second machine came into the picture.
  *
  * The plaintext token is only ever known to this component for the single
  * render right after POST succeeds — nothing persists it client-side past
  * that (no localStorage), matching the server's own "shown once" guarantee.
  */
 export function ApiTokenSettings() {
-  const [existing, setExisting] = useState<ExistingToken | null | undefined>(undefined);
+  const [tokens, setTokens] = useState<TokenRow[] | undefined>(undefined);
   const [freshToken, setFreshToken] = useState<string | null>(null);
+  const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/settings/api-token")
+  function loadTokens() {
+    return fetch("/api/settings/api-token")
       .then((res) => res.json())
-      .then((body) => setExisting(body.token ?? null))
-      .catch(() => setExisting(null));
+      .then((body) => setTokens(body.tokens ?? []))
+      .catch(() => setTokens([]));
+  }
+
+  useEffect(() => {
+    void loadTokens();
   }, []);
 
   async function handleGenerate() {
     setError(null);
     setBusy(true);
     try {
-      const res = await fetch("/api/settings/api-token", { method: "POST" });
+      const res = await fetch("/api/settings/api-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label }),
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Токен үүсгэхэд алдаа гарлаа (${res.status})`);
       setFreshToken(body.token);
-      setExisting({ id: "", label: "Chrome Extension", token_last4: body.token.slice(-4), created_at: new Date().toISOString(), last_used_at: null });
+      setLabel("");
+      await loadTokens();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Токен үүсгэхэд алдаа гарлаа");
     } finally {
@@ -53,18 +69,21 @@ export function ApiTokenSettings() {
     }
   }
 
-  async function handleRevoke() {
+  async function handleRevoke(tokenId: string) {
     setError(null);
-    setBusy(true);
+    setRevokingId(tokenId);
     try {
-      const res = await fetch("/api/settings/api-token", { method: "DELETE" });
+      const res = await fetch("/api/settings/api-token", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tokenId }),
+      });
       if (!res.ok) throw new Error("Токен цуцлахад алдаа гарлаа");
-      setExisting(null);
-      setFreshToken(null);
+      await loadTokens();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Токен цуцлахад алдаа гарлаа");
     } finally {
-      setBusy(false);
+      setRevokingId(null);
     }
   }
 
@@ -86,8 +105,8 @@ export function ApiTokenSettings() {
       <div className="flex flex-col gap-4 px-4 pt-2 lg:mx-auto lg:w-full lg:max-w-xl lg:px-0 lg:pt-6">
         <p className="text-body font-semibold text-text">Chrome өргөтгөл</p>
         <p className="text-small text-text-muted">
-          Realify extension-оо холбохын тулд энд токен үүсгээд, extension-ий тохиргоонд paste хийнэ. Токен
-          нэг л удаа бүтэн харагдана — хадгалж авахаа мартуузай.
+          Realify extension холбох токен энд үүсгэнэ — компьютер бүрт тусдаа токен ашиглаж болно. Токен нэг л
+          удаа бүтэн харагдана, хадгалж авахаа мартуузай.
         </p>
 
         {freshToken && (
@@ -104,51 +123,67 @@ export function ApiTokenSettings() {
           </div>
         )}
 
-        {existing === undefined && (
+        {tokens === undefined && (
           <div className="flex items-center justify-center py-8">
             <Spinner size="sm" />
           </div>
         )}
 
-        {existing !== undefined && !freshToken && (
-          <div className="flex flex-col gap-3 rounded-card border border-glass-border bg-surface-hover p-4 shadow-glass-card">
-            {existing ? (
-              <>
-                <div className="flex items-center gap-2 text-text">
-                  <KeyRound className="size-4 text-text-muted" />
-                  <span className="font-mono text-small">rf_live_••••{existing.token_last4}</span>
+        {tokens !== undefined && tokens.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {tokens.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center justify-between gap-3 rounded-card border border-glass-border bg-surface-hover p-4 shadow-glass-card"
+              >
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex items-center gap-2 text-text">
+                    <KeyRound className="size-4 shrink-0 text-text-muted" />
+                    <span className="truncate font-medium">{t.label}</span>
+                    <span className="shrink-0 font-mono text-small text-text-muted">••••{t.token_last4}</span>
+                  </div>
+                  <p className="text-small text-text-muted">
+                    {t.last_used_at
+                      ? `Сүүлд ашигласан: ${new Date(t.last_used_at).toLocaleString("mn-MN")}`
+                      : "Одоогоор ашиглагдаагүй байна"}
+                  </p>
                 </div>
-                <p className="text-small text-text-muted">
-                  {existing.last_used_at
-                    ? `Сүүлд ашигласан: ${new Date(existing.last_used_at).toLocaleString("mn-MN")}`
-                    : "Одоогоор ашиглагдаагүй байна"}
-                </p>
-              </>
-            ) : (
-              <p className="text-small text-text-muted">Идэвхтэй токен алга байна.</p>
-            )}
+                <button
+                  type="button"
+                  aria-label={`${t.label} токен цуцлах`}
+                  onClick={() => void handleRevoke(t.id)}
+                  disabled={revokingId === t.id}
+                  className="flex shrink-0 items-center justify-center rounded-md p-2 text-text-muted hover:bg-glow-soft hover:text-danger disabled:opacity-40"
+                >
+                  {revokingId === t.id ? <Spinner size="sm" /> : <Trash2 className="size-4" />}
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => void handleGenerate()}
-          disabled={busy}
-          className="flex items-center justify-center gap-2 rounded-md bg-glow-soft py-2.5 text-small font-semibold text-text hover:opacity-90 disabled:opacity-40"
-        >
-          {busy ? <Spinner size="sm" /> : existing ? "Шинэ токен үүсгэх (хуучныг цуцална)" : "Токен үүсгэх"}
-        </button>
+        {tokens !== undefined && tokens.length === 0 && !freshToken && (
+          <p className="text-small text-text-muted">Идэвхтэй токен алга байна.</p>
+        )}
 
-        {existing && !freshToken && (
+        <div className="flex flex-col gap-2">
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Нэр (жишээ нь: Windows, iMac) — заавал биш"
+            maxLength={60}
+            className="rounded-md border border-glass-border bg-surface-hover px-3 py-2.5 text-small text-text placeholder:text-text-muted focus:outline-none"
+          />
           <button
             type="button"
-            onClick={() => void handleRevoke()}
+            onClick={() => void handleGenerate()}
             disabled={busy}
-            className="flex items-center justify-center gap-2 rounded-md border border-glass-border py-2.5 text-small font-semibold text-danger hover:opacity-90 disabled:opacity-40"
+            className="flex items-center justify-center gap-2 rounded-md bg-glow-soft py-2.5 text-small font-semibold text-text hover:opacity-90 disabled:opacity-40"
           >
-            Токен цуцлах
+            {busy ? <Spinner size="sm" /> : "Шинэ токен үүсгэх"}
           </button>
-        )}
+        </div>
 
         {error && <p className="text-small text-danger">{error}</p>}
       </div>
