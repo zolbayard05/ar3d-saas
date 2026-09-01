@@ -19,9 +19,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  // Read directly from the URL inside the handlers (not at render time,
+  // where `window` isn't available during this client component's SSR
+  // pass) rather than useSearchParams(), which would require its own
+  // Suspense boundary. Set by proxy.ts's own redirect-to-login (protected
+  // routes) or by app/(app)/settings/page.tsx (?next=/settings), so a
+  // desktop visitor who came here specifically to reach Settings lands
+  // back there instead of useAuth's default /dashboard.
+  function getNext(): string | undefined {
+    return new URLSearchParams(window.location.search).get("next") || undefined;
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (email && password) void signInOrSignUp(email, password);
+    if (email && password) void signInOrSignUp(email, password, getNext());
   }
 
   return (
@@ -72,7 +83,7 @@ export default function LoginPage() {
           variant="secondary"
           className="w-full"
           loading={status === "sending"}
-          onClick={() => void signInWithGoogle()}
+          onClick={() => void signInWithGoogle(getNext())}
         >
           <GoogleIcon className="size-5" />
           Google-ээр үргэлжлүүлэх

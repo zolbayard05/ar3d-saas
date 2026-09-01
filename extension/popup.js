@@ -45,6 +45,16 @@ async function clearPendingImage() {
   await chrome.storage.session.remove("realifyPendingImage");
   chrome.action.setBadgeText({ text: "" });
 }
+// Only clears storage if it still holds the image this call thinks it's
+// clearing — a right-click on a new image elsewhere can overwrite
+// realifyPendingImage while a previous submission is still in flight, and
+// that unrelated new selection must survive this call.
+async function clearPendingImageIfMatches(srcUrl) {
+  const current = await getPendingImage();
+  if (current && current.srcUrl === srcUrl) {
+    await clearPendingImage();
+  }
+}
 
 // The popup is a normal browser popup: clicking anywhere outside it closes
 // it immediately, which used to also kill the in-memory polling loop in
@@ -170,6 +180,11 @@ async function forgetToken() {
 }
 
 async function resetToIdle() {
+  // Also clears any tracked in-flight generation — without this, the error
+  // view's "Дахин оролдох" re-entered boot(), which resumed polling the
+  // same permanently-broken modelId forever with no way back to picking a
+  // new image (see pollUntilReady's non-"failed" error path).
+  await clearActiveGeneration();
   await clearPendingImage();
   state = { view: "boot" };
   render();
@@ -261,7 +276,7 @@ async function startGeneration() {
     // a stale "ready-to-generate" screen would otherwise submit the same
     // photo a second time and spend a second credit.
     await setActiveGeneration(gen.modelId);
-    await clearPendingImage();
+    await clearPendingImageIfMatches(srcUrl);
 
     await pollUntilReady(gen.modelId);
   } catch (err) {

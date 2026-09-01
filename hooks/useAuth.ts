@@ -18,7 +18,7 @@ export function useAuth() {
   // screen. redirectTo reuses /auth/confirm — that route already handles a
   // PKCE `code` param (see app/auth/confirm/route.ts), which is exactly
   // what Supabase's OAuth callback sends; no separate callback route needed.
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = useCallback(async (next?: string) => {
     setStatus("sending");
     setError(null);
 
@@ -26,7 +26,9 @@ export function useAuth() {
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/confirm`,
+        redirectTo: next
+          ? `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`
+          : `${window.location.origin}/auth/confirm`,
       },
     });
 
@@ -60,7 +62,7 @@ export function useAuth() {
    *    password was just wrong" apart from every other signUp failure.
    */
   const signInOrSignUp = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, next: string = "/dashboard") => {
       setStatus("sending");
       setError(null);
 
@@ -68,7 +70,7 @@ export function useAuth() {
 
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (!signInError) {
-        router.push("/dashboard");
+        router.push(next);
         router.refresh();
         return;
       }
@@ -88,7 +90,7 @@ export function useAuth() {
       }
 
       if (signUpData.session) {
-        router.push("/dashboard");
+        router.push(next);
         router.refresh();
         return;
       }

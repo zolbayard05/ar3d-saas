@@ -101,12 +101,23 @@ export async function updateSession(request: NextRequest) {
   // desktop Chrome), so unlike the rest of the app there genuinely is
   // something for a desktop visitor to do here — this doesn't reopen
   // dashboard/library/create/credits, which stay gated.
+  //
+  // /login must be exempt too, for the same reason (fixed same day, found
+  // live): /settings requires a signed-in user (PROTECTED_PREFIXES below),
+  // and this file's own comment above originally justified gating /login
+  // on "the functional app ... and login — the only door into those — has
+  // nothing for a desktop visitor to do." That stopped being true the
+  // moment /settings became a real desktop destination — a signed-out
+  // desktop visitor clicking the landing page's own "Нэвтрэх" CTA hit this
+  // gate on /login itself and got bounced straight back to "/", with no
+  // way to ever sign in on desktop and reach /settings at all.
   const isExemptFromDeviceGate =
     isSubResourceRequest ||
     pathname === "/" ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/") ||
-    pathname.startsWith("/settings");
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/login");
 
   if (!isMobileUserAgent(userAgent) && !isExemptFromDeviceGate) {
     const url = request.nextUrl.clone();

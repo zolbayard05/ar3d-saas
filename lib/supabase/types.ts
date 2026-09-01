@@ -155,6 +155,14 @@ export interface Database {
         Args: { purchase_id: string; payment_id?: string | null };
         Returns: boolean;
       };
+      increment_credit_service: {
+        Args: { uid: string };
+        Returns: undefined;
+      };
+      rotate_api_token: {
+        Args: { uid: string; new_hash: string; new_last4: string; new_label: string };
+        Returns: string;
+      };
     };
   };
 }

@@ -43,14 +43,16 @@ export async function POST() {
 
   // MVP = one active token per user — issuing a new one revokes any prior
   // active token, the simplest possible revoke story (no token list UI).
-  await admin.from("api_tokens").update({ revoked_at: new Date().toISOString() }).eq("user_id", user.id).is("revoked_at", null);
-
+  // rotate_api_token (migration 0021) does the revoke-then-insert as one
+  // atomic DB transaction: a failed insert rolls back the revoke instead of
+  // leaving the user with no active token, and a partial unique index
+  // guarantees two concurrent calls can't both leave a token active.
   const { token, hash, last4 } = generateToken();
-  const { error } = await admin.from("api_tokens").insert({
-    user_id: user.id,
-    token_hash: hash,
-    token_last4: last4,
-    label: "Chrome Extension",
+  const { error } = await admin.rpc("rotate_api_token", {
+    uid: user.id,
+    new_hash: hash,
+    new_last4: last4,
+    new_label: "Chrome Extension",
   });
 
   if (error) {

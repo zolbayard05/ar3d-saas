@@ -112,15 +112,11 @@ export async function submitGeneration(
 
   if (insertError || !model) {
     // No models row exists yet, so refund_credit (which keys off a model
-    // row) can't be used. A plain read-then-write refund is safe here
-    // specifically because this block is scoped to a single invocation of
-    // this function: see app/api/generate/route.ts's original comment for
-    // the full reasoning — unchanged by this extraction.
+    // row) can't be used — increment_credit_service (migration 0020) is an
+    // atomic UPDATE instead of read-then-write, since this now runs from
+    // two concurrent entry points (web app + extension).
     if (insertError?.code === UNIQUE_VIOLATION) {
-      const { data: profile } = await admin.from("profiles").select("credits").eq("id", userId).single();
-      if (profile) {
-        await admin.from("profiles").update({ credits: profile.credits + 1 }).eq("id", userId);
-      }
+      await admin.rpc("increment_credit_service", { uid: userId });
       const { data: winner } = await admin
         .from("models")
         .select("id")
@@ -131,10 +127,7 @@ export async function submitGeneration(
         return { ok: true, modelId: winner.id };
       }
     } else {
-      const { data: profile } = await admin.from("profiles").select("credits").eq("id", userId).single();
-      if (profile) {
-        await admin.from("profiles").update({ credits: profile.credits + 1 }).eq("id", userId);
-      }
+      await admin.rpc("increment_credit_service", { uid: userId });
     }
     return { ok: false, status: 500, error: "Model үүсгэхэд алдаа гарлаа" };
   }

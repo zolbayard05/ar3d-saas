@@ -12,7 +12,10 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  // ?next=/settings so a signed-out desktop visitor lands back here after
+  // signing in, instead of useAuth's default post-login /dashboard (which
+  // the desktop device gate immediately bounces to "/" — see proxy.ts).
+  if (!user) redirect("/login?next=/settings");
 
   return <ApiTokenSettings />;
 }

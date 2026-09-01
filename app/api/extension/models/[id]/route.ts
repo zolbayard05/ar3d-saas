@@ -33,7 +33,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Model олдсонгүй" }, { status: 404 });
   }
 
-  const shareUrl = `${(process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "")}/models/${model.id}`;
+  // Derived from the request itself (same approach as
+  // app/api/checkout/route.ts) rather than NEXT_PUBLIC_APP_URL — that env
+  // var is unset in every environment today, and a share link silently
+  // degrading to a relative path if it stayed unset would break the whole
+  // QR/AR handoff with no visible error.
+  const shareUrl = `${new URL(request.url).origin}/models/${model.id}`;
 
   // Generated server-side (Node's pure-JS PNG encoder, no canvas/DOM) so
   // the extension popup doesn't need to vendor a QR library of its own —
