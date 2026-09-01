@@ -2,37 +2,36 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useElapsedTime } from "@/hooks/useElapsedTime";
-import { DEFAULT_SOURCE_ASPECT_RATIO, formatDimensionsCm } from "@/lib/models";
+import { DEFAULT_SOURCE_ASPECT_RATIO, buildModelUrl, formatDimensionsCm } from "@/lib/models";
 import { deleteModel } from "@/lib/deleteModel";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
 
 type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 
-// Rule 11 — ssr:false, same pattern ModelDetail.tsx uses for ARViewer (see
-// FeedModelViewer.tsx's own header comment for why this is a separate
-// component rather than reusing ARViewer here). No `loading` fallback: the
-// aspect-ratio box below already reserves the right size with a
-// bg-surface-hover placeholder, so a second spinner here would just
-// overlap model-viewer's own poster-based reveal.
-const FeedModelViewer = dynamic(
-  () => import("@/components/FeedModelViewer").then((m) => m.FeedModelViewer),
-  { ssr: false },
-);
-
 export interface ModelCardProps {
   initialModel: ModelRow;
   onRetry: (model: ModelRow) => void;
   onDelete: (model: ModelRow) => void;
-  /** Curated showcase feed only (HomeFeed) — renders a live, auto-rotating
-   * GLB instead of the static source photo for ready models. Library keeps
-   * the photo (mixed statuses, personal in-progress/failed rows mixed in —
-   * see HomeFeed.tsx's own "pure showcase" comment for why the two feeds
-   * intentionally read differently). Defaults false so every existing
-   * caller (LibraryFeed) is unaffected without passing anything new. */
+  /** Curated showcase feed only (HomeFeed) — shows the pre-rendered 3D
+   * studio shot (render_url) instead of the source photo for ready models.
+   * Library keeps the photo (mixed personal statuses, not a curated
+   * ready-only showcase — see HomeFeed.tsx's own "pure showcase" comment).
+   * Defaults false so every existing caller (LibraryFeed) is unaffected.
+   *
+   * REVISED 2026-09-02: this briefly rendered a *live*, auto-rotating GLB
+   * per card (FeedModelViewer, now deleted) instead of a static image.
+   * Reverted after a live report: several showcase cards on screen at once
+   * opened that many real WebGL contexts, and mobile browsers have a low
+   * per-tab context ceiling — once exceeded, EXISTING contexts silently go
+   * gray/lost, not just new ones refused, which is why a refresh "fixed"
+   * it (fresh contexts, same ceiling, same eventual failure once enough
+   * cards scrolled through). render_url is a plain <img> — zero live GPU
+   * cost — and was already being generated for every ready model
+   * regardless (lib/renderThumbnail.ts, via the webhook's
+   * renderAndStoreThumbnail); this only changes what gets *displayed*. */
   interactive3d?: boolean;
 }
 
@@ -50,14 +49,22 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
     useModelRealtime(initialModel.id, initialModel, { live }) ?? initialModel;
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Always the source photo, never render_url: the studio render sits on
-  // the same near-black backdrop as the page itself, so against --color-bg
-  // the card reads as an empty rectangle rather than an object. The photo's
-  // own background (white, a room, whatever it actually was) is what gives
-  // the feed contrast and per-card variety. lib/renderThumbnail.ts and its
-  // stored output are untouched — this only changes what's displayed, not
-  // whether the render pipeline runs or what's kept in R2/render_url.
-  const thumbnailSrc = `/api/uploads/${model.source_image_key}`;
+  // Library (interactive3d=false): always the source photo, never
+  // render_url — the studio render sits on the same near-black backdrop as
+  // the page itself, so against --color-bg the card reads as an empty
+  // rectangle rather than an object; the photo's own background (white, a
+  // room, whatever it actually was) is what gives that feed contrast and
+  // per-card variety.
+  //
+  // HomeFeed (interactive3d=true): render_url instead — see this file's
+  // interactive3d comment for why a static 3D render replaced a live
+  // viewer here. Falls back to the source photo only if a showcase row
+  // somehow has no render yet (shouldn't happen — see that same comment —
+  // but a missing image is worse than a wrong-but-present one).
+  const thumbnailSrc =
+    interactive3d && model.render_url
+      ? buildModelUrl(model.render_url)
+      : `/api/uploads/${model.source_image_key}`;
   const generating =
     model.status === "pending" || model.status === "processing";
 
@@ -94,58 +101,43 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
         className="relative overflow-hidden rounded-card border border-glass-border bg-surface-hover shadow-glass-card transition-shadow duration-300 group-hover:border-glass-border-hover group-hover:shadow-glow-ring group-focus-visible:border-glass-border-hover group-focus-visible:shadow-glow-ring"
         style={{ aspectRatio }}
       >
-        {interactive3d && model.status === "ready" && model.glb_url ? (
-          // Curated showcase card — live, auto-rotating GLB instead of the
-          // static source photo (see this file's own interactive3d comment
-          // for why this is HomeFeed-only). thumbnailSrc as `poster` keeps
-          // the same source-photo-first-paint behavior the photo path has
-          // (model-viewer shows it until the GLB itself finishes loading),
-          // so there's no new blank-box state to account for here.
-          <FeedModelViewer
-            glbKey={model.glb_url}
-            poster={thumbnailSrc}
-            alt={model.title || ""}
-            className="block size-full"
-          />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbnailSrc}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            // React's onLoad prop alone isn't enough here, for two separate
-            // reasons that both leave imageLoaded stuck false and the image
-            // stuck at opacity-0 forever (both caught live, not theoretical):
-            // (1) an image the browser already had cached can fire `load`
-            // before the listener is even attached; (2) with loading="lazy"
-            // added, the browser defers starting the fetch until its own
-            // (React-uncontrolled) heuristic decides to — by the time that
-            // happens, node.complete can flip true, or `load` can fire, at a
-            // point this ref callback (which only ever ran once, at mount)
-            // has long since stopped checking. Fix for both: attach a real
-            // native listener imperatively, which catches the event whenever
-            // the browser actually dispatches it, plus an immediate check for
-            // the already-complete-at-attach case (re-runs on every mount,
-            // including the lazy image's own deferred one).
-            ref={(node) => {
-              if (!node) return;
-              if (node.complete) {
-                setImageLoaded(true);
-                return;
-              }
-              node.addEventListener("load", () => setImageLoaded(true), {
-                once: true,
-              });
-            }}
-            className={cn(
-              "block size-full object-cover transition-opacity duration-300",
-              !imageLoaded && "opacity-0",
-              imageLoaded && !generating && "opacity-100",
-              imageLoaded && generating && "opacity-50",
-            )}
-          />
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={thumbnailSrc}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          // React's onLoad prop alone isn't enough here, for two separate
+          // reasons that both leave imageLoaded stuck false and the image
+          // stuck at opacity-0 forever (both caught live, not theoretical):
+          // (1) an image the browser already had cached can fire `load`
+          // before the listener is even attached; (2) with loading="lazy"
+          // added, the browser defers starting the fetch until its own
+          // (React-uncontrolled) heuristic decides to — by the time that
+          // happens, node.complete can flip true, or `load` can fire, at a
+          // point this ref callback (which only ever ran once, at mount)
+          // has long since stopped checking. Fix for both: attach a real
+          // native listener imperatively, which catches the event whenever
+          // the browser actually dispatches it, plus an immediate check for
+          // the already-complete-at-attach case (re-runs on every mount,
+          // including the lazy image's own deferred one).
+          ref={(node) => {
+            if (!node) return;
+            if (node.complete) {
+              setImageLoaded(true);
+              return;
+            }
+            node.addEventListener("load", () => setImageLoaded(true), {
+              once: true,
+            });
+          }}
+          className={cn(
+            "block size-full object-cover transition-opacity duration-300",
+            !imageLoaded && "opacity-0",
+            imageLoaded && !generating && "opacity-100",
+            imageLoaded && generating && "opacity-50",
+          )}
+        />
         {generating && (
           <>
             {/* Pulsing app-mark centered over the dimmed photo — the "this
