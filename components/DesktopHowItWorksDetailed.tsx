@@ -162,13 +162,22 @@ function StepCard({
     if (imgRef.current?.complete && imgRef.current.naturalWidth === 0) setErrored(true);
   }, []);
 
+  // Phone screenshots are tight, already-phone-shaped captures (370x800,
+  // close to PhoneMock's own bezel aspect) — object-cover crops only a
+  // sliver. Extension screenshots are full desktop-window captures with
+  // the popup sitting off-center (top-right, matching where Chrome
+  // actually docks it under the toolbar icon) at a near-square aspect —
+  // object-cover on those would crop into essentially random page content
+  // depending on exactly where the popup happens to sit, so those get
+  // object-contain instead: the whole capture always stays visible,
+  // letterboxed rather than cropped.
   const shot = !errored ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       ref={imgRef}
       src={image}
       alt={title}
-      className="size-full object-cover"
+      className={cn("size-full", frame === "phone" ? "object-cover" : "object-contain")}
       onError={() => setErrored(true)}
     />
   ) : (
@@ -182,7 +191,7 @@ function StepCard({
       {frame === "phone" ? (
         <PhoneMock>{shot}</PhoneMock>
       ) : (
-        <div className="relative aspect-[9/16] w-full overflow-hidden rounded-lg border border-landing-border-glass bg-landing-surface">
+        <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-landing-border-glass bg-landing-surface">
           {shot}
         </div>
       )}
