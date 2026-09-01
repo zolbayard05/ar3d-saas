@@ -5,12 +5,30 @@ import sharp from "sharp";
 // own global mean before recombining with the high-frequency (weave/grain)
 // layer. 1.0 = fully flat (loses all large-scale form shading, e.g. a
 // cushion's natural curvature falloff — a "sticker" look). 0.0 = no change.
-// 0.9 was tuned against one real generation (chair, fabric + wood) — verified
-// visually and numerically (a sampled UV-seam luminance gap of 23.5 dropped
-// to 2.5, a ~90% reduction, matching this value almost exactly) but not
-// tested across object/material types yet. Tune here, not inline, if a
-// different object type needs a different value.
-const FLATTEN_STRENGTH = 0.9;
+//
+// REVISED 2026-09-01 (0.9 -> 0.6): 0.9 was tuned against one real generation
+// (chair, fabric + wood, light/mid-tone material) — verified visually and
+// numerically there (a sampled UV-seam luminance gap of 23.5 dropped to 2.5,
+// a ~90% reduction). Not tested across material *darkness* at the time —
+// this is the same class of bug as BLUR_SIGMA_RATIO below (a constant
+// validated on one sample silently misbehaving on a different one), just
+// triggered by color instead of resolution. Found live on a black gaming
+// chair: pulling 90% of the way toward the image's global mean is
+// devastating specifically when that mean is already near-black (little
+// headroom before hitting 0) — measured directly on the shipped GLB texture,
+// mean luminance 42/255, stdev crashed to 8.3/255 (a visibly flat, "sticker"
+// result — see the incident's before/after screenshots). A light material's
+// mean sits much further from black, so the same 90% pull has real headroom
+// left over and reads as "cleaned up," not "erased."
+//
+// 0.6 is a corrective adjustment, not a newly-measured optimum — still only
+// validated against this one dark-object incident (the same "one sample"
+// caveat 0.9 had). The per-model seam-gap log this function's caller already
+// emits (app/api/webhooks/tripo/route.ts) is what should turn this into a
+// measured value across enough real objects, the same mechanism rule 21's
+// DEFAULT_FACE_LIMIT and glbCompress.ts's MAX_ASPECT_RATIO are already
+// waiting on — don't re-guess a third number without that data.
+const FLATTEN_STRENGTH = 0.6;
 
 // Gaussian blur radius separating "high frequency" (weave, grain — anything
 // finer than this) from "low frequency" (baked lighting/AO gradients and
