@@ -1,13 +1,13 @@
-import { DesktopAppOptIn } from "@/components/DesktopAppOptIn";
-import { DesktopQrCard } from "@/components/DesktopQrCard";
+import { DesktopEntryChoice } from "@/components/DesktopEntryChoice";
 
 /**
  * "Бүтээгдэхүүн бүр..." — 1:1 clone of the mockup's `.final-cta`: a
  * deliberate return to dark after the cream categories/bento sections
  * (the hero's closing bookend), rounded top corners overlapping the cream
- * section above it, one warm accent glow. Reuses DesktopQrCard as-is
- * (real, scannable QR) rather than the mockup's decorative striped
- * placeholder box, which never encoded anything real.
+ * section above it, one warm accent glow. DesktopEntryChoice replaces what
+ * used to be a bare DesktopQrCard — same real QR by default, plus an
+ * explicit second tab for a visitor who wants the Chrome extension instead
+ * of AR on their phone.
  */
 export function DesktopFinalCta() {
   return (
@@ -43,8 +43,7 @@ export function DesktopFinalCta() {
         >
           REALIFY
         </p>
-        <DesktopQrCard />
-        <DesktopAppOptIn />
+        <DesktopEntryChoice />
       </div>
     </section>
   );

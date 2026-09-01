@@ -41,6 +41,9 @@ body {
   gap: 8px;
   font-weight: 600;
   font-size: 14px;
+  padding-bottom: 12px;
+  margin-bottom: -2px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 .brand img {
   width: 20px;
@@ -62,19 +65,46 @@ p {
 .card {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
   border: 1px solid var(--border-subtle);
   background: var(--surface);
   border-radius: 10px;
-  padding: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.icon {
+  width: 40px;
+  height: 40px;
+  color: var(--text-muted);
+}
+.icon.success {
+  color: var(--text);
+}
+.icon.danger {
+  color: var(--danger);
+}
+
+.heading {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.thumb-frame {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
 }
 
 .thumb {
   display: block;
   width: 100%;
-  max-height: 140px;
+  max-height: 160px;
   object-fit: contain;
-  border-radius: 6px;
   background: var(--bg);
 }
 
@@ -133,8 +163,9 @@ button.link {
 
 .progress {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: var(--text-muted);
   font-size: 12.5px;
 }
@@ -147,6 +178,11 @@ button.link {
   border-top-color: var(--text);
   animation: spin 0.7s linear infinite;
 }
+.spinner.lg {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+}
 @media (prefers-reduced-motion: reduce) {
   .spinner {
     animation: none;
@@ -158,12 +194,28 @@ button.link {
   }
 }
 
+/* Dims and overlays a spinner on the source thumbnail while working —
+   mirrors the mobile app's own GeneratingStep (source photo behind a
+   progress indicator) so the two clients read as the same product. */
+.thumb-frame.working .thumb {
+  opacity: 0.35;
+  filter: grayscale(0.4);
+}
+.thumb-frame .overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .qr {
   display: block;
-  width: 160px;
-  height: 160px;
+  width: 168px;
+  height: 168px;
   margin: 0 auto;
-  border-radius: 8px;
+  padding: 8px;
+  border-radius: 10px;
   background: #fff;
 }
 

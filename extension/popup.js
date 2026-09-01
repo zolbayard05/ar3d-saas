@@ -25,6 +25,29 @@ function el(tag, props, children) {
   return node;
 }
 
+// Same path data as the lucide-react icons the rest of the product (the
+// Next.js app) uses for these exact states — this extension has no build
+// step to pull the npm package in, so the path data is copied directly
+// rather than the icon reading visually inconsistent from the web app.
+const ICON_PATHS = {
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
+  check: '<circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/>',
+  warning:
+    '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+};
+function icon(name, cls) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("class", `icon ${cls || ""}`.trim());
+  svg.innerHTML = ICON_PATHS[name];
+  return svg;
+}
+
 // ---------------------------------------------------------------- storage
 
 async function getToken() {
@@ -73,6 +96,18 @@ async function setActiveGeneration(modelId) {
 }
 async function clearActiveGeneration() {
   await chrome.storage.session.remove("realifyActiveGeneration");
+}
+
+// See extension/background.js's own comment block — that service worker
+// independently polls the same status endpoint via chrome.alarms so a
+// closed popup doesn't mean losing track of a generation. Clearing its
+// alarm and any result it already stashed here (chrome.storage.session's
+// realifyLastResult/realifyLastError) is what stops a result the popup
+// just showed live from *also* surfacing as a stale badge/notification
+// moments later.
+async function stopBackgroundTracking() {
+  chrome.runtime.sendMessage({ type: "realify-track-stop" }).catch(() => {});
+  await chrome.storage.session.remove(["realifyLastResult", "realifyLastError"]);
 }
 
 // ------------------------------------------------------------------- api
@@ -124,6 +159,7 @@ const VIEWS = {
 
   "no-image"() {
     return el("div", { class: "card" }, [
+      icon("image"),
       el("p", { text: "Ямар нэг сайт дээрх бүтээгдэхүүний зурган дээр хулганы баруун товч дараад “Realify — 3D болгох” сонго." }),
       el("button", { class: "link", onclick: forgetToken, text: "Токен солих" }),
     ]);
@@ -131,24 +167,39 @@ const VIEWS = {
 
   "ready-to-generate"() {
     const img = el("img", { class: "thumb", src: state.image.srcUrl, alt: "" });
+    const frame = el("div", { class: "thumb-frame" }, [img]);
     img.addEventListener("error", () => {
-      img.replaceWith(el("p", { class: "error", text: "Энэ зургийг урьдчилан харах боломжгүй байна — генерац хийхэд саад болохгүй." }));
+      frame.replaceWith(el("p", { class: "error", text: "Энэ зургийг урьдчилан харах боломжгүй байна — генерац хийхэд саад болохгүй." }));
     });
     return el("div", { class: "card" }, [
-      img,
+      frame,
       el("button", { onclick: () => void startGeneration(), text: "3D болгох" }),
+      el("p", { style: "font-size: 11.5px;", text: "1 кредит зарцуулна" }),
       el("button", { class: "link", onclick: forgetToken, text: "Токен солих" }),
     ]);
   },
 
   working() {
-    return el("div", { class: "card" }, [
-      el("div", { class: "progress" }, [el("span", { class: "spinner" }), el("span", { text: state.message || "Боловсруулж байна…" })]),
-    ]);
+    const spinner = el("span", { class: "spinner lg" });
+    const items = [];
+    // Keeps the source photo visible (dimmed, spinner on top) instead of an
+    // empty card while working — matches the mobile app's own
+    // GeneratingStep, which shows the same source photo under its progress
+    // ring rather than a blank screen.
+    if (state.image?.srcUrl) {
+      const img = el("img", { class: "thumb", src: state.image.srcUrl, alt: "" });
+      items.push(el("div", { class: "thumb-frame working" }, [img, el("div", { class: "overlay" }, [spinner])]));
+      items.push(el("p", { text: state.message || "Боловсруулж байна…" }));
+    } else {
+      items.push(el("div", { class: "progress" }, [spinner, el("span", { text: state.message || "Боловсруулж байна…" })]));
+    }
+    return el("div", { class: "card" }, items);
   },
 
   done() {
     const items = [
+      icon("check", "success"),
+      el("p", { class: "heading", text: "Бэлэн боллоо!" }),
       el("img", { class: "qr", src: state.result.qrDataUrl, alt: "QR код" }),
       el("p", { class: "share-url", text: state.result.shareUrl }),
       el("button", {
@@ -167,6 +218,7 @@ const VIEWS = {
 
   error() {
     return el("div", { class: "card" }, [
+      icon("warning", "danger"),
       el("p", { class: "error", text: state.message || "Алдаа гарлаа." }),
       el("button", { onclick: () => void resetToIdle(), text: "Дахин оролдох" }),
     ]);
@@ -220,7 +272,8 @@ function readImageDimensions(blob) {
 
 async function startGeneration() {
   const srcUrl = state.image.srcUrl;
-  state = { view: "working", message: "Зургийг татаж байна…" };
+  const image = { srcUrl };
+  state = { view: "working", message: "Зургийг татаж байна…", image };
   render();
 
   try {
@@ -244,7 +297,7 @@ async function startGeneration() {
 
     const { width, height } = await readImageDimensions(blob);
 
-    state = { view: "working", message: "Хуулж байна…" };
+    state = { view: "working", message: "Хуулж байна…", image };
     render();
     const presign = await api("/api/extension/upload-url", {
       method: "POST",
@@ -255,7 +308,7 @@ async function startGeneration() {
     const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
     if (!putRes.ok) throw new Error("Хуулахад алдаа гарлаа.");
 
-    state = { view: "working", message: "3D болгож байна… (30–100 секунд)" };
+    state = { view: "working", message: "3D болгож байна… (30–100 секунд)", image };
     render();
     const gen = await api("/api/extension/generate", {
       method: "POST",
@@ -276,9 +329,14 @@ async function startGeneration() {
     // a stale "ready-to-generate" screen would otherwise submit the same
     // photo a second time and spend a second credit.
     await setActiveGeneration(gen.modelId);
+    // Hands off to background.js's own independent poll (chrome.alarms —
+    // survives this popup closing, which local polling below can't) so the
+    // result still surfaces as a badge + OS notification even if the user
+    // never reopens the popup themselves.
+    chrome.runtime.sendMessage({ type: "realify-track-start" }).catch(() => {});
     await clearPendingImageIfMatches(srcUrl);
 
-    await pollUntilReady(gen.modelId);
+    await pollUntilReady(gen.modelId, image);
   } catch (err) {
     if (err.message === "unauthorized") return; // already rendered need-token
     state = { view: "error", message: err.message || "Алдаа гарлаа." };
@@ -286,20 +344,27 @@ async function startGeneration() {
   }
 }
 
-async function pollUntilReady(modelId) {
-  state = { view: "working", message: "3D болгож байна… (30–100 секунд)" };
+async function pollUntilReady(modelId, image) {
+  state = { view: "working", message: "3D болгож байна… (30–100 секунд)", image };
   render();
   const startedAt = Date.now();
   while (Date.now() - startedAt < MAX_POLL_MS) {
     const body = await api(`/api/extension/models/${modelId}`);
     if (body.status === "ready") {
       await clearActiveGeneration();
+      // The popup itself just resolved this — stop background.js's own
+      // independent poll (extension/background.js) and drop any result it
+      // might already have raced to store, so reopening the popup later
+      // doesn't replay a stale "done" notification/badge for a result
+      // already shown here.
+      await stopBackgroundTracking();
       state = { view: "done", result: body };
       render();
       return;
     }
     if (body.status === "failed") {
       await clearActiveGeneration();
+      await stopBackgroundTracking();
       throw new Error("Үүсгэлт амжилтгүй боллоо. Кредит буцаагдсан.");
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -316,6 +381,32 @@ async function boot() {
   const token = await getToken();
   if (!token) {
     state = { view: "need-token" };
+    render();
+    return;
+  }
+
+  // background.js may have already resolved a generation (ready or failed)
+  // while this popup was closed — checked first, ahead of active/pending,
+  // since realifyActiveGeneration is already cleared by the time
+  // background.js stores either of these (see its own checkActiveGeneration).
+  // Without this check reopening the popup after a background-caught
+  // completion would fall through to "no-image" and silently lose the
+  // result the badge/notification just announced.
+  const { realifyLastResult, realifyLastError } = await chrome.storage.session.get([
+    "realifyLastResult",
+    "realifyLastError",
+  ]);
+  if (realifyLastResult) {
+    await chrome.storage.session.remove("realifyLastResult");
+    chrome.action.setBadgeText({ text: "" });
+    state = { view: "done", result: realifyLastResult };
+    render();
+    return;
+  }
+  if (realifyLastError) {
+    await chrome.storage.session.remove("realifyLastError");
+    chrome.action.setBadgeText({ text: "" });
+    state = { view: "error", message: realifyLastError };
     render();
     return;
   }

@@ -1,6 +1,7 @@
 import { DesktopHeroTumble } from "@/components/DesktopHeroTumble";
 import { DesktopIntroSection } from "@/components/DesktopIntroSection";
 import { DesktopProcessSection } from "@/components/DesktopProcessSection";
+import { DesktopHowItWorksDetailed } from "@/components/DesktopHowItWorksDetailed";
 import { DesktopCategoriesSection } from "@/components/DesktopCategoriesSection";
 import { DesktopBentoSection } from "@/components/DesktopBentoSection";
 import { DesktopFinalCta } from "@/components/DesktopFinalCta";
@@ -78,6 +79,7 @@ export async function DesktopLanding() {
         sourceImageSrc="/icons/mockup/sofa_photo.png"
         title="White Boucle Sofa"
       />
+      <DesktopHowItWorksDetailed />
       <DesktopCategoriesSection />
       <DesktopBentoSection />
       <DesktopFinalCta />

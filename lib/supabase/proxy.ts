@@ -14,16 +14,6 @@ import type { Database } from "@/lib/supabase/types";
 const PROTECTED_PREFIXES = ["/library", "/create", "/models", "/credits", "/settings"];
 const AUTH_PAGES = ["/login"];
 
-// Set client-side by components/DesktopAppOptIn.tsx's button (the landing
-// page's "Desktop дээрээ үргэлжлүүлэх" CTA next to DesktopQrCard) — a
-// deliberate, explicit escape hatch from the device gate below, for a
-// desktop visitor who wants the functional app anyway (e.g. to manage
-// models generated via the Chrome extension, or use Settings/Library
-// without a phone in hand) rather than the AR-only justification for
-// gating everyone by default. Long-lived (1 year) so opting in once
-// sticks across visits instead of re-prompting every session.
-export const DESKTOP_OPT_IN_COOKIE = "realify-desktop-opt-in";
-
 // Shared model links (QR codes, "send to a friend") must open for a
 // signed-out visitor. Migration 0011's "models: public select ready" RLS
 // policy is the actual data boundary — this only relaxes the UX redirect to
@@ -121,16 +111,13 @@ export async function updateSession(request: NextRequest) {
   // desktop visitor clicking the landing page's own "Нэвтрэх" CTA hit this
   // gate on /login itself and got bounced straight back to "/", with no
   // way to ever sign in on desktop and reach /settings at all.
-  const hasDesktopOptIn = request.cookies.get(DESKTOP_OPT_IN_COOKIE)?.value === "1";
-
   const isExemptFromDeviceGate =
     isSubResourceRequest ||
     pathname === "/" ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/settings") ||
-    pathname.startsWith("/login") ||
-    hasDesktopOptIn;
+    pathname.startsWith("/login");
 
   if (!isMobileUserAgent(userAgent) && !isExemptFromDeviceGate) {
     const url = request.nextUrl.clone();
