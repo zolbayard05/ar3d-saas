@@ -48,6 +48,37 @@ const FLATTEN_STRENGTH = 0.6;
 // not a property of the standard tier's texture itself.
 const BLUR_SIGMA_RATIO = 40 / 4096;
 
+// ADDED 2026-09-01: the target for flattening. Originally a single global
+// scalar (see the removed history below) — replaced because it conflates
+// two different things that both show up as "low-frequency luminance
+// variation": (a) baked-lighting/AO gradients WITHIN one UV island (the
+// actual defect this function targets) and (b) genuine color/darkness
+// differences BETWEEN islands that belong to different real materials
+// (e.g. a light wood frame next to a dark fabric cushion — completely
+// normal for a piece of furniture). Flattening (b) toward one global mean
+// is not a bug fix, it's data loss: found live on "Wooden Dining Chair" —
+// its real source photo has a dark charcoal woven cushion, but the
+// shipped GLB's cushion came out light blue-gray, pulled up toward the
+// mean set by the much larger light-wood area surrounding it. USDZ (no
+// frequency separation at all, see lib/glbCompress.ts) kept the correct
+// dark tone, which is why only the Android/GLB side looked wrong.
+//
+// The fix: flatten each pixel toward a *regional* mean (a second, much
+// larger blur of the same low-frequency layer) instead of one image-wide
+// scalar. A regional blur this size averages out the lighting gradient
+// within a material's own UV island(s) without significantly pulling in
+// a neighboring island's genuinely different material color — the same
+// island-crossing risk BLUR_SIGMA_RATIO's own comment already describes,
+// just needed at a *deliberately* larger radius here since the goal this
+// time is "one material's own regional average," not "this exact pixel's
+// immediate neighborhood." 8x the seam-detection blur radius is a
+// starting point sized to stay smaller than this atlas's typical UV
+// island extent (checked against the Wooden Dining Chair texture this
+// bug was found on) — like every other constant in this file, a
+// corrective adjustment pending real measured data across more objects,
+// not a broadly-validated optimum.
+const REGION_SIGMA_RATIO = BLUR_SIGMA_RATIO * 8;
+
 export interface FrequencySeparationResult {
   image: Buffer;
   /** P99 local-gradient magnitude in the low-frequency layer, before flattening — a proxy for "how sharp is the worst baked-lighting jump" (real UV seams show up as exactly this: a sharp discontinuity in what should be a smoothly-varying lighting layer). */
@@ -75,27 +106,32 @@ export async function frequencySeparate(input: Buffer): Promise<FrequencySeparat
   if (!width || !height) throw new Error("Could not read texture dimensions");
 
   const blurSigma = width * BLUR_SIGMA_RATIO;
+  const regionSigma = width * REGION_SIGMA_RATIO;
   const raw = await img.clone().raw().toBuffer();
   const blurredRaw = await sharp(input).removeAlpha().blur(blurSigma).raw().toBuffer();
+  const regionRaw = await sharp(input).removeAlpha().blur(regionSigma).raw().toBuffer();
 
   const n = width * height;
   const lum = new Float32Array(n);
   const low = new Float32Array(n);
+  const regionLow = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const o = i * 3;
     lum[i] = 0.2126 * raw[o] + 0.7152 * raw[o + 1] + 0.0722 * raw[o + 2];
     low[i] = 0.2126 * blurredRaw[o] + 0.7152 * blurredRaw[o + 1] + 0.0722 * blurredRaw[o + 2];
+    regionLow[i] = 0.2126 * regionRaw[o] + 0.7152 * regionRaw[o + 1] + 0.0722 * regionRaw[o + 2];
   }
 
   const seamGapBefore = p99GradientMagnitude(low, width, height);
 
-  let meanLow = 0;
-  for (let i = 0; i < n; i++) meanLow += low[i];
-  meanLow /= n;
-
+  // Flattening target is now per-pixel (regionLow), not one scalar for the
+  // whole image — see REGION_SIGMA_RATIO's comment for why: it keeps each
+  // material's own real average intact instead of pulling every island
+  // toward a single mean the image's other, differently-colored materials
+  // would otherwise dominate.
   const flattenedLow = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    flattenedLow[i] = meanLow + (low[i] - meanLow) * (1 - FLATTEN_STRENGTH);
+    flattenedLow[i] = regionLow[i] + (low[i] - regionLow[i]) * (1 - FLATTEN_STRENGTH);
   }
   const seamGapAfter = p99GradientMagnitude(flattenedLow, width, height);
 
