@@ -12,6 +12,8 @@ export interface MasonryGridProps {
   models: ModelRow[];
   onRetry: (model: ModelRow) => void;
   onDelete: (model: ModelRow) => void;
+  /** Passed straight through to every ModelCard — see that file's own comment. */
+  interactive3d?: boolean;
 }
 
 // CLAUDE.md rule 40 — the one masonry layout every screen reuses (dashboard
@@ -63,7 +65,7 @@ function assignColumns(models: ModelRow[], columnCount: number): Map<string, num
   return assignment;
 }
 
-export function MasonryGrid({ models, onRetry, onDelete }: MasonryGridProps) {
+export function MasonryGrid({ models, onRetry, onDelete, interactive3d = false }: MasonryGridProps) {
   const columnCount = useColumnCount();
   const columnOf = useMemo(() => assignColumns(models, columnCount), [models, columnCount]);
 
@@ -74,7 +76,13 @@ export function MasonryGrid({ models, onRetry, onDelete }: MasonryGridProps) {
           {models
             .filter((model) => columnOf.get(model.id) === col)
             .map((model) => (
-              <ModelCard key={model.id} initialModel={model} onRetry={onRetry} onDelete={onDelete} />
+              <ModelCard
+                key={model.id}
+                initialModel={model}
+                onRetry={onRetry}
+                onDelete={onDelete}
+                interactive3d={interactive3d}
+              />
             ))}
         </div>
       ))}

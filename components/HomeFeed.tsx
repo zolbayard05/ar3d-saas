@@ -145,6 +145,7 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
               models={models}
               onRetry={handleRetry}
               onDelete={handleDelete}
+              interactive3d
             />
           </div>
         </div>
