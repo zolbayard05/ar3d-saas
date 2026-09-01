@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           <li>
             <b className="text-text">Chrome extension ашиглаж байгаа бол</b> — зөвхөн таны шууд <b className="text-text">right-click хийж сонгосон</b> тухайн
             зурган (URL болон агуулга)-ы л мэдээллийг илгээдэг. Extension ямар ч үед таны хөтчийн түүх, нээсэн
-            хуудсуудыг хянадаггүй, цуглуулдаггүй.Extension-ий эрхийн хамрах хүрээ (host permissions) нь зөвхөн
+            хуудсуудыг хянадаггүй, цуглуулдаггүй. Extension-ий эрхийн хамрах хүрээ (host permissions) нь зөвхөн
             таны сонгосон нэг зургийг татах зорилготой — идэвхгүй байхад ямар ч сайт руу автоматаар хандалт
             хийдэггүй.
           </li>
@@ -65,8 +65,10 @@ export default function PrivacyPage() {
       <section className="flex flex-col gap-2">
         <h2 className="text-body font-semibold text-text">Холбоо барих</h2>
         <p className="text-small text-text-muted">
-          Нууцлалтай холбоотой асуулт байвал бидэнтэй холбогдоно уу: {/* TODO: replace with a real support address before publishing to the Chrome Web Store */}
-          <span className="text-text">[холбоо барих имэйл энд орно]</span>
+          Нууцлалтай холбоотой асуулт байвал бидэнтэй холбогдоно уу:{" "}
+          <a href="mailto:zolbayar.d05+realify@gmail.com" className="text-text underline underline-offset-2">
+            zolbayar.d05+realify@gmail.com
+          </a>
         </p>
       </section>
     </main>

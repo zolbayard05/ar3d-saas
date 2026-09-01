@@ -59,9 +59,7 @@ before submitting.
 
 ## Before submitting
 
-- [ ] Fill in a real support contact in `app/privacy/page.tsx` (marked
-      with a `TODO` comment) — required by the Store's privacy policy
-      requirements.
+- [x] Support contact in `app/privacy/page.tsx` — zolbayar.d05+realify@gmail.com.
 - [ ] Promotional images: a 1280×800 or 640×400 screenshot, and (optional
       but recommended) a 440×280 small promo tile.
 - [ ] Bump `"version"` in `extension/manifest.json` for each resubmission.
