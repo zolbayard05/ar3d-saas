@@ -1,3 +1,4 @@
+import { DesktopAppOptIn } from "@/components/DesktopAppOptIn";
 import { DesktopQrCard } from "@/components/DesktopQrCard";
 
 /**
@@ -43,6 +44,7 @@ export function DesktopFinalCta() {
           REALIFY
         </p>
         <DesktopQrCard />
+        <DesktopAppOptIn />
       </div>
     </section>
   );

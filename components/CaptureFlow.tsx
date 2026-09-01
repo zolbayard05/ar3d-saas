@@ -68,7 +68,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       : null,
   );
   const [resultModel, setResultModel] = useState<ModelRow | null>(null);
-  const { upload } = useUpload();
+  const { upload, error: uploadError } = useUpload();
 
   // GeneratingStep needs the same preview after the chosen-photo block
   // below has moved on, so the blob URL has to outlive that render rather
@@ -107,7 +107,12 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       }
 
       const uploaded = await upload(file);
-      if (!uploaded) throw new Error("Оруулахад алдаа гарлаа");
+      // Surface useUpload's own specific reason (auth failure, R2/CORS
+      // error, bad presign response, ...) instead of masking it behind a
+      // generic message — that generic string used to show unconditionally
+      // here regardless of what actually failed, making every upload
+      // failure look identical and undiagnosable from the UI alone.
+      if (!uploaded) throw new Error(uploadError || "Оруулахад алдаа гарлаа");
 
       const res = await fetch("/api/generate", {
         method: "POST",
