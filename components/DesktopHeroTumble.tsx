@@ -39,6 +39,7 @@ const BEATS: Beat[] = [
       </>
     ),
     body: "Эргүүл. Томруул. Судал. Деталь бүрийг нь мэдэр.",
+    align: "right",
   },
   {
     heading: (
