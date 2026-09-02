@@ -43,3 +43,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local staging for curated showcase model uploads — raw GLB/USDZ source
+# files (100s of MB) copied here just to feed a one-off seeding script into
+# R2/Supabase; never meant to live in the repo, same as .env.local.
+/public/feed-models/

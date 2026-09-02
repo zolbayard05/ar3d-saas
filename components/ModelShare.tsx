@@ -4,10 +4,6 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Check, Copy, Download, Share2 } from "lucide-react";
 import { buildLogoQr } from "@/lib/qr";
 
-interface ModelShareProps {
-  title: string;
-}
-
 // window.location is unavailable during SSR/first hydration and never
 // changes after mount for this page, so useSyncExternalStore's no-op
 // subscribe is the sanctioned way to read it without a setState-in-effect
@@ -24,7 +20,7 @@ function getServerUrlSnapshot() {
 }
 
 /** QR code + copy/save/native-share actions for the current page URL. */
-export function ModelShare({ title }: ModelShareProps) {
+export function ModelShare() {
   const url = useSyncExternalStore(subscribeNever, getUrlSnapshot, getServerUrlSnapshot);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -53,7 +49,7 @@ export function ModelShare({ title }: ModelShareProps) {
     if (!url) return;
     if (navigator.share) {
       try {
-        await navigator.share({ title: title || "3D model", url });
+        await navigator.share({ title: "3D model", url });
       } catch {
         // User dismissed the share sheet — not an error.
       }
@@ -104,7 +100,7 @@ export function ModelShare({ title }: ModelShareProps) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={qrDataUrl}
-          alt={`${title || "энэ model"}-ийн QR код`}
+          alt="энэ model-ийн QR код"
           className="size-44 rounded-md shadow-card"
         />
       ) : (

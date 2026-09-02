@@ -14,7 +14,6 @@ import { Spinner } from "@/components/ui/Spinner";
 export interface ARViewerProps {
   glbKey: string;
   usdzKey: string;
-  scale: number;
   alt?: string;
   className?: string;
 }
@@ -40,6 +39,15 @@ type ModelViewerElement = HTMLElement & {
  * Rule 8's exact config: ar, ar-modes="webxr scene-viewer quick-look",
  * src = GLB, ios-src = USDZ.
  *
+ * No `scale` prop/attribute: the installed @google/model-viewer has no
+ * `scale` property on the primary model at all (only on the unrelated
+ * `<model-viewer-model>` multi-model child) — lib/glbScale.ts's header has
+ * the full story. A model's chosen scale is baked directly into the GLB's
+ * own geometry server-side (app/api/webhooks/tripo/route.ts's sizeModel,
+ * app/api/models/rescale/route.ts for user-driven changes), so `src` is
+ * already correct on arrival here and needs no runtime adjustment.
+ *
+
  * The primary "View in your room" CTA lives in ModelDetail, not here — the
  * design (design/02-detail.png) puts it as a full-width bar below the
  * secondary-actions row, outside the square viewer's own box, which the
@@ -51,7 +59,7 @@ type ModelViewerElement = HTMLElement & {
  * own default corner AR icon so there's exactly one visible AR trigger.
  */
 export const ARViewer = forwardRef<ARViewerHandle, ARViewerProps>(
-  function ARViewer({ glbKey, usdzKey, scale, alt, className }, ref) {
+  function ARViewer({ glbKey, usdzKey, alt, className }, ref) {
     const viewerRef = useRef<ModelViewerElement>(null);
     const [loaded, setLoaded] = useState(false);
 
@@ -83,7 +91,6 @@ export const ARViewer = forwardRef<ARViewerHandle, ARViewerProps>(
 
     const glbUrl = buildModelUrl(glbKey);
     const usdzUrl = buildModelUrl(usdzKey);
-    const scaleAttr = `${scale} ${scale} ${scale}`;
 
     return (
       <div className="relative">
@@ -95,7 +102,6 @@ export const ARViewer = forwardRef<ARViewerHandle, ARViewerProps>(
           ar-modes="webxr scene-viewer quick-look"
           camera-controls
           auto-rotate
-          scale={scaleAttr}
           alt={alt || "3D model"}
           shadow-intensity="1"
           className={className}

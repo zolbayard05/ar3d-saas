@@ -39,7 +39,7 @@ export interface MasonryGridProps {
 // change (useColumnCount, 2/3/4 by breakpoint) reflows cleanly — a change
 // in COUNT is a one-time full repack, distinct from the ordering guarantee
 // above, which is about not reshuffling existing cards at a fixed count.
-function assignColumns(models: ModelRow[], columnCount: number): Map<string, number> {
+function assignColumns(models: ModelRow[], columnCount: number, interactive3d: boolean): Map<string, number> {
   // Sorted oldest-first, not in `models`' own (display, newest-first) order.
   // A model's created_at never changes once set, so this ordering is stable
   // regardless of what handleRetry prepends to the front of the display
@@ -59,7 +59,7 @@ function assignColumns(models: ModelRow[], columnCount: number): Map<string, num
       if (columnHeights[i] < columnHeights[col]) col = i;
     }
     assignment.set(model.id, col);
-    columnHeights[col] += estimateCardHeight(model);
+    columnHeights[col] += estimateCardHeight(model, interactive3d);
   }
 
   return assignment;
@@ -67,7 +67,10 @@ function assignColumns(models: ModelRow[], columnCount: number): Map<string, num
 
 export function MasonryGrid({ models, onRetry, onDelete, interactive3d = false }: MasonryGridProps) {
   const columnCount = useColumnCount();
-  const columnOf = useMemo(() => assignColumns(models, columnCount), [models, columnCount]);
+  const columnOf = useMemo(
+    () => assignColumns(models, columnCount, interactive3d),
+    [models, columnCount, interactive3d],
+  );
 
   return (
     <div className="flex gap-2 px-2 lg:gap-4 lg:px-6">

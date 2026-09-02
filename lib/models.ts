@@ -53,14 +53,27 @@ const METADATA_ROW_HEIGHT_PX = 48;
  * no post-render measurement. See MasonryGrid.tsx for why this needs to be
  * knowable before placement, not after.
  */
+/**
+ * Must mirror ModelCard.tsx's own `aspectRatio` calc exactly — that's the
+ * ratio the card's box is actually rendered at, so an estimate from a
+ * different one (e.g. always the source photo, even for a showcase card
+ * that displays render_url instead) throws MasonryGrid's column-balancing
+ * off by however much those two images' shapes differ.
+ */
 export function estimateCardHeight(model: {
   source_image_width: number | null;
   source_image_height: number | null;
-}): number {
+  bbox_width_m: number | null;
+  bbox_height_m: number | null;
+  render_url: string | null;
+}, interactive3d: boolean): number {
+  const usingRender = interactive3d && Boolean(model.render_url);
   const aspect =
-    model.source_image_width && model.source_image_height
-      ? model.source_image_width / model.source_image_height
-      : DEFAULT_SOURCE_ASPECT_RATIO;
+    usingRender && model.bbox_width_m && model.bbox_height_m
+      ? model.bbox_width_m / model.bbox_height_m
+      : model.source_image_width && model.source_image_height
+        ? model.source_image_width / model.source_image_height
+        : DEFAULT_SOURCE_ASPECT_RATIO;
   return ASSUMED_COLUMN_WIDTH_PX / aspect + METADATA_ROW_HEIGHT_PX;
 }
 

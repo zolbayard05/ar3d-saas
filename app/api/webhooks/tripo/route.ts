@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse, after } from "next/server";
 import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -14,6 +15,7 @@ import {
   type TripoTask,
 } from "@/lib/tripo";
 import { compressGlb, validateGlb } from "@/lib/glbCompress";
+import { bakeGlbScale } from "@/lib/glbScale";
 import { renderThumbnail } from "@/lib/renderThumbnail";
 import { guessModelHeightCm } from "@/lib/gemini";
 import { sweepStaleGenerations } from "@/lib/sweepStaleGenerations";
@@ -294,6 +296,21 @@ export async function POST(request: Request) {
   );
 
   if (stage === "glb") {
+    // Permanent, never-overwritten copy of Tripo's original, un-rescaled
+    // output — sizeModel() below (and any future re-scale) always bakes
+    // FROM this fixed reference, never from a previously-baked `glb_url`,
+    // so repeated scale adjustments can't compound floating-point drift
+    // through a chain of "scale applied to an already-scaled file."
+    await getR2Client().send(
+      new PutObjectCommand({
+        Bucket: getModelsBucket(),
+        Key: `models/${model.id}.raw.glb`,
+        Body: fileBytes,
+        ContentType: MODEL_CONTENT_TYPES.glb,
+        CacheControl: MODEL_CACHE_CONTROL,
+      }),
+    );
+
     const { data: updated } = await admin
       .from("models")
       .update({
@@ -436,25 +453,38 @@ const MAX_SCALE = 3;
 /**
  * Best-effort initial-scale guess from the source photo — models are never
  * auto-named (2026-09-02 product decision: an AI-guessed name read as odd
- * often enough that no name at all, ModelCard.tsx's existing "Нэргүй"
- * fallback, was preferred over it; users can still name a model themselves
- * via hooks/useModelTitle.ts). A failed or missing Gemini call leaves
- * `scale` at its schema default of 1, so there's nothing to fail here in
- * the way a real generation step can fail. `.eq("scale", 1)` makes this
- * idempotent against a duplicate webhook delivery AND against a user who
- * already rescaled the model in the window between the ready update and
- * this running — the guard failing to match just means "someone already
- * got there first," not an error.
+ * often enough that no name at all was preferred over it; titles were
+ * removed entirely shortly after, including manual renaming). A failed or
+ * missing Gemini call leaves
+ * `scale` at its schema default of 1 and `glb_url` pointing at the raw,
+ * unscaled file — same as if this had never run — so there's nothing to
+ * fail here in the way a real generation step can fail. `.eq("scale", 1)`
+ * makes this idempotent against a duplicate webhook delivery AND against a
+ * user who already rescaled the model in the window between the ready
+ * update and this running — the guard failing to match just means "someone
+ * already got there first," not an error.
  *
  * The scale guess is exactly that — a guess, not a measurement (rule 22:
  * Tripo's mesh has no real-world scale at all). bboxHeightM is itself
  * unitless mesh-space geometry despite its name (see lib/models.ts's own
  * comment) — real display height is bboxHeightM * scale * 100cm, so
  * solving for the scale that makes that equal Gemini's heightCm guess is
- * the whole trick: scale = heightCm / (bboxHeightM * 100). The visible
- * scale slider (rule 22) is what gets the last word — this only moves the
- * slider's starting point closer to right instead of leaving every model
- * at a uniform, usually-wrong 1x.
+ * the whole trick: scale = heightCm / (bboxHeightM * 100).
+ *
+ * 2026-09-02: this used to just write `scale` to the DB and stop, on the
+ * assumption <model-viewer>'s `scale` attribute would apply it at render
+ * time. It doesn't — see lib/glbScale.ts's header for why that attribute is
+ * a no-op in the installed model-viewer version, on-page AND in AR. So this
+ * now bakes the guess directly into the GLB's own geometry (from the
+ * permanent `models/{id}.raw.glb` written at the GLB stage above, never
+ * from a previously-baked file, to avoid compounding rescales) and points
+ * `glb_url` at a freshly-keyed copy — a new key, not an overwrite, because
+ * rule 3's `immutable` Cache-Control means whatever a CDN/browser already
+ * cached under the OLD key must never need to change; overwriting it in
+ * place would leave stale bytes forever cached at a URL that no longer
+ * matches its own content. The visible scale slider (rule 22) is what gets
+ * the last word — see app/api/models/[id]/scale/route.ts, which re-bakes
+ * from the same raw file the same way when the user adjusts it.
  */
 async function sizeModel(
   admin: ReturnType<typeof createAdminClient>,
@@ -475,7 +505,30 @@ async function sizeModel(
     if (heightCm == null) return;
 
     const guessedScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, heightCm / (bboxHeightM * 100)));
-    await admin.from("models").update({ scale: guessedScale }).eq("id", modelId).eq("scale", 1);
+
+    const rawObject = await getR2Client().send(
+      new GetObjectCommand({ Bucket: getModelsBucket(), Key: `models/${modelId}.raw.glb` }),
+    );
+    if (!rawObject.Body) return;
+    const rawGlb = Buffer.from(await rawObject.Body.transformToByteArray());
+    const scaledGlb = await bakeGlbScale(rawGlb, guessedScale);
+
+    const scaledKey = `models/${modelId}.${randomUUID().slice(0, 8)}.glb`;
+    await getR2Client().send(
+      new PutObjectCommand({
+        Bucket: getModelsBucket(),
+        Key: scaledKey,
+        Body: scaledGlb,
+        ContentType: MODEL_CONTENT_TYPES.glb,
+        CacheControl: MODEL_CACHE_CONTROL,
+      }),
+    );
+
+    await admin
+      .from("models")
+      .update({ scale: guessedScale, glb_url: scaledKey })
+      .eq("id", modelId)
+      .eq("scale", 1);
   } catch (err) {
     console.warn(`Tripo webhook: auto-sizing failed for model ${modelId}, leaving scale unset`, err);
   }

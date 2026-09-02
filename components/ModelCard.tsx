@@ -68,8 +68,7 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
   const generating =
     model.status === "pending" || model.status === "processing";
 
-  // Reserved up front from the same stored aspect ratio MasonryGrid.tsx
-  // already uses to balance columns (migration 0012) — an <img> with no
+  // Reserved up front from a stored aspect ratio — an <img> with no
   // intrinsic size renders at 0 height until it's actually downloaded, so
   // every card in the grid collapses to just its title on first paint, then
   // jumps to full size later, shoving everything below it down at a random
@@ -77,14 +76,29 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
   // final size on the very first paint (filled with bg-surface-hover as a
   // placeholder), so there's nothing left to shift — only a fade once the
   // image itself is actually in. object-cover (not the old bare w-full)
-  // because the reserved box is now sized from stored data, not from
-  // whatever the image's own natural size happens to render at, so a row
-  // that fell back to DEFAULT_SOURCE_ASPECT_RATIO (no stored ratio) needs
-  // cropping rather than distortion to fill that box cleanly.
+  // relies on the box's aspect ratio actually matching the image's, or it
+  // crops into the subject instead of just filling the box cleanly.
+  //
+  // thumbnailSrc's TWO possible images have different real aspect ratios,
+  // so which stored ratio backs the box has to match: render_url (the
+  // interactive3d/HomeFeed case) is lib/renderThumbnail.ts's own studio
+  // render, framed edge-to-edge around the GLB's bbox at exactly
+  // bbox_width_m/bbox_height_m (scale-invariant — both dimensions scale by
+  // the same factor, so this ratio is right regardless of the model's
+  // scale) — using source_image_width/height there instead (the ORIGINAL
+  // PHOTO's shape, unrelated to the render's) was the bug: most objects'
+  // photo crop and rendered-object silhouette aren't the same shape, so
+  // object-cover was cropping into the render to force it into a box sized
+  // for a different image entirely, reading as models "cut off on the
+  // sides" (reported 2026-09-02). The source-photo case (library/non-3d)
+  // is unaffected — that ratio is still correct for that image.
+  const usingRender = interactive3d && Boolean(model.render_url);
   const aspectRatio =
-    model.source_image_width && model.source_image_height
-      ? model.source_image_width / model.source_image_height
-      : DEFAULT_SOURCE_ASPECT_RATIO;
+    usingRender && model.bbox_width_m && model.bbox_height_m
+      ? model.bbox_width_m / model.bbox_height_m
+      : model.source_image_width && model.source_image_height
+        ? model.source_image_width / model.source_image_height
+        : DEFAULT_SOURCE_ASPECT_RATIO;
   const dims = model.status === "ready" ? formatDimensionsCm(model) : null;
 
   const content = (
@@ -187,13 +201,14 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
       {/* Metadata sits OUTSIDE the rounded frame, directly on the page
           background — not overlaid on the photo, not inside a filled block
           (rule 37). No bg-* class here on purpose. Dimensions render as the
-          on-image chip above, not a second line here. */}
-      <div className="flex flex-col gap-1 pt-2">
-        <p className="text-body text-text">{model.title || "Нэргүй"}</p>
-        {model.status !== "ready" && (
+          on-image chip above, not a second line here. No title line either
+          (2026-09-02 product decision: models have no name at all, not even
+          a placeholder). */}
+      {model.status !== "ready" && (
+        <div className="pt-2">
           <StatusLine model={model} onRetry={onRetry} onDelete={onDelete} />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 

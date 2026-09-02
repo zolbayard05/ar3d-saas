@@ -18,7 +18,6 @@ import { ModelScaleControl } from "@/components/ModelScaleControl";
 import { ModelShare } from "@/components/ModelShare";
 import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useModelScale } from "@/hooks/useModelScale";
-import { useModelTitle } from "@/hooks/useModelTitle";
 import { buildModelUrl, formatDimensionsCm } from "@/lib/models";
 import { deleteModel } from "@/lib/deleteModel";
 import { cn } from "@/lib/utils";
@@ -67,14 +66,13 @@ export function ModelDetail({
   initialModel: ModelRow;
   /** Defaults true — every pre-existing caller is inside the auth-gated (app) group. */
   hasSession?: boolean;
-  /** Gates title-edit/download and scale persistence — see hooks/useModelScale.ts. */
+  /** Gates download and scale persistence — see hooks/useModelScale.ts. */
   isOwner?: boolean;
 }) {
   // Rule 14 — no polling. This is the one place the row's status/glb_url/
   // usdz_url ever change after the initial server-rendered fetch.
   const model = useModelRealtime(initialModel.id, initialModel) ?? initialModel;
   const [scale, setScale] = useModelScale(model.id, model.scale, isOwner);
-  const { title, setTitle, commitTitle } = useModelTitle(model.id, model.title);
   const [scaleOpen, setScaleOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -99,7 +97,7 @@ export function ModelDetail({
     const url = window.location.href;
     if (navigator.share) {
       try {
-        await navigator.share({ title: title || "3D model", url });
+        await navigator.share({ title: "3D model", url });
       } catch {
         // User dismissed the share sheet — not an error.
       }
@@ -190,47 +188,19 @@ export function ModelDetail({
               ref={arViewerRef}
               glbKey={model.glb_url as string}
               usdzKey={model.usdz_url as string}
-              scale={scale}
-              alt={title || undefined}
+              alt="3D model"
               className="aspect-[4/5]! h-auto! w-full lg:rounded-card! lg:overflow-hidden!"
             />
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col lg:w-96 lg:flex-none">
-            <div className="flex flex-col gap-1 px-4 pt-4 lg:px-0">
-              {/* Editable in place for the owner only — title is one of the
-                two columns `authenticated` may write directly (migration
-                0004), but that grant is still row-scoped by RLS to
-                auth.uid() = user_id, so a non-owner's write would silently
-                affect zero rows. Showing an editable field that quietly
-                does nothing is worse than not showing it, so a viewer who
-                followed a shared link (migration 0011) or an authenticated
-                non-owner both get plain text instead. No pencil-icon/
-                edit-mode toggle for the owner case: it's just an input
-                styled as the heading, committing on blur/Enter rather than
-                per keystroke. */}
-              {isOwner ? (
-                <input
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  onBlur={(event) => commitTitle(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.currentTarget.blur();
-                  }}
-                  placeholder="Нэргүй"
-                  className="bg-transparent text-heading font-semibold text-text placeholder:text-text-muted focus:outline-none"
-                />
-              ) : (
-                <p className="text-heading font-semibold text-text">
-                  {title || "Нэргүй"}
-                </p>
-              )}
-              {formatDimensionsCm(model) && (
+            {formatDimensionsCm(model) && (
+              <div className="flex flex-col gap-1 px-4 pt-4 lg:px-0">
                 <p className="text-small uppercase tracking-wide text-text-muted">
                   {formatDimensionsCm(model)}
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-around px-4 py-6 lg:justify-start lg:gap-6 lg:px-0">
               {/* Not owner-gated — the URL being shared is the current page's
@@ -304,7 +274,7 @@ export function ModelDetail({
               )}
             </div>
 
-            {shareOpen && <ModelShare title={title} />}
+            {shareOpen && <ModelShare />}
 
             {scaleOpen && (
               <div className="px-4 pb-4 lg:px-0">

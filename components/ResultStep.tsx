@@ -63,15 +63,15 @@ export function ResultStep({ model, onSaved, onDeleted }: ResultStepProps) {
       <ARViewer
         glbKey={model.glb_url as string}
         usdzKey={model.usdz_url as string}
-        scale={model.scale}
-        alt={model.title || undefined}
+        alt="3D model"
         className="aspect-[4/5]! h-auto! w-full"
       />
 
-      <div className="flex flex-col gap-1 pt-4">
-        <p className="text-heading font-semibold text-text">{model.title || "Нэргүй"}</p>
-        {dims && <p className="text-small uppercase tracking-wide text-text-muted">{dims}</p>}
-      </div>
+      {dims && (
+        <div className="flex flex-col gap-1 pt-4">
+          <p className="text-small uppercase tracking-wide text-text-muted">{dims}</p>
+        </div>
+      )}
 
       <div className="mt-auto flex gap-3 pt-6">
         <button

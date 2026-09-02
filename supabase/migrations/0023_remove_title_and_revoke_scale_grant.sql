@@ -1,0 +1,44 @@
+-- ============================================================================
+-- 0023_remove_title_and_revoke_scale_grant.sql
+--
+-- Two unrelated cleanups landing together because both remove a now-dead
+-- `authenticated` column grant from migration 0004.
+--
+-- 1. Titles removed entirely (2026-09-02 product decision, final step of a
+--    series: auto-naming was tried and dropped for reading "odd" often
+--    enough — see lib/gemini.ts's history — and manual renaming is now
+--    dropped too; models simply have no name anywhere in the UI, not even
+--    a placeholder). This is a one-time data fix, same as 0013's one-time
+--    is_admin backfill: every existing title, including hand-picked ones
+--    like the curated showcase armchair's "Black Tufted Leather Armchair",
+--    is cleared so the data matches the UI, which no longer displays or
+--    edits title anywhere (hooks/useModelTitle.ts deleted; ModelCard.tsx,
+--    ModelDetail.tsx, ResultStep.tsx, ModelShare.tsx all stopped reading
+--    it). `authenticated`'s direct UPDATE grant on title is revoked for the
+--    same reason as scale below — there is no code path left that should
+--    ever write it again.
+--
+-- 2. Migration 0004 granted `authenticated` UPDATE on models.scale on the
+--    assumption that adjusting scale was a pure DB-value change (the
+--    visible slider persisting straight from the browser's own session
+--    client). That assumption turned out to be wrong: <model-viewer>'s
+--    `scale` attribute is a no-op in the installed @google/model-viewer
+--    version (see lib/glbScale.ts's header) — the ONLY thing that actually
+--    makes scale appear correctly, on-page or in AR, is baking it into the
+--    GLB's own geometry, which needs R2 + a glb_url write (both
+--    service-role-only, rule 34) and therefore now goes through
+--    app/api/models/rescale/route.ts, not a direct client `.update()`
+--    (hooks/useModelScale.ts updated accordingly).
+--
+--    Leaving the direct grant in place after that change would be exactly
+--    the rule 33/35/36 class of gap: a client could still `update models
+--    set scale = x` directly, changing the displayed "W×D×H CM" text
+--    (rule 8's formula multiplies bbox by scale) without ever re-baking
+--    the GLB — cosmetic-only drift between the stored number and the
+--    actual geometry, silently reintroducing the exact "AR doesn't match
+--    the configured size" bug this whole change fixes.
+-- ============================================================================
+
+update models set title = null where title is not null;
+
+revoke update (title, scale) on models from authenticated;

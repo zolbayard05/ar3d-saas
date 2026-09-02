@@ -16,9 +16,9 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 
 // This used to also auto-generate a title in the same call — removed
 // 2026-09-02 (product decision: an AI-guessed name read as odd/off often
-// enough that no name at all ("Нэргүй", ModelCard.tsx's existing fallback)
-// was preferred; users can still name a model themselves via
-// hooks/useModelTitle.ts). The height guess stays: it's the other half of
+// enough that no name at all was preferred; titles were dropped entirely
+// shortly after, including manual renaming — models simply have none). The
+// height guess stays: it's the other half of
 // rule 22 ("AI meshes have no real-world scale, provide a scale control")
 // — Tripo's mesh has no real-world scale at all, so a generic,
 // unconditional "make your best guess from typical proportions for this
