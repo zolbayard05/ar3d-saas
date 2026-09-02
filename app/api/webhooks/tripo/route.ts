@@ -15,7 +15,7 @@ import {
 } from "@/lib/tripo";
 import { compressGlb, validateGlb } from "@/lib/glbCompress";
 import { renderThumbnail } from "@/lib/renderThumbnail";
-import { generateModelTitle } from "@/lib/gemini";
+import { generateModelMetadata } from "@/lib/gemini";
 import { sweepStaleGenerations } from "@/lib/sweepStaleGenerations";
 
 const SOURCE_URL_EXPIRY_SECONDS = 10 * 60;
@@ -354,7 +354,7 @@ export async function POST(request: Request) {
     // not the GLB, so it has nothing to wait on. Cosmetic like the
     // thumbnail: never allowed to affect the ready transition, which has
     // already happened by the time this runs.
-    after(() => nameModel(admin, model.id, model.source_image_key));
+    after(() => nameAndSizeModel(admin, model.id, model.source_image_key, model.bbox_height_m));
   }
 
   return NextResponse.json({ ok: true });
@@ -427,16 +427,40 @@ const UPLOAD_MIME_TYPES: Record<string, string> = {
   webp: "image/webp",
 };
 
+// Matches ModelScaleControl.tsx's own default min/max — never write a
+// smart-guess scale the slider itself can't represent or let the user
+// adjust back down/up from.
+const MIN_SCALE = 0.1;
+const MAX_SCALE = 3;
+
 /**
- * Best-effort auto-naming from the source photo — a failed or missing
- * Gemini call leaves `title` null, which the UI already renders as
- * "Untitled" (same fallback as before this feature existed), so there's
- * nothing to fail here in the way a real generation step can fail.
- * `.is("title", null)` makes this idempotent against a duplicate webhook
- * delivery AND against a user who already renamed the model in the window
- * between the ready update and this running.
+ * Best-effort auto-naming + initial-scale guess from the source photo — a
+ * failed or missing Gemini call leaves `title` null (UI already renders
+ * that as "Untitled", same fallback as before this feature existed) and
+ * `scale` at its schema default of 1, so there's nothing to fail here in
+ * the way a real generation step can fail. `.is("title", null)` /
+ * `.eq("scale", 1)` make this idempotent against a duplicate webhook
+ * delivery AND against a user who already renamed/rescaled the model in
+ * the window between the ready update and this running — either guard
+ * failing to match just means "someone already got there first," not an
+ * error.
+ *
+ * The scale guess is exactly that — a guess, not a measurement (rule 22:
+ * Tripo's mesh has no real-world scale at all). bboxHeightM is itself
+ * unitless mesh-space geometry despite its name (see lib/models.ts's own
+ * comment) — real display height is bboxHeightM * scale * 100cm, so
+ * solving for the scale that makes that equal Gemini's heightCm guess is
+ * the whole trick: scale = heightCm / (bboxHeightM * 100). The visible
+ * scale slider (rule 22) is what gets the last word — this only moves the
+ * slider's starting point closer to right instead of leaving every model
+ * at a uniform, usually-wrong 1x.
  */
-async function nameModel(admin: ReturnType<typeof createAdminClient>, modelId: string, sourceImageKey: string): Promise<void> {
+async function nameAndSizeModel(
+  admin: ReturnType<typeof createAdminClient>,
+  modelId: string,
+  sourceImageKey: string,
+  bboxHeightM: number | null,
+): Promise<void> {
   try {
     const object = await getR2Client().send(new GetObjectCommand({ Bucket: getUploadsBucket(), Key: sourceImageKey }));
     if (!object.Body) return;
@@ -444,10 +468,15 @@ async function nameModel(admin: ReturnType<typeof createAdminClient>, modelId: s
     const ext = sourceImageKey.split(".").pop()?.toLowerCase() ?? "";
     const mimeType = object.ContentType || UPLOAD_MIME_TYPES[ext] || "image/jpeg";
 
-    const title = await generateModelTitle(bytes, mimeType);
+    const { title, heightCm } = await generateModelMetadata(bytes, mimeType);
 
     await admin.from("models").update({ title }).eq("id", modelId).is("title", null);
+
+    if (heightCm != null && bboxHeightM != null && bboxHeightM > 0) {
+      const guessedScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, heightCm / (bboxHeightM * 100)));
+      await admin.from("models").update({ scale: guessedScale }).eq("id", modelId).eq("scale", 1);
+    }
   } catch (err) {
-    console.warn(`Tripo webhook: auto-naming failed for model ${modelId}, leaving title unset`, err);
+    console.warn(`Tripo webhook: auto-naming/sizing failed for model ${modelId}, leaving title/scale unset`, err);
   }
 }
