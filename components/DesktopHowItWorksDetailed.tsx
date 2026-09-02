@@ -80,9 +80,14 @@ const EXTENSION_STEPS: StepDef[] = [
   },
 ];
 
+interface LightboxState {
+  src: string;
+  frame: "phone" | "plain";
+}
+
 export function DesktopHowItWorksDetailed() {
   const [flow, setFlow] = useState<Flow>("mobile");
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<LightboxState | null>(null);
   const steps = flow === "mobile" ? MOBILE_STEPS : EXTENSION_STEPS;
 
   return (
@@ -114,14 +119,14 @@ export function DesktopHowItWorksDetailed() {
               key={`${flow}-${i}`}
               n={i + 1}
               frame={flow === "mobile" ? "phone" : "plain"}
-              onOpen={setLightboxSrc}
+              onOpen={(src, frame) => setLightbox({ src, frame })}
               {...step}
             />
           ))}
         </div>
       </div>
 
-      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+      <ImageLightbox lightbox={lightbox} onClose={() => setLightbox(null)} />
     </section>
   );
 }
@@ -133,15 +138,15 @@ export function DesktopHowItWorksDetailed() {
  * non-mobile UAs (mobile visitors get an entirely different splash and
  * never mount this component at all).
  */
-function ImageLightbox({ src, onClose }: { src: string | null; onClose: () => void }) {
+function ImageLightbox({ lightbox, onClose }: { lightbox: LightboxState | null; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
-    if (src && !node.open) node.showModal();
-    if (!src && node.open) node.close();
-  }, [src]);
+    if (lightbox && !node.open) node.showModal();
+    if (!lightbox && node.open) node.close();
+  }, [lightbox]);
 
   // Native <dialog> puts the ::backdrop outside the element's own box, so a
   // real backdrop click never lands "on" the dialog's children to check
@@ -168,10 +173,21 @@ function ImageLightbox({ src, onClose }: { src: string | null; onClose: () => vo
       onClick={handleClick}
       className="m-auto max-h-lightbox max-w-lightbox overflow-visible rounded-lg bg-transparent p-0 backdrop:bg-black/85"
     >
-      {src && (
+      {lightbox && (
         <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="" className="block max-h-lightbox max-w-lightbox rounded-lg object-contain" />
+          {lightbox.frame === "phone" ? (
+            <PhoneMock variant="lightbox">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={lightbox.src} alt="" className="size-full object-cover" />
+            </PhoneMock>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={lightbox.src}
+              alt=""
+              className="block max-h-lightbox max-w-lightbox rounded-lg object-contain"
+            />
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -216,7 +232,11 @@ function StepCard({
   image,
   frame,
   onOpen,
-}: { n: number; frame: "phone" | "plain"; onOpen: (src: string) => void } & StepDef) {
+}: {
+  n: number;
+  frame: "phone" | "plain";
+  onOpen: (src: string, frame: "phone" | "plain") => void;
+} & StepDef) {
   const [errored, setErrored] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -260,7 +280,7 @@ function StepCard({
   const openButton = !errored ? (
     <button
       type="button"
-      onClick={() => onOpen(image)}
+      onClick={() => onOpen(image, frame)}
       aria-label={`${title} — томруулж харах`}
       className="size-full cursor-zoom-in"
     >
