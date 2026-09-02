@@ -1,6 +1,5 @@
 import { DesktopHeroTumble } from "@/components/DesktopHeroTumble";
 import { DesktopIntroSection } from "@/components/DesktopIntroSection";
-import { DesktopProcessSection } from "@/components/DesktopProcessSection";
 import { DesktopHowItWorksDetailed } from "@/components/DesktopHowItWorksDetailed";
 import { DesktopCategoriesSection } from "@/components/DesktopCategoriesSection";
 import { DesktopBentoSection } from "@/components/DesktopBentoSection";
@@ -22,21 +21,17 @@ import { DesktopFinalCta } from "@/components/DesktopFinalCta";
  * --color-landing-* namespace (app/globals.css) so it never touches the
  * shared tokens the rest of the product still uses.
  *
- * The mockup used two specific real models throughout — a black tufted
- * leather armchair everywhere except the process section, and a white
- * boucle sofa (its own photo *and* its own 3D result) only in the process
- * section — not any row from the app's own `models` table (an earlier
- * pass here wired up the DB's existing "Wooden Dining Chair"/"Modern
- * Wooden Sofa" showcase rows by title-guessing; completely different,
- * unrelated furniture, corrected). These two were never run through the
- * real generate pipeline at all — they're marketing-only assets, not user
- * content — so they're not `models` rows or GLB either: `objUrl`s the
- * raw OBJ + diffuse PNG the mockup itself renders (`public/icons/mockup/`,
- * extracted from `realify-landing-v3.html`'s `objSrc`/`texDiffuseB64` and
- * `sofaObjSrc`/`sofaTexDiffuseB64`), rendered by `DesktopMockupObject`
- * with the mockup's own Three.js recipe (see that file for why: a GLB/
- * model-viewer conversion of the exact same geometry+texture kept coming
- * out visibly aliased in a way the mockup's own render never was).
+ * The mockup's own black tufted leather armchair (a marketing-only asset,
+ * not a `models` row or GLB — `objUrl`s the raw OBJ + diffuse PNG the
+ * mockup itself renders, `public/icons/mockup/`, rendered by
+ * `DesktopMockupObject` with the mockup's own Three.js recipe; see that
+ * file for why a GLB/model-viewer conversion of the same geometry+texture
+ * kept coming out visibly aliased in a way the mockup's own render never
+ * was) runs throughout. A second asset, a white boucle sofa, existed only
+ * for DesktopProcessSection's "Хэрхэн ажилладаг" 3-step mockup — removed
+ * 2026-09-02 (product decision: near-total content overlap with
+ * DesktopHowItWorksDetailed's own, more detailed, real-screenshot version
+ * of the same "how it works" narrative, right below it on the page).
  */
 
 export async function DesktopLanding() {
@@ -75,10 +70,6 @@ export async function DesktopLanding() {
       <DesktopHeroTumble />
 
       <DesktopIntroSection />
-      <DesktopProcessSection
-        sourceImageSrc="/icons/mockup/sofa_photo.png"
-        title="White Boucle Sofa"
-      />
       <DesktopHowItWorksDetailed />
       <DesktopCategoriesSection />
       <DesktopBentoSection />
