@@ -97,6 +97,14 @@
    */
   --max-width-feed: 87.5rem; /* 1400px */
   --bottom-nav-reserve: 6rem;
+
+  /* DesktopHowItWorksDetailed's screenshot lightbox (2026-09-02) — the
+   * enlarged image must never exceed the viewport, same reasoning as
+   * --max-width-feed above: aliased into Tailwind's max-width/max-height
+   * namespace via app/globals.css so components use max-w-lightbox/
+   * max-h-lightbox, never a raw arbitrary vw/vh value. */
+  --max-width-lightbox: 90vw;
+  --max-height-lightbox: 90vh;
 }
 
 @media (min-width: 1024px) {

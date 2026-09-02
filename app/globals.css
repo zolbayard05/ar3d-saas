@@ -69,6 +69,9 @@
   --tracking-wide: var(--tracking-wide);
 
   --max-width-feed: var(--max-width-feed);
+
+  --max-width-lightbox: var(--max-width-lightbox);
+  --max-height-lightbox: var(--max-height-lightbox);
 }
 
 /* Plain @theme (not @theme inline) — this declares a genuinely NEW value

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Puzzle, Smartphone } from "lucide-react";
+import { Puzzle, Smartphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PhoneMock } from "@/components/PhoneMock";
 
@@ -82,6 +82,7 @@ const EXTENSION_STEPS: StepDef[] = [
 
 export function DesktopHowItWorksDetailed() {
   const [flow, setFlow] = useState<Flow>("mobile");
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const steps = flow === "mobile" ? MOBILE_STEPS : EXTENSION_STEPS;
 
   return (
@@ -109,11 +110,79 @@ export function DesktopHowItWorksDetailed() {
 
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
           {steps.map((step, i) => (
-            <StepCard key={`${flow}-${i}`} n={i + 1} frame={flow === "mobile" ? "phone" : "plain"} {...step} />
+            <StepCard
+              key={`${flow}-${i}`}
+              n={i + 1}
+              frame={flow === "mobile" ? "phone" : "plain"}
+              onOpen={setLightboxSrc}
+              {...step}
+            />
           ))}
         </div>
       </div>
+
+      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </section>
+  );
+}
+
+/**
+ * Click-to-enlarge for the step screenshots — desktop-only by construction,
+ * not by a separate viewport check: this whole section only ever renders
+ * inside DesktopLanding, which app/page.tsx branches to exclusively for
+ * non-mobile UAs (mobile visitors get an entirely different splash and
+ * never mount this component at all).
+ */
+function ImageLightbox({ src, onClose }: { src: string | null; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    if (src && !node.open) node.showModal();
+    if (!src && node.open) node.close();
+  }, [src]);
+
+  // Native <dialog> puts the ::backdrop outside the element's own box, so a
+  // real backdrop click never lands "on" the dialog's children to check
+  // against via a plain e.target === child guard — comparing the click
+  // point to the dialog's own rendered rect (sized to the image, via CSS)
+  // is what actually distinguishes "clicked the image" from "clicked
+  // around it" regardless of how the dialog box itself is sized.
+  function handleClick(event: React.MouseEvent<HTMLDialogElement>) {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const inside =
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom;
+    if (!inside) onClose();
+  }
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onClose}
+      onCancel={onClose}
+      onClick={handleClick}
+      className="m-auto max-h-lightbox max-w-lightbox overflow-visible rounded-lg bg-transparent p-0 backdrop:bg-black/85"
+    >
+      {src && (
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt="" className="block max-h-lightbox max-w-lightbox rounded-lg object-contain" />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Хаах"
+            className="absolute -top-3 -right-3 flex size-8 items-center justify-center rounded-full bg-landing-text text-landing-bg shadow-lg"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+    </dialog>
   );
 }
 
@@ -146,7 +215,8 @@ function StepCard({
   body,
   image,
   frame,
-}: { n: number; frame: "phone" | "plain" } & StepDef) {
+  onOpen,
+}: { n: number; frame: "phone" | "plain"; onOpen: (src: string) => void } & StepDef) {
   const [errored, setErrored] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -186,13 +256,27 @@ function StepCard({
     </div>
   );
 
+  // Errored (placeholder) cards aren't clickable -- nothing to enlarge.
+  const openButton = !errored ? (
+    <button
+      type="button"
+      onClick={() => onOpen(image)}
+      aria-label={`${title} — томруулж харах`}
+      className="size-full cursor-zoom-in"
+    >
+      {shot}
+    </button>
+  ) : (
+    shot
+  );
+
   return (
     <div className="flex flex-col gap-3">
       {frame === "phone" ? (
-        <PhoneMock>{shot}</PhoneMock>
+        <PhoneMock>{openButton}</PhoneMock>
       ) : (
         <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-landing-border-glass bg-landing-surface">
-          {shot}
+          {openButton}
         </div>
       )}
       <span className="text-small font-bold uppercase tracking-wide text-landing-accent">
