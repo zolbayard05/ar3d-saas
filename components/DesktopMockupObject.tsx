@@ -243,7 +243,10 @@ export function DesktopMockupObject({
         const rect = progressEl.getBoundingClientRect();
         const total = progressEl.offsetHeight - window.innerHeight;
         const p = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
-        group.rotation.y = p * Math.PI * 3.4;
+        // Exactly one full turn (2π) over the whole scroll range -- the
+        // mockup's original 3.4 multiplier over-rotated to ~1.7 turns
+        // (2026-09-02: "just 360 degrees, nothing more").
+        group.rotation.y = p * Math.PI * 2;
         render();
       }
 

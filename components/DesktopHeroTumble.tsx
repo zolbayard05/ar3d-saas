@@ -5,7 +5,6 @@ import { DesktopMockupObject } from "@/components/DesktopMockupObject";
 
 
 interface Beat {
-  kicker: string;
   eyebrow?: string;
   heading: React.ReactNode;
   body: string;
@@ -13,11 +12,15 @@ interface Beat {
   align?: "left" | "right";
 }
 
-// Verbatim from the approved mockup (realify-landing-v3.html, beat1-beat5) —
-// the one thing this whole component exists to reproduce exactly.
+// Trimmed from the mockup's original 5 beats to 3 (2026-09-02 product
+// decision) -- keeps the intro, the "view from every angle" beat (the one
+// that actually describes what the model behind it is doing), and the
+// closing beat; drops the two AR-specific beats, which duplicate ground
+// DesktopBentoSection/DesktopProcessSection already cover further down the
+// page. The "NN / 05" kicker label these beats used to show is gone too
+// (removed instead of renumbered -- see DesktopHeroTumble's own render).
 const BEATS: Beat[] = [
   {
-    kicker: "01 / 05",
     eyebrow: "Зөвхөн утсан дээр ажилладаг AR туршлага",
     heading: (
       <>
@@ -29,19 +32,6 @@ const BEATS: Beat[] = [
     pills: ["30–100 секунд", "Бодит хэмжээтэй", "iOS · Android AR"],
   },
   {
-    kicker: "02 / 05",
-    heading: (
-      <>
-        Зурагнаас <em className="font-extrabold not-italic text-landing-accent">3D</em> туршлага
-        руу.
-      </>
-    ),
-    body: "Бүтээгдэхүүний зургаа оруул. AI-аар 3D загвараа бүтээ.",
-    pills: ["GLB + USDZ", "< 8MB файл"],
-    align: "right",
-  },
-  {
-    kicker: "03 / 05",
     heading: (
       <>
         Бүтээгдэхүүнээ{" "}
@@ -51,19 +41,6 @@ const BEATS: Beat[] = [
     body: "Эргүүл. Томруул. Судал. Деталь бүрийг нь мэдэр.",
   },
   {
-    kicker: "04 / 05 · AR",
-    heading: (
-      <>
-        Өөрийн <em className="font-extrabold not-italic text-landing-accent">орчинд</em>{" "}
-        байрлуулж үз.
-      </>
-    ),
-    body: "Худалдаж авахаасаа өмнө бодит орчинд нь турш.",
-    pills: ["iOS · Android AR", "Бодит хэмжээтэй"],
-    align: "right",
-  },
-  {
-    kicker: "05 / 05",
     heading: (
       <>
         Төсөөлөх шаардлагагүй.{" "}
@@ -76,12 +53,15 @@ const BEATS: Beat[] = [
 
 /**
  * The mockup's "tumble" narrative (offficestud.io-modeled): one real model,
- * pinned centered via a 600vh sticky stage, rotating continuously
- * (DesktopMockupObject's mode="scroll", driven by this same wrapperRef)
- * while 5 copy beats crossfade in turn. Ported 1:1 from
- * realify-landing-v3.html's own onScroll math — same triangular-falloff
- * opacity/translateY per beat, imperatively written to each beat's own DOM
- * node (not React state) so this doesn't re-render on every scroll tick.
+ * pinned centered via a sticky stage sized to BEATS.length, doing exactly
+ * one full turn (DesktopMockupObject's mode="scroll", driven by this same
+ * wrapperRef) over that whole scroll range while the copy beats crossfade
+ * in turn. Ported from realify-landing-v3.html's own onScroll math — same
+ * triangular-falloff opacity/translateY per beat, imperatively written to
+ * each beat's own DOM node (not React state) so this doesn't re-render on
+ * every scroll tick. Trimmed to 3 beats and one clean 360° turn (was 5
+ * beats/~1.7 turns) per 2026-09-02 product decision — see BEATS' own
+ * comment.
  */
 export function DesktopHeroTumble() {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -112,7 +92,11 @@ export function DesktopHeroTumble() {
   }, []);
 
   return (
-    <div ref={wrapperRef} className="relative" style={{ height: "600vh" }}>
+    // 120vh per beat, same pacing the mockup's original 5-beat 600vh
+    // section used -- scaled down to match BEATS.length now that it's 3
+    // instead of 5, rather than leaving the same total height and forcing
+    // extra empty scrolling per beat.
+    <div ref={wrapperRef} className="relative" style={{ height: `${BEATS.length * 120}vh` }}>
       <div className="sticky top-0 flex h-dvh items-center justify-center overflow-hidden bg-landing-bg">
         {/* Radial accent-tinted glow behind the object + a darkening vignette
             at the edges — mockup's .tumble-stage::before/::after. */}
@@ -177,7 +161,7 @@ export function DesktopHeroTumble() {
 
         {BEATS.map((beat, i) => (
           <div
-            key={beat.kicker}
+            key={i}
             ref={(el) => {
               beatRefs.current[i] = el;
             }}
@@ -204,9 +188,6 @@ export function DesktopHeroTumble() {
                     {beat.eyebrow}
                   </span>
                 )}
-                <span className="text-small font-semibold uppercase tracking-wide text-landing-accent">
-                  {beat.kicker}
-                </span>
                 {i === 0 ? (
                   <h1
                     className="font-bold text-landing-text text-balance"
