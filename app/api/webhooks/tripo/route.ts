@@ -15,7 +15,7 @@ import {
 } from "@/lib/tripo";
 import { compressGlb, validateGlb } from "@/lib/glbCompress";
 import { renderThumbnail } from "@/lib/renderThumbnail";
-import { generateModelMetadata } from "@/lib/gemini";
+import { guessModelHeightCm } from "@/lib/gemini";
 import { sweepStaleGenerations } from "@/lib/sweepStaleGenerations";
 
 const SOURCE_URL_EXPIRY_SECONDS = 10 * 60;
@@ -354,7 +354,7 @@ export async function POST(request: Request) {
     // not the GLB, so it has nothing to wait on. Cosmetic like the
     // thumbnail: never allowed to affect the ready transition, which has
     // already happened by the time this runs.
-    after(() => nameAndSizeModel(admin, model.id, model.source_image_key, model.bbox_height_m));
+    after(() => sizeModel(admin, model.id, model.source_image_key, model.bbox_height_m));
   }
 
   return NextResponse.json({ ok: true });
@@ -434,16 +434,17 @@ const MIN_SCALE = 0.1;
 const MAX_SCALE = 3;
 
 /**
- * Best-effort auto-naming + initial-scale guess from the source photo — a
- * failed or missing Gemini call leaves `title` null (UI already renders
- * that as "Untitled", same fallback as before this feature existed) and
+ * Best-effort initial-scale guess from the source photo — models are never
+ * auto-named (2026-09-02 product decision: an AI-guessed name read as odd
+ * often enough that no name at all, ModelCard.tsx's existing "Нэргүй"
+ * fallback, was preferred over it; users can still name a model themselves
+ * via hooks/useModelTitle.ts). A failed or missing Gemini call leaves
  * `scale` at its schema default of 1, so there's nothing to fail here in
- * the way a real generation step can fail. `.is("title", null)` /
- * `.eq("scale", 1)` make this idempotent against a duplicate webhook
- * delivery AND against a user who already renamed/rescaled the model in
- * the window between the ready update and this running — either guard
- * failing to match just means "someone already got there first," not an
- * error.
+ * the way a real generation step can fail. `.eq("scale", 1)` makes this
+ * idempotent against a duplicate webhook delivery AND against a user who
+ * already rescaled the model in the window between the ready update and
+ * this running — the guard failing to match just means "someone already
+ * got there first," not an error.
  *
  * The scale guess is exactly that — a guess, not a measurement (rule 22:
  * Tripo's mesh has no real-world scale at all). bboxHeightM is itself
@@ -455,28 +456,27 @@ const MAX_SCALE = 3;
  * slider's starting point closer to right instead of leaving every model
  * at a uniform, usually-wrong 1x.
  */
-async function nameAndSizeModel(
+async function sizeModel(
   admin: ReturnType<typeof createAdminClient>,
   modelId: string,
   sourceImageKey: string,
   bboxHeightM: number | null,
 ): Promise<void> {
   try {
+    if (bboxHeightM == null || bboxHeightM <= 0) return;
+
     const object = await getR2Client().send(new GetObjectCommand({ Bucket: getUploadsBucket(), Key: sourceImageKey }));
     if (!object.Body) return;
     const bytes = Buffer.from(await object.Body.transformToByteArray());
     const ext = sourceImageKey.split(".").pop()?.toLowerCase() ?? "";
     const mimeType = object.ContentType || UPLOAD_MIME_TYPES[ext] || "image/jpeg";
 
-    const { title, heightCm } = await generateModelMetadata(bytes, mimeType);
+    const heightCm = await guessModelHeightCm(bytes, mimeType);
+    if (heightCm == null) return;
 
-    await admin.from("models").update({ title }).eq("id", modelId).is("title", null);
-
-    if (heightCm != null && bboxHeightM != null && bboxHeightM > 0) {
-      const guessedScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, heightCm / (bboxHeightM * 100)));
-      await admin.from("models").update({ scale: guessedScale }).eq("id", modelId).eq("scale", 1);
-    }
+    const guessedScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, heightCm / (bboxHeightM * 100)));
+    await admin.from("models").update({ scale: guessedScale }).eq("id", modelId).eq("scale", 1);
   } catch (err) {
-    console.warn(`Tripo webhook: auto-naming/sizing failed for model ${modelId}, leaving title/scale unset`, err);
+    console.warn(`Tripo webhook: auto-sizing failed for model ${modelId}, leaving scale unset`, err);
   }
 }

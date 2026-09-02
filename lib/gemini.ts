@@ -7,41 +7,32 @@ import "server-only";
 // gemini-3.5-flash-lite both exists and is callable; it's Google's own
 // 404-message-suggested replacement. Standard-tier pricing confirmed
 // directly from ai.google.dev/gemini-api/docs/pricing: $0.30/1M input,
-// $2.50/1M output. Measured on a real call against a real source photo:
-// 1,101 prompt tokens (1,080 image + 21 text), 5 output tokens — about
-// $0.00033/call for that original title-only prompt. The prompt now also
-// asks for a heightCm guess (see METADATA_PROMPT) in the same call rather
-// than a second one — a few dozen more output tokens for the JSON
-// structure, still negligible next to a Tripo generation. Fires once per
-// completed model, same cadence as Tripo generations, which are already
-// the tighter cost bottleneck.
+// $2.50/1M output — a single-number JSON reply is a handful of output
+// tokens, negligible next to a Tripo generation. Fires once per completed
+// model, same cadence as Tripo generations, which are already the tighter
+// cost bottleneck.
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-// One call does both jobs (title + size guess) instead of two — same photo,
-// same round trip, no second paid request. Title asks explicitly for the
-// term a native speaker would actually reach for, not a word-for-word
-// translation (a literal rendering of an English catalog title reads
-// stilted/foreign in Mongolian). heightCm is the other half of rule 22:
-// Tripo's mesh has no real-world scale at all, so a generic, unconditional
-// "make your best guess from typical proportions for this kind of object"
-// prompt is the entire signal — it's deliberately not shown the source
-// photo's own pixel dimensions or any reference object, because there
-// isn't one to show; this is a starting point for the scale slider
-// (rule 22), not a measurement, and is treated as such by every caller.
-const METADATA_PROMPT =
-  "This photo shows a physical object that was turned into a 3D AR model for a " +
-  "Mongolian marketplace app. Reply with ONLY a single JSON object, no other text, " +
-  "with exactly two fields:\n" +
-  '"title": a short, natural Mongolian product title (2-5 words, no punctuation, ' +
-  "no quotes) — the term a native Mongolian speaker would actually use for this " +
-  "product category, not a literal word-for-word translation of an English name.\n" +
+// This used to also auto-generate a title in the same call — removed
+// 2026-09-02 (product decision: an AI-guessed name read as odd/off often
+// enough that no name at all ("Нэргүй", ModelCard.tsx's existing fallback)
+// was preferred; users can still name a model themselves via
+// hooks/useModelTitle.ts). The height guess stays: it's the other half of
+// rule 22 ("AI meshes have no real-world scale, provide a scale control")
+// — Tripo's mesh has no real-world scale at all, so a generic,
+// unconditional "make your best guess from typical proportions for this
+// kind of object" prompt is the entire signal. Deliberately not shown the
+// source photo's own pixel dimensions or any reference object, because
+// there isn't one to show; this is a starting point for the scale slider,
+// not a measurement, and is treated as such by every caller.
+const HEIGHT_PROMPT =
+  "This photo shows a physical object that was turned into a 3D AR model. " +
+  "Reply with ONLY a single JSON object, no other text, with exactly one field: " +
   '"heightCm": your best-guess estimate of this specific object\'s real-world height ' +
   "in centimeters, as a plain number, reasoned from its visible proportions and " +
-  "typical sizes for objects of its kind.\n" +
-  'Example: {"title": "Модон Хоолны Сандал", "heightCm": 90}';
+  'typical sizes for objects of its kind. Example: {"heightCm": 90}';
 
-const MAX_TITLE_LENGTH = 60;
 const GEMINI_TIMEOUT_MS = 15_000;
 // Loose sanity bounds on the height guess, not a real measurement range —
 // wide enough to span a coffee mug to a wardrobe, tight enough to reject an
@@ -50,25 +41,10 @@ const GEMINI_TIMEOUT_MS = 15_000;
 const MIN_PLAUSIBLE_HEIGHT_CM = 1;
 const MAX_PLAUSIBLE_HEIGHT_CM = 400;
 
-export interface ModelMetadata {
-  title: string;
-  /** null if Gemini's guess was missing/unusable — callers must leave scale at its default in that case, not fabricate one. */
-  heightCm: number | null;
-}
-
 function getApiKey(): string {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set");
   return key;
-}
-
-function sanitizeTitle(raw: string): string {
-  return raw
-    .trim()
-    .replace(/^["'“”]+|["'“”]+$/g, "")
-    .replace(/\s+/g, " ")
-    .replace(/[.]+$/, "")
-    .slice(0, MAX_TITLE_LENGTH);
 }
 
 function sanitizeHeightCm(raw: unknown): number | null {
@@ -78,12 +54,14 @@ function sanitizeHeightCm(raw: unknown): number | null {
 }
 
 /**
- * Best-effort — every caller must catch and continue without metadata on
+ * Best-effort — every caller must catch and continue without a guess on
  * failure (rule 24's "never fail a paid generation over a cosmetic step"
- * applies equally here: naming/sizing are decorative refinements on top of
- * an already-successful generation, not load-bearing).
+ * applies equally here: this is a refinement on top of an already-
+ * successful generation, not load-bearing). Returns null rather than
+ * throwing for an unusable/out-of-range guess, same as a network/API
+ * failure — callers can't tell the difference and don't need to.
  */
-export async function generateModelMetadata(imageBytes: Buffer, mimeType: string): Promise<ModelMetadata> {
+export async function guessModelHeightCm(imageBytes: Buffer, mimeType: string): Promise<number | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
@@ -96,10 +74,10 @@ export async function generateModelMetadata(imageBytes: Buffer, mimeType: string
       body: JSON.stringify({
         contents: [
           {
-            parts: [{ text: METADATA_PROMPT }, { inlineData: { mimeType, data: imageBytes.toString("base64") } }],
+            parts: [{ text: HEIGHT_PROMPT }, { inlineData: { mimeType, data: imageBytes.toString("base64") } }],
           },
         ],
-        generationConfig: { maxOutputTokens: 60, temperature: 0.4, responseMimeType: "application/json" },
+        generationConfig: { maxOutputTokens: 30, temperature: 0.4, responseMimeType: "application/json" },
       }),
     });
   } finally {
@@ -116,10 +94,6 @@ export async function generateModelMetadata(imageBytes: Buffer, mimeType: string
   const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!rawText) throw new Error("Gemini response had no text");
 
-  const parsed = JSON.parse(rawText) as { title?: unknown; heightCm?: unknown };
-
-  const title = sanitizeTitle(typeof parsed.title === "string" ? parsed.title : "");
-  if (!title) throw new Error("Gemini returned an empty/unusable title");
-
-  return { title, heightCm: sanitizeHeightCm(parsed.heightCm) };
+  const parsed = JSON.parse(rawText) as { heightCm?: unknown };
+  return sanitizeHeightCm(parsed.heightCm);
 }
