@@ -219,6 +219,7 @@ export function LibraryFeed({
               models={models}
               onRetry={handleRetry}
               onDelete={handleDelete}
+              interactive3d
             />
           )}
         </div>

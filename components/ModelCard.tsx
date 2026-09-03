@@ -15,11 +15,13 @@ export interface ModelCardProps {
   initialModel: ModelRow;
   onRetry: (model: ModelRow) => void;
   onDelete: (model: ModelRow) => void;
-  /** Curated showcase feed only (HomeFeed) — shows the pre-rendered 3D
-   * studio shot (render_url) instead of the source photo for ready models.
-   * Library keeps the photo (mixed personal statuses, not a curated
-   * ready-only showcase — see HomeFeed.tsx's own "pure showcase" comment).
-   * Defaults false so every existing caller (LibraryFeed) is unaffected.
+  /** Shows the pre-rendered 3D studio shot (render_url) instead of the
+   * source photo for ready models. Started as HomeFeed-only (the curated
+   * showcase); LibraryFeed opted in too (2026-09-02, "Миний Model" should
+   * read the same way the showcase feed does) — a non-ready row just has
+   * no render_url yet regardless of which feed it's in, so the fallback
+   * below already covers that case without any extra branching here.
+   * Defaults false so a future caller doesn't opt in by accident.
    *
    * REVISED 2026-09-02: this briefly rendered a *live*, auto-rotating GLB
    * per card (FeedModelViewer, now deleted) instead of a static image.
@@ -49,18 +51,12 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
     useModelRealtime(initialModel.id, initialModel, { live }) ?? initialModel;
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Library (interactive3d=false): always the source photo, never
-  // render_url — the studio render sits on the same near-black backdrop as
-  // the page itself, so against --color-bg the card reads as an empty
-  // rectangle rather than an object; the photo's own background (white, a
-  // room, whatever it actually was) is what gives that feed contrast and
-  // per-card variety.
-  //
-  // HomeFeed (interactive3d=true): render_url instead — see this file's
-  // interactive3d comment for why a static 3D render replaced a live
-  // viewer here. Falls back to the source photo only if a showcase row
-  // somehow has no render yet (shouldn't happen — see that same comment —
-  // but a missing image is worse than a wrong-but-present one).
+  // interactive3d (HomeFeed and now LibraryFeed too, see this file's own
+  // comment): render_url for any row that has one. Falls back to the
+  // source photo otherwise — every non-ready row (pending/processing/
+  // failed) has no render_url yet by definition, so this fallback is the
+  // normal path for those, not an edge case; a missing image is worse
+  // than a wrong-but-present one.
   const thumbnailSrc =
     interactive3d && model.render_url
       ? buildModelUrl(model.render_url)
