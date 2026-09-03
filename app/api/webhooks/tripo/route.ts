@@ -16,6 +16,7 @@ import {
 } from "@/lib/tripo";
 import { compressGlb, validateGlb } from "@/lib/glbCompress";
 import { bakeGlbScale } from "@/lib/glbScale";
+import { bakeUsdzScale } from "@/lib/usdzScale";
 import { renderThumbnail } from "@/lib/renderThumbnail";
 import { guessModelHeightCm } from "@/lib/gemini";
 import { sweepStaleGenerations } from "@/lib/sweepStaleGenerations";
@@ -345,6 +346,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Permanent, never-overwritten copy of Tripo's original, un-rescaled
+  // USDZ — same reasoning as .raw.glb above: sizeModel() below (and any
+  // future re-scale) always bakes the USDZ side (lib/usdzScale.ts) FROM
+  // this fixed reference too, so repeated adjustments can't compound.
+  await getR2Client().send(
+    new PutObjectCommand({
+      Bucket: getModelsBucket(),
+      Key: `models/${model.id}.raw.usdz`,
+      Body: fileBytes,
+      ContentType: MODEL_CONTENT_TYPES.usdz,
+      CacheControl: MODEL_CACHE_CONTROL,
+    }),
+  );
+
   // stage === "usdz": this is the last step — flip to ready atomically with
   // the write, guarded the same way as the GLB branch above. Also guarded
   // against the stale-sweep race (see the glb_url update above) — without
@@ -482,9 +497,15 @@ const MAX_SCALE = 3;
  * rule 3's `immutable` Cache-Control means whatever a CDN/browser already
  * cached under the OLD key must never need to change; overwriting it in
  * place would leave stale bytes forever cached at a URL that no longer
- * matches its own content. The visible scale slider (rule 22) is what gets
- * the last word — see app/api/models/[id]/scale/route.ts, which re-bakes
- * from the same raw file the same way when the user adjusts it.
+ * matches its own content.
+ *
+ * 2026-09-03: same thing now also happens to the USDZ (lib/usdzScale.ts,
+ * from `models/{id}.raw.usdz`) — GLB-only baking left iOS Quick Look (which
+ * loads `ios-src` natively, never the GLB at all) still showing every
+ * model at its raw, unscaled size, reported directly against a real
+ * iPhone. The visible scale slider (rule 22) is what gets the last word —
+ * see app/api/models/rescale/route.ts, which re-bakes both files the same
+ * way when the user adjusts it.
  */
 async function sizeModel(
   admin: ReturnType<typeof createAdminClient>,
@@ -513,20 +534,48 @@ async function sizeModel(
     const rawGlb = Buffer.from(await rawObject.Body.transformToByteArray());
     const scaledGlb = await bakeGlbScale(rawGlb, guessedScale);
 
-    const scaledKey = `models/${modelId}.${randomUUID().slice(0, 8)}.glb`;
+    const scaledGlbKey = `models/${modelId}.${randomUUID().slice(0, 8)}.glb`;
     await getR2Client().send(
       new PutObjectCommand({
         Bucket: getModelsBucket(),
-        Key: scaledKey,
+        Key: scaledGlbKey,
         Body: scaledGlb,
         ContentType: MODEL_CONTENT_TYPES.glb,
         CacheControl: MODEL_CACHE_CONTROL,
       }),
     );
 
+    // USDZ side of the same fix (lib/usdzScale.ts) — iOS Quick Look loads
+    // this file natively, completely independent of the GLB, so baking
+    // only the GLB leaves iOS still showing the raw, unscaled size. Kept
+    // best-effort and separate from the GLB write above: a USDZ-baking
+    // failure shouldn't also lose the GLB fix that already succeeded.
+    let scaledUsdzKey: string | undefined;
+    try {
+      const rawUsdzObject = await getR2Client().send(
+        new GetObjectCommand({ Bucket: getModelsBucket(), Key: `models/${modelId}.raw.usdz` }),
+      );
+      if (rawUsdzObject.Body) {
+        const rawUsdz = Buffer.from(await rawUsdzObject.Body.transformToByteArray());
+        const scaledUsdz = await bakeUsdzScale(rawUsdz, guessedScale);
+        scaledUsdzKey = `models/${modelId}.${randomUUID().slice(0, 8)}.usdz`;
+        await getR2Client().send(
+          new PutObjectCommand({
+            Bucket: getModelsBucket(),
+            Key: scaledUsdzKey,
+            Body: scaledUsdz,
+            ContentType: MODEL_CONTENT_TYPES.usdz,
+            CacheControl: MODEL_CACHE_CONTROL,
+          }),
+        );
+      }
+    } catch (err) {
+      console.warn(`Tripo webhook: USDZ scale-baking failed for model ${modelId}, iOS AR will show the unscaled size`, err);
+    }
+
     await admin
       .from("models")
-      .update({ scale: guessedScale, glb_url: scaledKey })
+      .update({ scale: guessedScale, glb_url: scaledGlbKey, ...(scaledUsdzKey && { usdz_url: scaledUsdzKey }) })
       .eq("id", modelId)
       .eq("scale", 1);
   } catch (err) {

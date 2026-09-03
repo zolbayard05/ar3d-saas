@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getR2Client, getModelsBucket, MODEL_CONTENT_TYPES, MODEL_CACHE_CONTROL } from "@/lib/r2";
 import { bakeGlbScale } from "@/lib/glbScale";
+import { bakeUsdzScale } from "@/lib/usdzScale";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIN_SCALE = 0.1;
@@ -72,29 +73,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Model has no raw GLB to re-scale from" }, { status: 500 });
   }
 
-  let scaledKey: string;
+  let scaledGlbKey: string;
   try {
     const scaledGlb = await bakeGlbScale(rawGlb, scale);
-    scaledKey = `models/${id}.${randomUUID().slice(0, 8)}.glb`;
+    scaledGlbKey = `models/${id}.${randomUUID().slice(0, 8)}.glb`;
     await r2.send(
       new PutObjectCommand({
         Bucket: bucket,
-        Key: scaledKey,
+        Key: scaledGlbKey,
         Body: scaledGlb,
         ContentType: MODEL_CONTENT_TYPES.glb,
         CacheControl: MODEL_CACHE_CONTROL,
       }),
     );
   } catch (err) {
-    console.error(`Rescale model ${id}: bake/upload failed`, err);
+    console.error(`Rescale model ${id}: GLB bake/upload failed`, err);
     return NextResponse.json({ error: "Failed to apply scale" }, { status: 500 });
   }
 
+  // USDZ side of the same fix (lib/usdzScale.ts) — best-effort and kept
+  // separate from the GLB path above: iOS Quick Look loads this file
+  // natively and independently of the GLB, so a USDZ-specific failure
+  // here shouldn't undo the GLB rescale that already succeeded (the
+  // on-page viewer and Android AR would still be correct either way).
+  let scaledUsdzKey: string | undefined;
+  try {
+    const rawUsdzObject = await r2.send(new GetObjectCommand({ Bucket: bucket, Key: `models/${id}.raw.usdz` }));
+    if (rawUsdzObject.Body) {
+      const rawUsdz = Buffer.from(await rawUsdzObject.Body.transformToByteArray());
+      const scaledUsdz = await bakeUsdzScale(rawUsdz, scale);
+      scaledUsdzKey = `models/${id}.${randomUUID().slice(0, 8)}.usdz`;
+      await r2.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: scaledUsdzKey,
+          Body: scaledUsdz,
+          ContentType: MODEL_CONTENT_TYPES.usdz,
+          CacheControl: MODEL_CACHE_CONTROL,
+        }),
+      );
+    }
+  } catch (err) {
+    console.error(`Rescale model ${id}: USDZ bake/upload failed, iOS AR will keep its previous size`, err);
+  }
+
   const admin = createAdminClient();
-  const { error } = await admin.from("models").update({ scale, glb_url: scaledKey }).eq("id", id);
+  const { error } = await admin
+    .from("models")
+    .update({ scale, glb_url: scaledGlbKey, ...(scaledUsdzKey && { usdz_url: scaledUsdzKey }) })
+    .eq("id", id);
   if (error) {
     return NextResponse.json({ error: "Failed to save scale" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, glbKey: scaledKey });
+  return NextResponse.json({ ok: true, glbKey: scaledGlbKey, usdzKey: scaledUsdzKey });
 }

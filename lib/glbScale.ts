@@ -22,15 +22,15 @@ import draco3d from "draco3dgltf";
  * scene, Android Scene Viewer, WebXR) actually reads is the GLB's own
  * geometry, so that geometry has to already be correct.
  *
- * iOS Quick Look is a separate, harder limitation this does NOT fix: it
- * loads the `ios-src` USDZ natively, outside the page entirely (rule 9),
- * with no channel for the page to influence it at all — scaling requires
- * the USDZ's own geometry to already be correct, and there is no local
- * USDZ authoring/editing tool in this stack (Tripo's `/models/convert` only
- * ever converts Tripo's own original, un-rescaled task output — it has no
- * "convert this modified GLB" mode). Left as a known platform gap, same
- * spirit as rule 9/10's other iOS AR caveats, rather than pretending a fix
- * exists where none is possible without a new USD toolchain.
+ * iOS Quick Look loads the `ios-src` USDZ natively, outside the page
+ * entirely (rule 9) — this function alone does nothing for it, since a
+ * GLB-only bake never touches that file. See lib/usdzScale.ts (added
+ * 2026-09-03) for the USDZ side of the same fix: a real gap existed here
+ * for a while (no JS parser for USD's binary crate format, and Tripo's
+ * `/models/convert` only ever converts its own original, un-rescaled task
+ * output), closed by wrapping rather than editing — a new root layer that
+ * `references` the original file and carries the scale, which never
+ * requires understanding the original's binary content at all.
  *
  * Scales every ROOT node of the default scene (there is usually exactly
  * one), by multiplying each root's own local `scale` component — the same
