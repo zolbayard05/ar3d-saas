@@ -168,10 +168,15 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
           // a real-time blur of everything behind each instance; with a
           // few dozen cards in an unvirtualized masonry grid (see
           // MasonryGrid.tsx), that's a few dozen simultaneous backdrop
-          // composites, a well-known mobile scroll-jank cause. bg-bg/80 is
-          // opaque enough on its own that the blur wasn't buying much
-          // legibility anyway.
-          <div className="absolute bottom-2 left-2 rounded-full border border-glass-border bg-bg/80 px-2.5 py-1">
+          // composites, a well-known mobile scroll-jank cause. Still true
+          // here (2026-09-03, "liquid glass" request) — same tokens the
+          // outer card border/shadow already use for its own "lit glass
+          // surface" look (--color-glass-border, --shadow-glass-card's
+          // inset top highlight) instead of a real blur: a lighter,
+          // translucent bg-surface-hover fill reads as a glassy pill
+          // against the image behind it without paying blur's per-card
+          // compositing cost.
+          <div className="absolute bottom-2 left-2 rounded-full border border-glass-border bg-surface-hover/60 px-1.5 py-0.5 shadow-glass-card">
             <p className="text-small uppercase tracking-wide text-text">
               {dims}
             </p>
