@@ -21,6 +21,29 @@ const EOCD_SIG = 0x06054b50;
 const ALIGNMENT_EXTRA_ID = 0x1986;
 const ALIGNMENT_BYTES = 64;
 
+// 2026-09-03: shipped hardcoded as "Y" originally (matching glTF's own
+// always-Y-up convention, since the equivalent GLB fix never needed to
+// think about this) — wrong, and it broke every model's orientation/
+// placement in real AR Quick Look (reported directly against a real
+// iPhone; the earlier local verification with usdchecker/usdcat checked
+// scale/extent, never orientation, so it didn't catch this).
+//
+// upAxis is stage-root-layer metadata in USD — it does NOT compose through
+// a `references` arc, so once the wrapper layer becomes the stage root,
+// the ORIGINAL file's own upAxis is silently ignored no matter what the
+// wrapper does (author it, author something else, or omit it entirely);
+// the wrapper's own value is the only one that ends up governing the
+// composed stage. Checked the actual value directly with `usdcat` (ships
+// with macOS) against three different raw Tripo USDZs (an armchair, an
+// apple, a sneaker) — all three: `doc = "Blender v4.3.2"`, `upAxis = "Z"`.
+// Tripo's export pipeline goes through Blender, whose native convention is
+// Z-up (unlike glTF, which mandates Y-up in the format itself, so the
+// equivalent GLB question never comes up) — consistent across every
+// sample checked, but still an inferred constant from Tripo's current
+// pipeline, not a guarantee: if Tripo ever changes their exporter, this
+// would need re-verifying the same way, not just flipped back to "Y".
+const STAGE_UP_AXIS = "Z";
+
 /**
  * Reads a USDZ (a plain zip, required by spec to be entirely
  * uncompressed/STORE — confirmed on a real Tripo file, every entry had
@@ -209,7 +232,7 @@ export async function bakeUsdzScale(input: Buffer, factor: number): Promise<Buff
   const usda = `#usda 1.0
 (
     defaultPrim = "Root"
-    upAxis = "Y"
+    upAxis = "${STAGE_UP_AXIS}"
     metersPerUnit = 1
 )
 
