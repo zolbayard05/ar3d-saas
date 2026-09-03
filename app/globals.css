@@ -65,6 +65,8 @@
   --text-body--line-height: var(--line-height-body);
   --text-small: var(--font-size-small);
   --text-small--line-height: var(--line-height-small);
+  --text-tiny: var(--font-size-tiny);
+  --text-tiny--line-height: var(--line-height-tiny);
 
   --tracking-wide: var(--tracking-wide);
 

@@ -177,7 +177,7 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
           // against the image behind it without paying blur's per-card
           // compositing cost.
           <div className="absolute bottom-2 left-2 rounded-full border border-glass-border bg-surface-hover/60 px-1.5 py-0.5 shadow-glass-card">
-            <p className="text-small uppercase tracking-wide text-text">
+            <p className="text-tiny uppercase tracking-wide text-text">
               {dims}
             </p>
           </div>

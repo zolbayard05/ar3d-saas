@@ -106,10 +106,14 @@ const GRADIENT_FLOOR_GLOW_HEX = "#a89d94";
 // 2026-09-03 (v4): object anchored flush at the top read as sitting too
 // high once the canvas went square (reported directly) — TOP_MARGIN_FRACTION
 // adds empty room above matching what's left below for the reflection, so
-// the object's own vertical midpoint lands at the canvas's true center
-// (0.2 + 0.6/2 = 0.5) rather than (0 + 0.72/2 = 0.36) as before.
-const TOP_MARGIN_FRACTION = 0.2;
-const OBJECT_AREA_HEIGHT_FRACTION = 0.6;
+// the object's own vertical midpoint always lands at the canvas's true
+// center: TOP_MARGIN_FRACTION + OBJECT_AREA_HEIGHT_FRACTION / 2 = 0.5.
+// (v5): object sized up further per direct feedback ("bring it closer/
+// bigger") — both re-solved from that same centering equation, not just
+// OBJECT_AREA_HEIGHT_FRACTION bumped alone, or the object would drift
+// back off-center.
+const TOP_MARGIN_FRACTION = 0.14;
+const OBJECT_AREA_HEIGHT_FRACTION = 0.72;
 // How opaque the reflection starts (right at the object's own base), fading
 // to fully transparent — kept low and blurred (REFLECTION_BLUR_PX below) so
 // it reads as a soft, out-of-focus floor reflection, not a second copy of
