@@ -99,4 +99,18 @@
     0 0 0 1px var(--color-glass-border-hover),
     0 8px 28px -8px var(--color-glow-strong),
     inset 0 1px 0 rgb(255 255 255 / 0.09);
+
+  /* 2026-09-03 — the one deliberately CHROMATIC token in this file,
+   * against every other rule/comment above ("no accent hue anywhere",
+   * glow layer "deliberately hue-free"). Product asked to match a specific
+   * reference screenshot's feed background exactly, not to introduce a new
+   * general accent color — scoped to MasonryGrid.tsx's page-level backdrop
+   * only, nothing else reads this. Value is the reference image's own
+   * warmest sampled pixel (~rgb(86,63,63), the area between/around the
+   * card grid) converted to oklch, not picked by eye — individual cards in
+   * that same reference are flat near-black (sampled ~rgb(1,1,1)), i.e.
+   * var(--color-bg) already, which is why ModelCard.tsx's own background
+   * stays plain rather than also carrying this gradient.
+   */
+  --color-feed-glow: oklch(0.393 0.032 18.6);
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useModelRealtime } from "@/hooks/useModelRealtime";
 import { useElapsedTime } from "@/hooks/useElapsedTime";
-import { DEFAULT_SOURCE_ASPECT_RATIO, buildModelUrl, formatDimensionsCm } from "@/lib/models";
+import { MODEL_CARD_ASPECT_RATIO, buildModelUrl, formatDimensionsCm } from "@/lib/models";
 import { deleteModel } from "@/lib/deleteModel";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
@@ -68,37 +68,6 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
   const generating =
     model.status === "pending" || model.status === "processing";
 
-  // Reserved up front from a stored aspect ratio — an <img> with no
-  // intrinsic size renders at 0 height until it's actually downloaded, so
-  // every card in the grid collapses to just its title on first paint, then
-  // jumps to full size later, shoving everything below it down at a random
-  // moment per card. Setting aspect-ratio up front makes the frame its real
-  // final size on the very first paint (filled with bg-surface-hover as a
-  // placeholder), so there's nothing left to shift — only a fade once the
-  // image itself is actually in. object-cover (not the old bare w-full)
-  // relies on the box's aspect ratio actually matching the image's, or it
-  // crops into the subject instead of just filling the box cleanly.
-  //
-  // thumbnailSrc's TWO possible images have different real aspect ratios,
-  // so which stored ratio backs the box has to match: render_url (the
-  // interactive3d/HomeFeed case) is lib/renderThumbnail.ts's own studio
-  // render, framed edge-to-edge around the GLB's bbox at exactly
-  // bbox_width_m/bbox_height_m (scale-invariant — both dimensions scale by
-  // the same factor, so this ratio is right regardless of the model's
-  // scale) — using source_image_width/height there instead (the ORIGINAL
-  // PHOTO's shape, unrelated to the render's) was the bug: most objects'
-  // photo crop and rendered-object silhouette aren't the same shape, so
-  // object-cover was cropping into the render to force it into a box sized
-  // for a different image entirely, reading as models "cut off on the
-  // sides" (reported 2026-09-02). The source-photo case (library/non-3d)
-  // is unaffected — that ratio is still correct for that image.
-  const usingRender = interactive3d && Boolean(model.render_url);
-  const aspectRatio =
-    usingRender && model.bbox_width_m && model.bbox_height_m
-      ? model.bbox_width_m / model.bbox_height_m
-      : model.source_image_width && model.source_image_height
-        ? model.source_image_width / model.source_image_height
-        : DEFAULT_SOURCE_ASPECT_RATIO;
   const dims = model.status === "ready" ? formatDimensionsCm(model) : null;
 
   const content = (
@@ -110,10 +79,25 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
           rather than a flat block. group-hover/group-focus-visible only
           matter for ready models (wrapped in a Link with the "group" class
           below) — a non-ready card has nothing to hover into, so it just
-          never triggers those variants. */}
+          never triggers those variants.
+
+          2026-09-03: fixed MODEL_CARD_ASPECT_RATIO instead of a per-card
+          ratio derived from that card's own image (source photo width/
+          height, or the render's bbox) — every card in the feed AND
+          library is now the same size (product decision: consistency over
+          the old masonry layout's variable heights), and the image inside
+          is object-contain, not object-cover, so a shape that doesn't
+          match the fixed box just letterboxes instead of getting cropped —
+          the whole object/photo is always fully visible. bg-bg (flat, not
+          a gradient) matches the reference screenshot this redesign was
+          matched against: sampled pixel colors from actual card interiors
+          there came back near-black (~rgb(1,1,1), i.e. this same token) —
+          the warm glow visible in that reference is the PAGE background
+          showing through the gaps between cards (MasonryGrid.tsx's
+          --color-feed-glow), not each card's own background. */}
       <div
-        className="relative overflow-hidden rounded-card border border-glass-border bg-surface-hover shadow-glass-card transition-shadow duration-300 group-hover:border-glass-border-hover group-hover:shadow-glow-ring group-focus-visible:border-glass-border-hover group-focus-visible:shadow-glow-ring"
-        style={{ aspectRatio }}
+        className="relative overflow-hidden rounded-card border border-glass-border bg-bg shadow-glass-card transition-shadow duration-300 group-hover:border-glass-border-hover group-hover:shadow-glow-ring group-focus-visible:border-glass-border-hover group-focus-visible:shadow-glow-ring"
+        style={{ aspectRatio: MODEL_CARD_ASPECT_RATIO }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -146,7 +130,7 @@ export function ModelCard({ initialModel, onRetry, onDelete, interactive3d = fal
             });
           }}
           className={cn(
-            "block size-full object-cover transition-opacity duration-300",
+            "block size-full object-contain transition-opacity duration-300",
             !imageLoaded && "opacity-0",
             imageLoaded && !generating && "opacity-100",
             imageLoaded && generating && "opacity-50",

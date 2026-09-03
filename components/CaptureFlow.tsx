@@ -88,13 +88,14 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     setCreating(true);
     setError(null);
     try {
-      // MasonryGrid needs the photo's real pixel aspect ratio to balance
-      // columns by expected card height up front (see that file) — reading
-      // it here, once, at the one point a File object exists, whichever
-      // input it came from (CaptureChoice.tsx's camera or gallery file
-      // input). Best-effort: a decode failure shouldn't block generation,
-      // just means this model falls back to MasonryGrid's neutral default
-      // ratio.
+      // Stored on the row (migration 0012) at the one point a File object
+      // exists, whichever input it came from (CaptureChoice.tsx's camera or
+      // gallery file input) — not currently read by MasonryGrid/ModelCard.tsx
+      // (2026-09-03: every card renders at a fixed MODEL_CARD_ASPECT_RATIO
+      // now, object-contain, regardless of the source photo's own shape),
+      // but kept as it's cheap, harmless metadata a future feature could
+      // still use. Best-effort: a decode failure just leaves both columns
+      // null, same as any pre-migration-0012 row.
       let sourceImageWidth: number | undefined;
       let sourceImageHeight: number | undefined;
       try {

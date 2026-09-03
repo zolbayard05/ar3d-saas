@@ -1,30 +1,32 @@
+"use client";
+
+import { useColumnCount } from "@/hooks/useColumnCount";
+import { MODEL_CARD_ASPECT_RATIO } from "@/lib/models";
+
 // Loading-state stand-in for HomeFeed/LibraryFeed's MasonryGrid (rule 40 —
-// mirrors its exact structure: two flex-1 columns, gap-2 px-2, rounded-card
-// tiles) rather than a generic centered spinner (components/ui/PageLoading)
-// — a content-shaped placeholder reads as "the feed is arriving" instead of
-// "something is happening, wait and see." Fixed aspect ratios per slot
-// (not random) so the skeleton itself never shifts between renders.
-const COLUMN_ASPECTS: [number, number][] = [
-  [4 / 5, 1],
-  [1, 3 / 4],
-  [3 / 4, 4 / 5],
-];
+// mirrors its exact structure: same grid-template-columns/gap/px, same
+// MODEL_CARD_ASPECT_RATIO tiles) rather than a generic centered spinner
+// (components/ui/PageLoading) — a content-shaped placeholder reads as "the
+// feed is arriving" instead of "something is happening, wait and see."
+// Every tile is the same fixed ratio (2026-09-03: real cards are too, no
+// longer masonry) and there's no title line under each tile since
+// ModelCard no longer shows one either.
+const SKELETON_TILE_COUNT = 9;
 
 export function FeedSkeleton() {
+  const columnCount = useColumnCount();
+
   return (
-    <div className="flex gap-2 px-2 pt-1">
-      {([0, 1] as const).map((col) => (
-        <div key={col} className="flex flex-1 flex-col gap-2">
-          {COLUMN_ASPECTS.map((pair, row) => (
-            <div key={row} className="flex flex-col gap-2">
-              <div
-                className="animate-pulse rounded-card bg-surface-hover"
-                style={{ aspectRatio: pair[col] }}
-              />
-              <div className="h-3 w-2/3 animate-pulse rounded-sm bg-surface-hover" />
-            </div>
-          ))}
-        </div>
+    <div
+      className="grid gap-2 px-2 pt-1"
+      style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+    >
+      {Array.from({ length: SKELETON_TILE_COUNT }, (_, i) => (
+        <div
+          key={i}
+          className="animate-pulse rounded-card bg-surface-hover"
+          style={{ aspectRatio: MODEL_CARD_ASPECT_RATIO }}
+        />
       ))}
     </div>
   );
