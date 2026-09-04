@@ -38,15 +38,48 @@ function realifyScanForGalleryImages(frontSrc) {
   const MIN_DIMENSION = 80; // filters out icons/spacers/tracking pixels
   const MAX_CANDIDATES = 8;
 
+  // A gallery's own thumbnail rail very often re-serves the SAME photo the
+  // user right-clicked at a different size for its first/hero thumbnail
+  // (e.g. .../product-600x600.jpg next to .../product-150x150.jpg) — a
+  // plain src-string comparison doesn't catch that, so the auto-picked
+  // "extra angles" ended up burning a slot on a duplicate of front instead
+  // of a genuinely different side (reported directly: "эхний 4-ийг л сонгож
+  // байна, бүх талыг барьсан зураг сонгохгүй байна"). Strips the common
+  // width/height suffix e-commerce CDNs put right before the file extension
+  // (Shopify/WooCommerce/Magento all do some variant of "-300x300"/
+  // "_600x600") and common resize query params, then dedups/excludes by
+  // that normalized form instead of the raw URL. Best-effort heuristic, not
+  // a real image-content comparison — true visual similarity would need
+  // pixel access, which most product images being cross-origin with no CORS
+  // header rules out (reading them back from a canvas throws).
+  function normalizeImageUrl(url) {
+    try {
+      const u = new URL(url, location.href);
+      const path = u.pathname.replace(/[-_]\d{2,4}x\d{0,4}(?=\.[a-z]{3,4}$)/i, "");
+      const params = new URLSearchParams(u.search);
+      ["w", "width", "h", "height", "size", "s", "quality", "q"].forEach((key) => params.delete(key));
+      const query = params.toString();
+      return `${u.origin}${path}${query ? "?" + query : ""}`;
+    } catch {
+      return url;
+    }
+  }
+
   const imgs = Array.from(document.querySelectorAll("img"));
   const candidates = new Map();
+  const frontKey = normalizeImageUrl(frontSrc);
 
   function addCandidate(img) {
     const src = img.currentSrc || img.src;
-    if (!src || src === frontSrc) return;
+    if (!src) return;
+    const key = normalizeImageUrl(src);
+    if (key === frontKey) return; // same photo as front at a different size — not a new angle
     if ((img.naturalWidth || img.width || 0) < MIN_DIMENSION) return;
     if ((img.naturalHeight || img.height || 0) < MIN_DIMENSION) return;
-    if (!candidates.has(src)) candidates.set(src, { src, alt: img.alt || "" });
+    // Keyed by the normalized form (so two sizes of the same OTHER photo
+    // also collapse to one candidate), but the real src is what's stored —
+    // that's what actually gets fetched later.
+    if (!candidates.has(key)) candidates.set(key, { src, alt: img.alt || "" });
   }
 
   const front = imgs.find((img) => img.currentSrc === frontSrc || img.src === frontSrc);
