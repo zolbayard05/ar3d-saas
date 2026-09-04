@@ -1,27 +1,25 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse, after } from "next/server";
 import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getR2Client, getModelsBucket, getUploadsBucket, MODEL_CONTENT_TYPES, MODEL_CACHE_CONTROL } from "@/lib/r2";
 import {
   verifyTripoWebhookSignature,
   getWebhookSecret,
   submitUsdzConversionTask,
-  submitImageToModelTask,
   faceLimitForAttempt,
   TARGET_USDZ_BYTES,
   MAX_SIZE_RETRIES,
+  MAX_REGEN_RETRIES,
   type TripoTask,
 } from "@/lib/tripo";
+import { submitTripoTaskForKeys } from "@/lib/generateModel";
 import { compressGlb, validateGlb } from "@/lib/glbCompress";
 import { bakeGlbScale } from "@/lib/glbScale";
 import { bakeUsdzScale } from "@/lib/usdzScale";
 import { renderThumbnail } from "@/lib/renderThumbnail";
 import { guessModelHeightCm } from "@/lib/gemini";
 import { sweepStaleGenerations } from "@/lib/sweepStaleGenerations";
-
-const SOURCE_URL_EXPIRY_SECONDS = 10 * 60;
 
 // Default Vercel function timeout (10s) isn't enough headroom once this
 // handler launches headless Chromium for lib/renderThumbnail.ts on top of
@@ -205,6 +203,61 @@ export async function POST(request: Request) {
 
     if (!validation.valid) {
       console.warn(`Tripo webhook: model ${model.id} failed GLB validation: ${validation.reason}`);
+
+      // QA regen retry: validateGlb rejected the geometry itself (bad aspect
+      // ratio, no geometry, degenerate bounds) — unlike the size-budget retry
+      // below, nothing about the *request* was wrong, so resubmit the exact
+      // same inputs at the same face_limit and hope the generative model's
+      // own run-to-run variance produces something usable. This is the
+      // closest thing to Vertebrae/VNTANA's human cleanup pass that an
+      // automated pipeline with no mesh-repair tooling can actually do —
+      // detect-and-regenerate, not detect-and-fix. Bounded to
+      // MAX_REGEN_RETRIES for the same reason as MAX_SIZE_RETRIES: a full
+      // paid Tripo generation per attempt.
+      if (model.regen_retry_count < MAX_REGEN_RETRIES) {
+        const nextRegenAttempt = model.regen_retry_count + 1;
+        console.warn(
+          `Tripo webhook: model ${model.id} retrying generation from scratch (QA regen attempt ${nextRegenAttempt}) after failed validation`,
+        );
+        try {
+          const { taskId: newTaskId } = await submitTripoTaskForKeys(
+            {
+              front: model.source_image_key,
+              left: model.source_image_key_left,
+              back: model.source_image_key_back,
+              right: model.source_image_key_right,
+            },
+            faceLimitForAttempt(model.size_retry_count),
+          );
+          const { data: updated } = await admin
+            .from("models")
+            .update({
+              status: "processing",
+              glb_url: null,
+              usdz_url: null,
+              provider_job_id: newTaskId,
+              usdz_provider_job_id: null,
+              regen_retry_count: nextRegenAttempt,
+            })
+            .eq("id", model.id)
+            .is("usdz_url", null)
+            .neq("status", "failed")
+            .select("id");
+
+          if (!updated || updated.length === 0) {
+            // Lost the race to a concurrent duplicate delivery already
+            // driving this — don't submit a second retry on top of it.
+            return NextResponse.json({ ok: true, note: "concurrent delivery already handled" });
+          }
+          return NextResponse.json({ ok: true, note: `QA regen retry submitted (attempt ${nextRegenAttempt})` });
+        } catch (err) {
+          // Resubmission itself failed (Tripo API error) — there's no valid
+          // file to ship this time (unlike the size-retry's fall-through
+          // below), so fall through to the refund.
+          console.warn(`Tripo webhook: model ${model.id} QA regen resubmission failed, refunding instead`, err);
+        }
+      }
+
       await admin.rpc("refund_credit", {
         model_id: model.id,
         failure_reason: `Model failed validation: ${validation.reason}`,
@@ -229,14 +282,16 @@ export async function POST(request: Request) {
         `(attempt ${model.size_retry_count}) — retrying at face_limit=${nextFaceLimit} (attempt ${nextAttempt})`,
     );
 
-    const sourceImageUrl = await getSignedUrl(
-      getR2Client(),
-      new GetObjectCommand({ Bucket: getUploadsBucket(), Key: model.source_image_key }),
-      { expiresIn: SOURCE_URL_EXPIRY_SECONDS },
-    );
-
     try {
-      const { taskId: newTaskId } = await submitImageToModelTask(sourceImageUrl, nextFaceLimit);
+      const { taskId: newTaskId } = await submitTripoTaskForKeys(
+        {
+          front: model.source_image_key,
+          left: model.source_image_key_left,
+          back: model.source_image_key_back,
+          right: model.source_image_key_right,
+        },
+        nextFaceLimit,
+      );
       const { data: updated } = await admin
         .from("models")
         .update({

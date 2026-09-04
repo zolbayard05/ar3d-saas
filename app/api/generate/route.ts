@@ -27,16 +27,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Буруу JSON бие" }, { status: 400 });
   }
 
-  const { sourceImageKey, idempotencyKey, sourceImageWidth, sourceImageHeight } = (body ?? {}) as {
+  const {
+    sourceImageKey,
+    idempotencyKey,
+    sourceImageWidth,
+    sourceImageHeight,
+    sourceImageKeyLeft,
+    sourceImageKeyBack,
+    sourceImageKeyRight,
+  } = (body ?? {}) as {
     sourceImageKey?: unknown;
     idempotencyKey?: unknown;
     sourceImageWidth?: unknown;
     sourceImageHeight?: unknown;
+    sourceImageKeyLeft?: unknown;
+    sourceImageKeyBack?: unknown;
+    sourceImageKeyRight?: unknown;
   };
 
   const result = await submitGeneration(
     user.id,
-    { sourceImageKey, idempotencyKey, sourceImageWidth, sourceImageHeight },
+    {
+      sourceImageKey,
+      idempotencyKey,
+      sourceImageWidth,
+      sourceImageHeight,
+      sourceImageKeyLeft,
+      sourceImageKeyBack,
+      sourceImageKeyRight,
+    },
     async () => {
       // A real Supabase JWT is available here — consume_credit(uid)'s own
       // auth.uid() = uid check (migration 0001) is the right one for this

@@ -17,14 +17,108 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+// Injected into the page via chrome.scripting.executeScript — MUST be a
+// fully self-contained function (no closures over anything outside its own
+// body/args): executeScript serializes it by source text and re-runs it
+// inside the target page's own context, which shares nothing with this
+// service worker's scope.
+//
+// Multi-view generation (lib/tripo.ts's multiview_to_model) wants 2-4 real
+// angles of the SAME object, but this extension's whole interaction model is
+// "right-click ONE image" — there's no way for the user to indicate "these
+// four images are the same product" across separate clicks. Instead: most
+// product pages already render the other angles somewhere nearby (a
+// thumbnail rail next to the main image is the single most common e-commerce
+// gallery pattern), so this scans for them automatically right after the
+// click that captured the front image, and the popup lets the user pick
+// which (if any) to include. Best-effort and additive only — finding nothing
+// (or the injection itself being rejected, e.g. on a chrome:// page) just
+// means the single-photo path runs exactly as before.
+function realifyScanForGalleryImages(frontSrc) {
+  const MIN_DIMENSION = 80; // filters out icons/spacers/tracking pixels
+  const MAX_CANDIDATES = 8;
+
+  const imgs = Array.from(document.querySelectorAll("img"));
+  const candidates = new Map();
+
+  function addCandidate(img) {
+    const src = img.currentSrc || img.src;
+    if (!src || src === frontSrc) return;
+    if ((img.naturalWidth || img.width || 0) < MIN_DIMENSION) return;
+    if ((img.naturalHeight || img.height || 0) < MIN_DIMENSION) return;
+    if (!candidates.has(src)) candidates.set(src, { src, alt: img.alt || "" });
+  }
+
+  const front = imgs.find((img) => img.currentSrc === frontSrc || img.src === frontSrc);
+
+  // Primary heuristic: walk up from the clicked image looking for the
+  // nearest ancestor that contains a handful of OTHER images too — the
+  // shape of almost every product-gallery thumbnail rail.
+  if (front) {
+    let node = front.parentElement;
+    for (let depth = 0; depth < 6 && node; depth++) {
+      const nearby = node.querySelectorAll("img");
+      if (nearby.length >= 2 && nearby.length <= 24) {
+        nearby.forEach(addCandidate);
+        if (candidates.size > 0) break;
+      }
+      node = node.parentElement;
+    }
+  }
+
+  // Fallback: images that share the clicked image's own URL directory —
+  // catches galleries built without a shared DOM container (e.g. absolutely
+  // positioned slides) as long as the CDN keeps product photos co-located.
+  if (candidates.size < 2) {
+    try {
+      const frontUrl = new URL(frontSrc, location.href);
+      const frontDir = frontUrl.pathname.slice(0, frontUrl.pathname.lastIndexOf("/") + 1);
+      imgs.forEach((img) => {
+        const src = img.currentSrc || img.src;
+        if (!src) return;
+        try {
+          const u = new URL(src, location.href);
+          if (u.origin === frontUrl.origin && frontDir.length > 1 && u.pathname.startsWith(frontDir)) {
+            addCandidate(img);
+          }
+        } catch {
+          // not a resolvable URL — skip
+        }
+      });
+    } catch {
+      // frontSrc itself didn't parse as a URL — nothing more to try
+    }
+  }
+
+  return Array.from(candidates.values()).slice(0, MAX_CANDIDATES);
+}
+
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== "realify-3d" || !info.srcUrl) return;
+
+  // Best-effort — some pages (chrome://, the Chrome Web Store, a page that
+  // hasn't finished loading) reject script injection outright. Losing this
+  // never blocks the single-image path below, only the optional picker.
+  let candidates = [];
+  if (tab?.id != null) {
+    try {
+      const [{ result } = {}] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: realifyScanForGalleryImages,
+        args: [info.srcUrl],
+      });
+      candidates = result || [];
+    } catch {
+      candidates = [];
+    }
+  }
 
   await chrome.storage.session.set({
     realifyPendingImage: {
       srcUrl: info.srcUrl,
       pageUrl: tab?.url ?? null,
       capturedAt: Date.now(),
+      candidates,
     },
   });
 

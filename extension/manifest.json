@@ -21,6 +21,6 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["contextMenus", "storage", "alarms", "notifications"],
+  "permissions": ["contextMenus", "storage", "alarms", "notifications", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"]
 }

@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { CaptureChoice } from "@/components/CaptureChoice";
 import { GeneratingStep } from "@/components/GeneratingStep";
 import { ResultStep } from "@/components/ResultStep";
 import { useUpload } from "@/hooks/useUpload";
+import { ALLOWED_IMAGE_TYPES } from "@/lib/uploads";
 import type { Database } from "@/lib/supabase/types";
+
+// left/back/right — matches lib/tripo.ts's multiview [front, left, back,
+// right] slot order 1:1, so no remapping is needed between this array's
+// index and the field names app/api/generate/route.ts expects.
+const ANGLE_LABELS = ["Зүүн тал", "Ар тал", "Баруун тал"] as const;
 
 type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 
@@ -49,6 +55,11 @@ interface GeneratingModel {
 export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
+  // Optional multi-view angles (lib/tripo.ts's multiview_to_model) — see
+  // ANGLE_LABELS above for the fixed left/back/right slot order. All three
+  // stay null for the common case; a chosen one only ever raises quality,
+  // never blocks Create if it fails to upload (see handleCreate below).
+  const [angleFiles, setAngleFiles] = useState<(File | null)[]>([null, null, null]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatingModel, setGeneratingModel] =
@@ -83,6 +94,16 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     };
   }, [previewUrl]);
 
+  const anglePreviewUrls = useMemo(
+    () => angleFiles.map((f) => (f ? URL.createObjectURL(f) : null)),
+    [angleFiles],
+  );
+  useEffect(() => {
+    return () => {
+      anglePreviewUrls.forEach((url) => url && URL.revokeObjectURL(url));
+    };
+  }, [anglePreviewUrls]);
+
   async function handleCreate() {
     if (!file) return;
     setCreating(true);
@@ -115,6 +136,23 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       // failure look identical and undiagnosable from the UI alone.
       if (!uploaded) throw new Error(uploadError || "Оруулахад алдаа гарлаа");
 
+      // Sequential, reusing the same useUpload instance as the front photo
+      // above — these are optional (rule: never block Create over one), so a
+      // failed angle upload is just dropped (logged), not surfaced as an
+      // error the way the required front upload's failure is.
+      const angleKeys: (string | undefined)[] = [];
+      for (const angleFile of angleFiles) {
+        if (!angleFile) {
+          angleKeys.push(undefined);
+          continue;
+        }
+        const angleUploaded = await upload(angleFile);
+        if (!angleUploaded) {
+          console.warn("CaptureFlow: optional angle photo failed to upload, continuing without it");
+        }
+        angleKeys.push(angleUploaded?.key);
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,6 +161,9 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
           idempotencyKey: crypto.randomUUID(),
           sourceImageWidth,
           sourceImageHeight,
+          sourceImageKeyLeft: angleKeys[0],
+          sourceImageKeyBack: angleKeys[1],
+          sourceImageKeyRight: angleKeys[2],
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -151,6 +192,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
 
   function resetAfterResult() {
     setFile(null);
+    setAngleFiles([null, null, null]);
     setGeneratingModel(null);
     setGeneratingPreviewUrl(null);
     setResultModel(null);
@@ -212,6 +254,36 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
         </div>
       )}
 
+      {file && !busy && (
+        // Multi-view input (lib/tripo.ts's multiview_to_model) — 2-4 real
+        // angles produce meaningfully better geometry than one photo can
+        // ever resolve, especially on non-symmetric objects. Purely
+        // additive: skipping all three runs the exact single-photo path
+        // that already existed.
+        <div className="flex flex-col gap-2">
+          <p className="text-small uppercase tracking-wide text-text-muted">
+            Нэмэлт өнцөг нэмэх (заавал биш) — чанар сайжирна
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {angleFiles.map((angleFile, i) => (
+              <AngleSlot
+                key={ANGLE_LABELS[i]}
+                label={ANGLE_LABELS[i]}
+                file={angleFile}
+                previewUrl={anglePreviewUrls[i]}
+                disabled={creating}
+                onChoose={(chosen) =>
+                  setAngleFiles((prev) => prev.map((p, idx) => (idx === i ? chosen : p)))
+                }
+                onRemove={() =>
+                  setAngleFiles((prev) => prev.map((p, idx) => (idx === i ? null : p)))
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {resultModel ? (
         <ResultStep
           model={resultModel}
@@ -231,5 +303,60 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
         )
       )}
     </div>
+  );
+}
+
+interface AngleSlotProps {
+  label: string;
+  file: File | null;
+  previewUrl: string | null;
+  disabled: boolean;
+  onChoose: (file: File) => void;
+  onRemove: () => void;
+}
+
+/** One optional angle-photo tile in CaptureFlow's multi-view picker — empty ("+" + label) or filled (thumbnail + remove). */
+function AngleSlot({ label, file, previewUrl, disabled, onChoose, onRemove }: AngleSlotProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  if (file && previewUrl) {
+    return (
+      <div className="relative aspect-square overflow-hidden rounded-sm bg-surface">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={previewUrl} alt={label} className="size-full object-cover" />
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={disabled}
+          aria-label={`${label} хасах`}
+          className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-bg/80 text-text hover:bg-bg disabled:opacity-50"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => inputRef.current?.click()}
+      disabled={disabled}
+      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-sm bg-surface-hover text-text-muted hover:opacity-90 disabled:opacity-50"
+    >
+      <Plus className="size-5" />
+      <span className="text-small">{label}</span>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={Object.keys(ALLOWED_IMAGE_TYPES).join(",")}
+        className="hidden"
+        onChange={(event) => {
+          const chosen = event.target.files?.[0];
+          if (chosen) onChoose(chosen);
+          event.target.value = "";
+        }}
+      />
+    </button>
   );
 }

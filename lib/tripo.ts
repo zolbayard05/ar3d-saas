@@ -161,6 +161,59 @@ export async function submitImageToModelTask(
   return { taskId: data.task_id };
 }
 
+export interface MultiviewUrls {
+  front: string;
+  left?: string;
+  back?: string;
+  right?: string;
+}
+
+// Bounded to 1 for the same reason as MAX_SIZE_RETRIES: a retry is a whole
+// new paid Tripo generation, not a cheap step. This one guards a *different*
+// failure mode — validateGlb (lib/glbCompress.ts) rejecting the geometry
+// itself as implausible, not an oversized file — but the cost argument is
+// identical, so it gets its own bound rather than being folded into
+// MAX_SIZE_RETRIES (the two loops are independent and can both fire on the
+// same model: an aspect-ratio-implausible first attempt, a correctly-shaped
+// but oversized second one, for instance).
+export const MAX_REGEN_RETRIES = 1;
+
+/**
+ * Submits the multiview-to-model task — Tripo's H3 endpoint documented at
+ * docs.tripo3d.ai/model-generation/multiview-to-model-v3-0-v3-1.html for
+ * meaningfully better geometry on non-symmetric objects than a single photo
+ * can ever resolve (the whole point: image_to_model only ever sees one side
+ * of the object). `files` is fixed [front, left, back, right] order per that
+ * doc; front is required, and Tripo's own docs say not to submit fewer than
+ * 2 images total. Omitted slots are sent as `{}` (that doc: "you may omit
+ * certain input files by omitting the file_token").
+ *
+ * UNVERIFIED: the exact endpoint path below (`/generation/multiview-to-model`)
+ * is inferred by convention from image-to-model's already-confirmed path
+ * (`/generation/image-to-model`) and this task's own docs-page slug
+ * (`multiview-to-model-v3-0-v3-1.html`) — the docs site's own "Endpoint"
+ * section renders via client-side JS that this environment's fetch tooling
+ * couldn't execute, so unlike image-to-model's path, this one was never
+ * directly confirmed against rendered doc text or a live call. tripoFetch
+ * throws loudly on a non-2xx/non-code-0 response, so a wrong path fails
+ * fast rather than silently — confirm against a real submission before
+ * trusting this in prod, same caveat this file's header already carries for
+ * TRIPO_MODEL_VERSION.
+ */
+export async function submitMultiviewToModelTask(
+  urls: MultiviewUrls,
+  faceLimit: number = DEFAULT_FACE_LIMIT,
+): Promise<{ taskId: string }> {
+  const toFile = (url: string | undefined) => (url ? { type: "url", url } : {});
+  const data = await tripoFetch<{ task_id: string }>("/generation/multiview-to-model", {
+    type: "multiview_to_model",
+    files: [toFile(urls.front), toFile(urls.left), toFile(urls.back), toFile(urls.right)],
+    model_version: getModelVersion(),
+    face_limit: faceLimit,
+  });
+  return { taskId: data.task_id };
+}
+
 /**
  * Submits a format-conversion task from an already-completed model task to
  * USDZ (rule 1: every model needs both .glb and .usdz; Tripo's image-to-model

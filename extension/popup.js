@@ -10,6 +10,10 @@ const MAX_POLL_MS = 3 * 60 * 1000; // generation is documented as 30-100s; give 
 
 const app = document.getElementById("app");
 let state = { view: "loading" };
+// Set once in boot() (best-effort — stays null on any fetch failure, which
+// just means the views below render without the "Холбогдсон: ..." line
+// rather than blocking anything). See app/api/extension/me/route.ts.
+let connectedEmail = null;
 
 function render() {
   app.innerHTML = "";
@@ -161,11 +165,15 @@ const VIEWS = {
   },
 
   "no-image"() {
-    return el("div", { class: "card" }, [
+    const items = [
       icon("image"),
       el("p", { text: "Ямар нэг сайт дээрх бүтээгдэхүүний зурган дээр хулганы баруун товч дараад “Realify — 3D болгох” сонго." }),
-      el("button", { class: "link", onclick: forgetToken, text: "Токен солих" }),
-    ]);
+    ];
+    if (connectedEmail) {
+      items.push(el("p", { style: "font-size: 11px;", text: `Холбогдсон: ${connectedEmail}` }));
+    }
+    items.push(el("button", { class: "link", onclick: forgetToken, text: "Токен солих" }));
+    return el("div", { class: "card" }, items);
   },
 
   "ready-to-generate"() {
@@ -174,8 +182,51 @@ const VIEWS = {
     img.addEventListener("error", () => {
       frame.replaceWith(el("p", { class: "error", text: "Энэ зургийг урьдчилан харах боломжгүй байна — генерац хийхэд саад болохгүй." }));
     });
-    return el("div", { class: "card" }, [
-      frame,
+
+    const children = [frame];
+
+    // Multi-view picker — see background.js's realifyScanForGalleryImages.
+    // Optional: 0 selected just runs the existing single-photo path.
+    const candidates = state.image.candidates || [];
+    const selected = state.image.selected || [];
+    if (candidates.length > 0) {
+      const grid = el("div", { class: "angle-grid" });
+      candidates.forEach((c) => {
+        const order = selected.indexOf(c.src);
+        const thumb = el("img", { class: "angle-thumb", src: c.src, alt: c.alt || "" });
+        thumb.addEventListener("error", () => tile.remove());
+        const badge = order >= 0 ? el("span", { class: "angle-badge", text: String(order + 1) }) : null;
+        const tile = el(
+          "button",
+          {
+            type: "button",
+            class: `angle-tile${order >= 0 ? " selected" : ""}`,
+            onclick: () => {
+              const current = state.image.selected || [];
+              const idx = current.indexOf(c.src);
+              let next;
+              if (idx >= 0) {
+                next = current.filter((s) => s !== c.src);
+              } else if (current.length >= 3) {
+                return; // Tripo's files array is capped at [front, left, back, right] — 3 extra max.
+              } else {
+                next = [...current, c.src];
+              }
+              state.image = { ...state.image, selected: next };
+              render();
+            },
+          },
+          badge ? [thumb, badge] : [thumb],
+        );
+        grid.appendChild(tile);
+      });
+      children.push(
+        el("p", { style: "font-size: 11px;", text: "Нэмэлт өнцөг сонгох (заавал биш) — сонгосон дараалал зүүн/ард/баруун тал болно:" }),
+        grid,
+      );
+    }
+
+    children.push(
       el("button", { onclick: () => void startGeneration(), text: "3D болгох" }),
       // CLAUDE.md rule 20's upload-quality guidance (single clear subject,
       // no heavy shadow/blur) only ever lived in the main app's upload
@@ -185,8 +236,13 @@ const VIEWS = {
       // the credit the way the app's own capture flow allows.
       el("p", { style: "font-size: 11.5px;", text: "Хамгийн сайн үр дүнд: тод, ганц объект дүрсэлсэн, бүдэг биш зураг сонго." }),
       el("p", { style: "font-size: 11.5px;", text: "1 кредит зарцуулна" }),
-      el("button", { class: "link", onclick: forgetToken, text: "Токен солих" }),
-    ]);
+    );
+    if (connectedEmail) {
+      children.push(el("p", { style: "font-size: 11px;", text: `Холбогдсон: ${connectedEmail}` }));
+    }
+    children.push(el("button", { class: "link", onclick: forgetToken, text: "Токен солих" }));
+
+    return el("div", { class: "card" }, children);
   },
 
   working() {
@@ -271,8 +327,39 @@ function readImageDimensions(blob) {
   });
 }
 
+// Best-effort upload of one additional angle (from the gallery picker) —
+// unlike the required front image below, a failure here must never abort
+// the whole generation. Returns the uploaded key, or null if anything about
+// this particular image didn't work out (download, format, size, upload).
+async function downloadAndUploadImage(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const contentType = RealifyLib.guessContentType(blob.type, url);
+    if (!contentType) return null;
+    if (blob.size > RealifyLib.MAX_UPLOAD_BYTES) return null;
+
+    const presign = await api("/api/extension/upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contentType, contentLength: blob.size }),
+    });
+    const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
+    if (!putRes.ok) return null;
+    return presign.key;
+  } catch (err) {
+    console.warn("Realify: extra angle upload failed, continuing without it", err);
+    return null;
+  }
+}
+
 async function startGeneration() {
   const srcUrl = state.image.srcUrl;
+  // Order chosen by the user in the picker (extension/popup.js's angle-grid
+  // click handler) — position 0/1/2 map to left/back/right, matching
+  // lib/tripo.ts's multiview [front, left, back, right] slot order.
+  const selectedAngles = state.image.selected || [];
   const image = { srcUrl };
 
   // Cheap, URL-only check before spending a network round trip: Chrome's
@@ -328,6 +415,20 @@ async function startGeneration() {
     const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
     if (!putRes.ok) throw new Error("Хуулахад алдаа гарлаа.");
 
+    let angleKeys = [];
+    if (selectedAngles.length > 0) {
+      state = { view: "working", message: "Нэмэлт өнцгүүдийг хуулж байна…", image };
+      render();
+      // Sequential, not Promise.all: each one is a presign + PUT pair against
+      // the same per-user upload-url endpoint — no need to race them for a
+      // handful of extra images, and it keeps the "Хуулж байна" message
+      // meaningful rather than firing 3 requests at once with no ordering.
+      for (const url of selectedAngles) {
+        angleKeys.push(await downloadAndUploadImage(url));
+      }
+    }
+    const [leftKey, backKey, rightKey] = angleKeys;
+
     state = { view: "working", message: "3D болгож байна… (30–100 секунд)", image };
     render();
     const gen = await api("/api/extension/generate", {
@@ -338,6 +439,9 @@ async function startGeneration() {
         idempotencyKey: crypto.randomUUID(),
         sourceImageWidth: width,
         sourceImageHeight: height,
+        sourceImageKeyLeft: leftKey || undefined,
+        sourceImageKeyBack: backKey || undefined,
+        sourceImageKeyRight: rightKey || undefined,
       }),
     });
 
@@ -405,6 +509,21 @@ async function boot() {
     return;
   }
 
+  // Best-effort, never blocks boot on anything BUT an actually-invalid token
+  // — a network blip here just means the "Холбогдсон: ..." line doesn't
+  // show, not a broken popup. An invalid/revoked token is different: api()
+  // itself already cleared it and rendered "need-token" before throwing, so
+  // this must return immediately rather than let the code below overwrite
+  // that render with a stale no-image/ready-to-generate view built from
+  // local storage that no longer matches a valid session.
+  try {
+    const body = await api("/api/extension/me");
+    connectedEmail = body.email || null;
+  } catch (err) {
+    if (err.message === "unauthorized") return;
+    connectedEmail = null;
+  }
+
   // background.js may have already resolved a generation (ready or failed)
   // while this popup was closed — checked first, ahead of active/pending,
   // since realifyActiveGeneration is already cleared by the time
@@ -451,7 +570,7 @@ async function boot() {
     render();
     return;
   }
-  state = { view: "ready-to-generate", image };
+  state = { view: "ready-to-generate", image: { ...image, selected: [] } };
   render();
 }
 

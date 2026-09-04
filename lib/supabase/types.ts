@@ -37,6 +37,13 @@ export interface Database {
           title: string | null;
           status: ModelStatus;
           source_image_key: string;
+          // 2026-09-04 (migration 0024): optional multi-view angles — see
+          // lib/generateModel.ts's submitTripoTaskForKeys. All null on any
+          // model created before this migration, or generated from a single
+          // photo since.
+          source_image_key_left: string | null;
+          source_image_key_back: string | null;
+          source_image_key_right: string | null;
           glb_url: string | null;
           usdz_url: string | null;
           render_url: string | null;
@@ -45,6 +52,10 @@ export interface Database {
           usdz_provider_job_id: string | null;
           idempotency_key: string | null;
           size_retry_count: number;
+          // 2026-09-04 (migration 0024): see app/api/webhooks/tripo/route.ts's
+          // QA regen-retry block — distinct from size_retry_count, which
+          // tracks a different retry loop (oversized USDZ).
+          regen_retry_count: number;
           bbox_width_m: number | null;
           bbox_depth_m: number | null;
           bbox_height_m: number | null;
@@ -62,6 +73,9 @@ export interface Database {
           title?: string | null;
           status?: ModelStatus;
           source_image_key: string;
+          source_image_key_left?: string | null;
+          source_image_key_back?: string | null;
+          source_image_key_right?: string | null;
           glb_url?: string | null;
           usdz_url?: string | null;
           render_url?: string | null;
@@ -70,6 +84,7 @@ export interface Database {
           usdz_provider_job_id?: string | null;
           idempotency_key?: string | null;
           size_retry_count?: number;
+          regen_retry_count?: number;
           bbox_width_m?: number | null;
           bbox_depth_m?: number | null;
           bbox_height_m?: number | null;

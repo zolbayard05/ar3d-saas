@@ -226,6 +226,53 @@ button.link {
   text-align: center;
 }
 
+/* Multi-view gallery picker — extension/popup.js's "ready-to-generate" view.
+   Grayscale/no-accent-hue, matching this file's own header note, except the
+   selection badge: a small chromatic accent there is the clearest way to
+   show pick order (1/2/3 = left/back/right) at this size, and it's the same
+   kind of deliberate, scoped exception this project already allows
+   elsewhere for a specific UI legibility need. */
+.angle-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+.angle-tile {
+  position: relative;
+  width: auto;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 6px;
+  border: 2px solid var(--border-subtle);
+  background: var(--bg);
+  overflow: hidden;
+}
+.angle-tile.selected {
+  border-color: var(--text);
+}
+.angle-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.angle-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: #d9793c;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
 .footer-link {
   text-align: center;
   font-size: 11.5px;

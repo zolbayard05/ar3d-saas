@@ -22,17 +22,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Буруу JSON бие" }, { status: 400 });
   }
 
-  const { sourceImageKey, idempotencyKey, sourceImageWidth, sourceImageHeight } = (body ?? {}) as {
+  const {
+    sourceImageKey,
+    idempotencyKey,
+    sourceImageWidth,
+    sourceImageHeight,
+    sourceImageKeyLeft,
+    sourceImageKeyBack,
+    sourceImageKeyRight,
+  } = (body ?? {}) as {
     sourceImageKey?: unknown;
     idempotencyKey?: unknown;
     sourceImageWidth?: unknown;
     sourceImageHeight?: unknown;
+    sourceImageKeyLeft?: unknown;
+    sourceImageKeyBack?: unknown;
+    sourceImageKeyRight?: unknown;
   };
 
   const admin = createAdminClient();
   const result = await submitGeneration(
     userId,
-    { sourceImageKey, idempotencyKey, sourceImageWidth, sourceImageHeight },
+    {
+      sourceImageKey,
+      idempotencyKey,
+      sourceImageWidth,
+      sourceImageHeight,
+      sourceImageKeyLeft,
+      sourceImageKeyBack,
+      sourceImageKeyRight,
+    },
     async () => {
       // No Supabase JWT exists for a token-authed caller — consume_credit's
       // own auth.uid() check would always fail here. consume_credit_service

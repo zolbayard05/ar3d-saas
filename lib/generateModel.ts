@@ -3,17 +3,64 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getR2Client, getUploadsBucket } from "@/lib/r2";
-import { submitImageToModelTask } from "@/lib/tripo";
+import { submitImageToModelTask, submitMultiviewToModelTask, DEFAULT_FACE_LIMIT } from "@/lib/tripo";
 
 const SOURCE_URL_EXPIRY_SECONDS = 10 * 60;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const UNIQUE_VIOLATION = "23505";
+
+export interface SourceImageKeys {
+  front: string;
+  left?: string | null;
+  back?: string | null;
+  right?: string | null;
+}
+
+async function presignSourceUrl(key: string): Promise<string> {
+  return getSignedUrl(
+    getR2Client(),
+    new GetObjectCommand({ Bucket: getUploadsBucket(), Key: key }),
+    { expiresIn: SOURCE_URL_EXPIRY_SECONDS },
+  );
+}
+
+/**
+ * Decides single-photo vs. multiview submission from which keys are present,
+ * and does the R2 presigning either way. The one place that decision gets
+ * made — shared by the initial submission below AND both webhook-side
+ * resubmission paths (the size-budget retry and the QA regen retry in
+ * app/api/webhooks/tripo/route.ts), so a model created with side/back photos
+ * keeps using multiview_to_model on every retry too, not just its first
+ * attempt.
+ */
+export async function submitTripoTaskForKeys(
+  keys: SourceImageKeys,
+  faceLimit: number = DEFAULT_FACE_LIMIT,
+): Promise<{ taskId: string }> {
+  const hasExtra = Boolean(keys.left || keys.back || keys.right);
+  if (!hasExtra) {
+    const frontUrl = await presignSourceUrl(keys.front);
+    return submitImageToModelTask(frontUrl, faceLimit);
+  }
+
+  const [front, left, back, right] = await Promise.all([
+    presignSourceUrl(keys.front),
+    keys.left ? presignSourceUrl(keys.left) : Promise.resolve(undefined),
+    keys.back ? presignSourceUrl(keys.back) : Promise.resolve(undefined),
+    keys.right ? presignSourceUrl(keys.right) : Promise.resolve(undefined),
+  ]);
+  return submitMultiviewToModelTask({ front, left, back, right }, faceLimit);
+}
 
 export interface SubmitGenerationInput {
   sourceImageKey: unknown;
   idempotencyKey: unknown;
   sourceImageWidth: unknown;
   sourceImageHeight: unknown;
+  /** Optional extra angles (multi-view) — all three are best-effort additions to sourceImageKey ("front"), never required. */
+  sourceImageKeyLeft?: unknown;
+  sourceImageKeyBack?: unknown;
+  sourceImageKeyRight?: unknown;
 }
 
 /**
@@ -52,7 +99,15 @@ export async function submitGeneration(
   input: SubmitGenerationInput,
   consumeCredit: ConsumeCredit,
 ): Promise<SubmitGenerationResult> {
-  const { sourceImageKey, idempotencyKey, sourceImageWidth, sourceImageHeight } = input;
+  const {
+    sourceImageKey,
+    idempotencyKey,
+    sourceImageWidth,
+    sourceImageHeight,
+    sourceImageKeyLeft,
+    sourceImageKeyBack,
+    sourceImageKeyRight,
+  } = input;
 
   const validDimension = (value: unknown): number | null =>
     typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
@@ -67,6 +122,24 @@ export async function submitGeneration(
   if (typeof sourceImageKey !== "string" || !sourceImageKey.startsWith(`uploads/${userId}/`)) {
     return { ok: false, status: 400, error: "sourceImageKey буруу эсвэл дутуу байна" };
   }
+
+  // Same ownership check as the required front key above, applied to each
+  // optional extra angle — undefined/null is fine (that slot just isn't
+  // used), but a present-and-wrong value is rejected the same way a forged
+  // front key would be, not silently dropped.
+  const validExtraKey = (value: unknown, label: string): { ok: true; key: string | null } | { ok: false; error: string } => {
+    if (value === undefined || value === null) return { ok: true, key: null };
+    if (typeof value !== "string" || !value.startsWith(`uploads/${userId}/`)) {
+      return { ok: false, error: `${label} буруу байна` };
+    }
+    return { ok: true, key: value };
+  };
+  const leftResult = validExtraKey(sourceImageKeyLeft, "sourceImageKeyLeft");
+  if (!leftResult.ok) return { ok: false, status: 400, error: leftResult.error };
+  const backResult = validExtraKey(sourceImageKeyBack, "sourceImageKeyBack");
+  if (!backResult.ok) return { ok: false, status: 400, error: backResult.error };
+  const rightResult = validExtraKey(sourceImageKeyRight, "sourceImageKeyRight");
+  if (!rightResult.ok) return { ok: false, status: 400, error: rightResult.error };
 
   if (typeof idempotencyKey !== "string" || !UUID_RE.test(idempotencyKey)) {
     return { ok: false, status: 400, error: "idempotencyKey буруу эсвэл дутуу байна (UUID байх ёстой)" };
@@ -101,6 +174,9 @@ export async function submitGeneration(
     .insert({
       user_id: userId,
       source_image_key: sourceImageKey,
+      source_image_key_left: leftResult.key,
+      source_image_key_back: backResult.key,
+      source_image_key_right: rightResult.key,
       status: "pending",
       provider: "tripo",
       idempotency_key: idempotencyKey,
@@ -132,14 +208,13 @@ export async function submitGeneration(
     return { ok: false, status: 500, error: "Model үүсгэхэд алдаа гарлаа" };
   }
 
-  const sourceImageUrl = await getSignedUrl(
-    getR2Client(),
-    new GetObjectCommand({ Bucket: getUploadsBucket(), Key: sourceImageKey }),
-    { expiresIn: SOURCE_URL_EXPIRY_SECONDS },
-  );
-
   try {
-    const { taskId } = await submitImageToModelTask(sourceImageUrl);
+    const { taskId } = await submitTripoTaskForKeys({
+      front: sourceImageKey,
+      left: leftResult.key,
+      back: backResult.key,
+      right: rightResult.key,
+    });
     await admin.from("models").update({ status: "processing", provider_job_id: taskId }).eq("id", model.id);
   } catch (err) {
     await admin.rpc("refund_credit", {
