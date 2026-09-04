@@ -2,17 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CaptureChoice, type CaptureMode } from "@/components/CaptureChoice";
+import { CaptureChoice, MAX_MULTIVIEW_PHOTOS, type CaptureMode } from "@/components/CaptureChoice";
 import { GeneratingStep } from "@/components/GeneratingStep";
 import { ResultStep } from "@/components/ResultStep";
 import { useUpload } from "@/hooks/useUpload";
 import type { Database } from "@/lib/supabase/types";
-
-// Index 0 is always "front" (required); 1-3 map to left/back/right 1:1 with
-// lib/tripo.ts's multiview [front, left, back, right] order — no remapping
-// needed between this array's index and the field names
-// app/api/generate/route.ts expects. Single mode only ever fills index 0.
-const PHOTO_SLOT_COUNT = 4;
 
 type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 
@@ -59,11 +53,14 @@ interface GeneratingModel {
 export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const router = useRouter();
   const [mode, setMode] = useState<CaptureMode | null>(null);
-  // Always length PHOTO_SLOT_COUNT — index 0 is the required front photo,
-  // 1-3 are optional multi-view angles (lib/tripo.ts's multiview_to_model),
-  // only ever shown/fillable in "multi" mode. A missing angle only ever
-  // costs quality, never blocks Create (see handleCreate below).
-  const [photos, setPhotos] = useState<(File | null)[]>(() => Array(PHOTO_SLOT_COUNT).fill(null));
+  // photos[0] is the required front photo; 1-3 (only in "multi" mode) are
+  // optional angles for lib/tripo.ts's multiview_to_model (see
+  // MAX_MULTIVIEW_PHOTOS — anything past index 3 is picked but never
+  // uploaded/sent, see handleCreate below). Dynamic length, not a fixed
+  // 4-slot array (2026-09-04: that read as bad UX, forcing one tap per
+  // slot) — CaptureChoice's own multi-select "Нэмэх" tile can append
+  // several files here in one call.
+  const [photos, setPhotos] = useState<File[]>([]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatingModel, setGeneratingModel] =
@@ -88,30 +85,32 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   // GeneratingStep needs photos[0]'s preview after CaptureChoice has moved on
   // to showing Generating instead of the picker, so the blob URL has to
   // outlive that render rather than being revoked with it.
-  const photoPreviewUrls = useMemo(
-    () => photos.map((f) => (f ? URL.createObjectURL(f) : null)),
-    [photos],
-  );
+  const photoPreviewUrls = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos]);
   useEffect(() => {
     return () => {
-      photoPreviewUrls.forEach((url) => url && URL.revokeObjectURL(url));
+      photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [photoPreviewUrls]);
   const previewUrl = photoPreviewUrls[0];
 
-  function handlePhotoChosen(index: number, file: File) {
-    setPhotos((prev) => prev.map((p, i) => (i === index ? file : p)));
+  function handlePhotosAdded(files: File[]) {
+    if (files.length === 0) return;
+    // Single mode always holds at most one — a new choice replaces it
+    // (PhotoTile's onChoose there is the "change photo" affordance, not
+    // "add another"). Multi mode appends, letting one multi-select action
+    // (CaptureChoice's "Нэмэх" tile) add several at once.
+    setPhotos((prev) => (mode === "single" ? [files[0]] : [...prev, ...files]));
   }
   function handlePhotoRemoved(index: number) {
-    setPhotos((prev) => prev.map((p, i) => (i === index ? null : p)));
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   }
   function handleModeChange(next: CaptureMode | null) {
     setMode(next);
-    // Switching to single mode discards any angle photos beyond the front
-    // one — multi mode's slots 1-3 have no meaning there, and leaving them
-    // populated would silently resurrect them if the user switches back.
+    // Switching to single mode discards anything past the first photo —
+    // multi mode's extra angles have no meaning there, and leaving them
+    // would silently resurrect them if the user switches back.
     if (next === "single") {
-      setPhotos((prev) => prev.map((p, i) => (i === 0 ? p : null)));
+      setPhotos((prev) => prev.slice(0, 1));
     }
   }
 
@@ -151,19 +150,19 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       // above — these are optional (rule: never block Create over one), so a
       // failed angle upload is just dropped (logged), not surfaced as an
       // error the way the required front upload's failure is. photos[0] was
-      // already uploaded above; only 1-3 (left/back/right) go here.
+      // already uploaded above; only the next MAX_MULTIVIEW_PHOTOS-1 go here
+      // (left/back/right) — anything picked beyond that cap is never even
+      // uploaded, matching what CaptureChoice already visually marks
+      // "Ашиглагдахгүй".
       const angleKeys: (string | undefined)[] = [];
-      for (const angleFile of photos.slice(1)) {
-        if (!angleFile) {
-          angleKeys.push(undefined);
-          continue;
-        }
+      for (const angleFile of photos.slice(1, MAX_MULTIVIEW_PHOTOS)) {
         const angleUploaded = await upload(angleFile);
         if (!angleUploaded) {
           console.warn("CaptureFlow: optional angle photo failed to upload, continuing without it");
         }
         angleKeys.push(angleUploaded?.key);
       }
+      while (angleKeys.length < MAX_MULTIVIEW_PHOTOS - 1) angleKeys.push(undefined);
 
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -204,7 +203,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
 
   function resetAfterResult() {
     setMode(null);
-    setPhotos(Array(PHOTO_SLOT_COUNT).fill(null));
+    setPhotos([]);
     setGeneratingModel(null);
     setGeneratingPreviewUrl(null);
     setResultModel(null);
@@ -242,7 +241,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
         onModeChange={handleModeChange}
         photos={photos}
         photoPreviewUrls={photoPreviewUrls}
-        onPhotoChosen={handlePhotoChosen}
+        onPhotosAdded={handlePhotosAdded}
         onPhotoRemoved={handlePhotoRemoved}
         onCreate={handleCreate}
         creating={creating}

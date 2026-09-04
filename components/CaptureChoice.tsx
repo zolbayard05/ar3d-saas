@@ -9,14 +9,22 @@ import { cn } from "@/lib/utils";
 
 export type CaptureMode = "single" | "multi";
 
+// lib/tripo.ts's multiview_to_model takes at most [front, left, back,
+// right] — a 5th+ photo has no slot to go in. Not enforced as a hard upload
+// limit (2026-09-04: a fixed 4-tile grid the user had to fill one tap at a
+// time read as bad UX before this) — the picker accepts as many as picked
+// in one go, this is only how many of them actually get used.
+export const MAX_MULTIVIEW_PHOTOS = 4;
+
 export interface CaptureChoiceProps {
   userId: string;
   mode: CaptureMode | null;
   onModeChange: (mode: CaptureMode | null) => void;
-  /** Always length 4 — index 0 is the required "front" photo (lib/tripo.ts's multiview [front,left,back,right] order); single mode only ever uses index 0. */
-  photos: (File | null)[];
-  photoPreviewUrls: (string | null)[];
-  onPhotoChosen: (index: number, file: File) => void;
+  /** photos[0] is "front" (required); index order otherwise matches lib/tripo.ts's multiview [front,left,back,right] — only the first MAX_MULTIVIEW_PHOTOS are ever sent. Single mode holds at most one. */
+  photos: File[];
+  photoPreviewUrls: string[];
+  /** Single mode: replaces whatever's there. Multi mode: appends — a multi-select file input can hand this several files in one call. */
+  onPhotosAdded: (files: File[]) => void;
   onPhotoRemoved: (index: number) => void;
   onCreate: () => void;
   creating: boolean;
@@ -43,7 +51,7 @@ export function CaptureChoice({
   onModeChange,
   photos,
   photoPreviewUrls,
-  onPhotoChosen,
+  onPhotosAdded,
   onPhotoRemoved,
   onCreate,
   creating,
@@ -51,7 +59,7 @@ export function CaptureChoice({
   error,
 }: CaptureChoiceProps) {
   const { credits, loading } = useCredits(userId);
-  const hasPhoto = Boolean(photos[0]);
+  const hasPhoto = photos.length > 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -102,10 +110,10 @@ export function CaptureChoice({
           {mode === "single" ? (
             <PhotoTile
               className="aspect-video w-full"
-              file={photos[0]}
-              previewUrl={photoPreviewUrls[0]}
+              file={photos[0] ?? null}
+              previewUrl={photoPreviewUrls[0] ?? null}
               disabled={creating}
-              onChoose={(f) => onPhotoChosen(0, f)}
+              onChoose={onPhotosAdded}
               onRemove={() => onPhotoRemoved(0)}
               placeholderIcon={<ImageUp className="size-8" />}
               placeholderLabel="Зураг сонгох"
@@ -113,22 +121,33 @@ export function CaptureChoice({
           ) : (
             <>
               <p className="text-small text-text-muted">
-                Эхний зургийг урд талаас, дараагийн 1-3 зургийг өөр өнцгөөс (жишээ нь зүүн/ар/баруун тал) авбал хамгийн сайн үр дүнд хүрнэ.
+                Нэг дор хэдэн зураг сонгож болно — эхнийх урд талаас, бусад нь өөр өнцгөөс (жишээ нь зүүн/ар/баруун тал) байвал хамгийн сайн үр дүнд хүрнэ.
+                {photos.length > MAX_MULTIVIEW_PHOTOS && ` Зөвхөн эхний ${MAX_MULTIVIEW_PHOTOS} зургийг ашиглана.`}
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {photos.map((photo, i) => (
                   <PhotoTile
-                    key={i}
+                    key={`${photo.name}-${photo.lastModified}-${i}`}
                     className="aspect-square"
                     file={photo}
-                    previewUrl={photoPreviewUrls[i]}
+                    previewUrl={photoPreviewUrls[i] ?? null}
                     disabled={creating}
-                    onChoose={(f) => onPhotoChosen(i, f)}
+                    overlayLabel={i >= MAX_MULTIVIEW_PHOTOS ? "Ашиглагдахгүй" : undefined}
                     onRemove={() => onPhotoRemoved(i)}
                     placeholderIcon={<Plus className="size-6" />}
-                    placeholderLabel={i === 0 ? "1-р зураг (урд тал)" : `${i + 1}-р зураг`}
+                    placeholderLabel={i === 0 ? "Урд тал" : `${i + 1}-р зураг`}
                   />
                 ))}
+                <PhotoTile
+                  className="aspect-square"
+                  file={null}
+                  previewUrl={null}
+                  disabled={creating}
+                  multiple
+                  onChoose={onPhotosAdded}
+                  placeholderIcon={<Plus className="size-6" />}
+                  placeholderLabel="Нэмэх"
+                />
               </div>
             </>
           )}
@@ -194,24 +213,42 @@ interface PhotoTileProps {
   file: File | null;
   previewUrl: string | null;
   disabled: boolean;
-  onChoose: (file: File) => void;
-  onRemove: () => void;
   placeholderIcon: ReactNode;
   placeholderLabel: string;
   className?: string;
+  /** Multi-select on the underlying input — lets one tap add several photos at once instead of one tap per slot. */
+  multiple?: boolean;
+  /** Only reachable via the placeholder (no `file`) branch. */
+  onChoose?: (files: File[]) => void;
+  /** Only reachable via the filled (`file` present) branch. */
+  onRemove?: () => void;
+  /** Dims the tile and shows this text — used for a photo past MAX_MULTIVIEW_PHOTOS that won't actually be sent. */
+  overlayLabel?: string;
 }
 
 /**
- * One photo slot — a "+"/label placeholder before a file is chosen, or the
+ * One photo tile — a "+"/label placeholder before a file is chosen, or the
  * chosen photo itself filling the exact same tile after (the photo replaces
  * the button in place, not a separate preview box elsewhere on the screen —
  * this is the whole point for single mode, and what makes multi mode read
  * as one coherent photo grid rather than pickers-plus-thumbnails-below).
  * No forced `capture` attribute on the file input — on mobile this still
  * opens the OS's native "Camera / Photo Library" choice sheet either way,
- * which is what let the old separate camera button go away.
+ * which is what let the old separate camera button go away, and (with
+ * `multiple`) still lets a user pick several from one gallery visit.
  */
-function PhotoTile({ file, previewUrl, disabled, onChoose, onRemove, placeholderIcon, placeholderLabel, className }: PhotoTileProps) {
+function PhotoTile({
+  file,
+  previewUrl,
+  disabled,
+  placeholderIcon,
+  placeholderLabel,
+  className,
+  multiple,
+  onChoose,
+  onRemove,
+  overlayLabel,
+}: PhotoTileProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   if (file && previewUrl) {
@@ -219,6 +256,11 @@ function PhotoTile({ file, previewUrl, disabled, onChoose, onRemove, placeholder
       <div className={cn("relative overflow-hidden rounded-sm bg-surface", className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={previewUrl} alt={placeholderLabel} className="size-full object-cover" />
+        {overlayLabel && (
+          <div className="absolute inset-0 flex items-center justify-center bg-bg/70 text-center text-small text-text-muted">
+            {overlayLabel}
+          </div>
+        )}
         <button
           type="button"
           onClick={onRemove}
@@ -248,10 +290,11 @@ function PhotoTile({ file, previewUrl, disabled, onChoose, onRemove, placeholder
         ref={inputRef}
         type="file"
         accept={Object.keys(ALLOWED_IMAGE_TYPES).join(",")}
+        multiple={multiple}
         className="hidden"
         onChange={(event) => {
-          const chosen = event.target.files?.[0];
-          if (chosen) onChoose(chosen);
+          const chosen = Array.from(event.target.files || []);
+          if (chosen.length > 0) onChoose?.(chosen);
           event.target.value = "";
         }}
       />
