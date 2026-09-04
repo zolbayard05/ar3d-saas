@@ -98,8 +98,19 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     // Single mode always holds at most one — a new choice replaces it
     // (PhotoTile's onChoose there is the "change photo" affordance, not
     // "add another"). Multi mode appends, letting one multi-select action
-    // (CaptureChoice's "Нэмэх" tile) add several at once.
-    setPhotos((prev) => (mode === "single" ? [files[0]] : [...prev, ...files]));
+    // (CaptureChoice's "Нэмэх" tile) add several at once — capped at
+    // MAX_MULTIVIEW_PHOTOS (lib/tripo.ts's multiview_to_model has exactly
+    // that many slots, [front,left,back,right], no 5th to put anything in)
+    // rather than accepting more and quietly not using the rest; excess
+    // from a multi-select that would overflow is simply dropped.
+    if (mode === "single") {
+      setPhotos([files[0]]);
+      return;
+    }
+    setPhotos((prev) => {
+      const room = MAX_MULTIVIEW_PHOTOS - prev.length;
+      return room <= 0 ? prev : [...prev, ...files.slice(0, room)];
+    });
   }
   function handlePhotoRemoved(index: number) {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
@@ -151,9 +162,9 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       // failed angle upload is just dropped (logged), not surfaced as an
       // error the way the required front upload's failure is. photos[0] was
       // already uploaded above; only the next MAX_MULTIVIEW_PHOTOS-1 go here
-      // (left/back/right) — anything picked beyond that cap is never even
-      // uploaded, matching what CaptureChoice already visually marks
-      // "Ашиглагдахгүй".
+      // (left/back/right). handlePhotosAdded already caps `photos` at
+      // MAX_MULTIVIEW_PHOTOS, so this slice's upper bound is defensive, not
+      // load-bearing.
       const angleKeys: (string | undefined)[] = [];
       for (const angleFile of photos.slice(1, MAX_MULTIVIEW_PHOTOS)) {
         const angleUploaded = await upload(angleFile);

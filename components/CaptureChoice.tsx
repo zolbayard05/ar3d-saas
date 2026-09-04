@@ -121,8 +121,7 @@ export function CaptureChoice({
           ) : (
             <>
               <p className="text-small text-text-muted">
-                Нэг дор хэдэн зураг сонгож болно — эхнийх урд талаас, бусад нь өөр өнцгөөс (жишээ нь зүүн/ар/баруун тал) байвал хамгийн сайн үр дүнд хүрнэ.
-                {photos.length > MAX_MULTIVIEW_PHOTOS && ` Зөвхөн эхний ${MAX_MULTIVIEW_PHOTOS} зургийг ашиглана.`}
+                Хамгийн ихдээ {MAX_MULTIVIEW_PHOTOS} зураг сонгож болно — эхнийх урд талаас, бусад нь өөр өнцгөөс (жишээ нь зүүн/ар/баруун тал) байвал хамгийн сайн үр дүнд хүрнэ.
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {photos.map((photo, i) => (
@@ -132,22 +131,27 @@ export function CaptureChoice({
                     file={photo}
                     previewUrl={photoPreviewUrls[i] ?? null}
                     disabled={creating}
-                    overlayLabel={i >= MAX_MULTIVIEW_PHOTOS ? "Ашиглагдахгүй" : undefined}
                     onRemove={() => onPhotoRemoved(i)}
                     placeholderIcon={<Plus className="size-6" />}
                     placeholderLabel={i === 0 ? "Урд тал" : `${i + 1}-р зураг`}
                   />
                 ))}
-                <PhotoTile
-                  className="aspect-square"
-                  file={null}
-                  previewUrl={null}
-                  disabled={creating}
-                  multiple
-                  onChoose={onPhotosAdded}
-                  placeholderIcon={<Plus className="size-6" />}
-                  placeholderLabel="Нэмэх"
-                />
+                {/* handlePhotosAdded (CaptureFlow.tsx) already caps at
+                    MAX_MULTIVIEW_PHOTOS by dropping overflow — hiding this
+                    tile once full is what actually stops the user from
+                    trying to add a 5th, rather than silently no-op'ing. */}
+                {photos.length < MAX_MULTIVIEW_PHOTOS && (
+                  <PhotoTile
+                    className="aspect-square"
+                    file={null}
+                    previewUrl={null}
+                    disabled={creating}
+                    multiple
+                    onChoose={onPhotosAdded}
+                    placeholderIcon={<Plus className="size-6" />}
+                    placeholderLabel="Нэмэх"
+                  />
+                )}
               </div>
             </>
           )}
@@ -222,8 +226,6 @@ interface PhotoTileProps {
   onChoose?: (files: File[]) => void;
   /** Only reachable via the filled (`file` present) branch. */
   onRemove?: () => void;
-  /** Dims the tile and shows this text — used for a photo past MAX_MULTIVIEW_PHOTOS that won't actually be sent. */
-  overlayLabel?: string;
 }
 
 /**
@@ -247,7 +249,6 @@ function PhotoTile({
   multiple,
   onChoose,
   onRemove,
-  overlayLabel,
 }: PhotoTileProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -256,11 +257,6 @@ function PhotoTile({
       <div className={cn("relative overflow-hidden rounded-sm bg-surface", className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={previewUrl} alt={placeholderLabel} className="size-full object-cover" />
-        {overlayLabel && (
-          <div className="absolute inset-0 flex items-center justify-center bg-bg/70 text-center text-small text-text-muted">
-            {overlayLabel}
-          </div>
-        )}
         <button
           type="button"
           onClick={onRemove}
