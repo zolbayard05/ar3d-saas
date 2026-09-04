@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X } from "lucide-react";
-import { CaptureChoice } from "@/components/CaptureChoice";
+import { CaptureChoice, type CaptureMode } from "@/components/CaptureChoice";
 import { GeneratingStep } from "@/components/GeneratingStep";
 import { ResultStep } from "@/components/ResultStep";
 import { useUpload } from "@/hooks/useUpload";
-import { ALLOWED_IMAGE_TYPES } from "@/lib/uploads";
 import type { Database } from "@/lib/supabase/types";
 
-// left/back/right — matches lib/tripo.ts's multiview [front, left, back,
-// right] slot order 1:1, so no remapping is needed between this array's
-// index and the field names app/api/generate/route.ts expects.
-const ANGLE_LABELS = ["Зүүн тал", "Ар тал", "Баруун тал"] as const;
+// Index 0 is always "front" (required); 1-3 map to left/back/right 1:1 with
+// lib/tripo.ts's multiview [front, left, back, right] order — no remapping
+// needed between this array's index and the field names
+// app/api/generate/route.ts expects. Single mode only ever fills index 0.
+const PHOTO_SLOT_COUNT = 4;
 
 type ModelRow = Database["public"]["Tables"]["models"]["Row"];
 
@@ -28,23 +27,28 @@ interface GeneratingModel {
   createdAt: string;
 }
 
-// Take Photo, Upload Photo, and Create (CaptureChoice.tsx) stay fixed at
-// the top of /create for the whole flow (2026-08-24 — explicit correction:
-// an earlier version replaced them with the chosen photo, Tripo-reference-
-// style; this one keeps them up and runs everything else below instead).
-// Below that fixed row: the chosen-but-not-yet-created photo (with a small
-// Retake), then Generating, then the Save/Delete Result — never swapping
-// the picker/Create row out, only ever adding content beneath it.
-// "Take Photo" is a plain file input with capture="environment", not a
-// custom live-camera view — the native OS camera UI (2026-08-24 reference
-// screenshots) is what's wanted, and that attribute already gets it on
-// both iOS and Android. Nothing is uploaded until Create is actually
-// pressed; capturing/choosing a photo alone spends no credit and touches
-// no server. A finished model only reaches My Models (library/page.tsx's
-// status filter is no protection here; the row is already `ready` the
-// moment generation succeeds) once ResultStep's own Save is pressed —
-// Delete there removes it via the same lib/deleteModel.ts every other
-// delete action uses, same as never having kept it.
+// CaptureChoice (mode picker + photo tiles + Create) stays fixed at the top
+// of /create for the whole flow (2026-08-24 — explicit correction: an
+// earlier version replaced it with the chosen photo, Tripo-reference-style;
+// this one keeps it up and runs everything else below instead). Generating,
+// then the Save/Delete Result render below it — never swapping the
+// picker/Create row out, only ever adding content beneath it.
+//
+// 2026-09-04: CaptureChoice's own picker used to be two fixed buttons
+// (camera capture vs. gallery), with a chosen photo previewed in a separate
+// box further down this page, plus an easy-to-miss "optional extra angles"
+// row below that. Replaced with an explicit single-vs-multi-photo mode
+// choice up front (each photo now shown filling its own picker tile in
+// place, not a separate preview elsewhere) — see CaptureChoice.tsx's own
+// header comment for why.
+//
+// Nothing is uploaded until Create is actually pressed; choosing photos
+// alone spends no credit and touches no server. A finished model only
+// reaches My Models (library/page.tsx's status filter is no protection
+// here; the row is already `ready` the moment generation succeeds) once
+// ResultStep's own Save is pressed — Delete there removes it via the same
+// lib/deleteModel.ts every other delete action uses, same as never having
+// kept it.
 //
 // initialActiveModel (a generation already running when the caller landed
 // on /create) seeds generatingModel directly, sourced from the model's own
@@ -54,12 +58,12 @@ interface GeneratingModel {
 // Create press would, not a separate smaller "still going" indicator.
 export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const router = useRouter();
-  const [file, setFile] = useState<File | null>(null);
-  // Optional multi-view angles (lib/tripo.ts's multiview_to_model) — see
-  // ANGLE_LABELS above for the fixed left/back/right slot order. All three
-  // stay null for the common case; a chosen one only ever raises quality,
-  // never blocks Create if it fails to upload (see handleCreate below).
-  const [angleFiles, setAngleFiles] = useState<(File | null)[]>([null, null, null]);
+  const [mode, setMode] = useState<CaptureMode | null>(null);
+  // Always length PHOTO_SLOT_COUNT — index 0 is the required front photo,
+  // 1-3 are optional multi-view angles (lib/tripo.ts's multiview_to_model),
+  // only ever shown/fillable in "multi" mode. A missing angle only ever
+  // costs quality, never blocks Create (see handleCreate below).
+  const [photos, setPhotos] = useState<(File | null)[]>(() => Array(PHOTO_SLOT_COUNT).fill(null));
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatingModel, setGeneratingModel] =
@@ -81,37 +85,44 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const [resultModel, setResultModel] = useState<ModelRow | null>(null);
   const { upload, error: uploadError } = useUpload();
 
-  // GeneratingStep needs the same preview after the chosen-photo block
-  // below has moved on, so the blob URL has to outlive that render rather
-  // than being revoked with it.
-  const previewUrl = useMemo(
-    () => (file ? URL.createObjectURL(file) : null),
-    [file],
+  // GeneratingStep needs photos[0]'s preview after CaptureChoice has moved on
+  // to showing Generating instead of the picker, so the blob URL has to
+  // outlive that render rather than being revoked with it.
+  const photoPreviewUrls = useMemo(
+    () => photos.map((f) => (f ? URL.createObjectURL(f) : null)),
+    [photos],
   );
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      photoPreviewUrls.forEach((url) => url && URL.revokeObjectURL(url));
     };
-  }, [previewUrl]);
+  }, [photoPreviewUrls]);
+  const previewUrl = photoPreviewUrls[0];
 
-  const anglePreviewUrls = useMemo(
-    () => angleFiles.map((f) => (f ? URL.createObjectURL(f) : null)),
-    [angleFiles],
-  );
-  useEffect(() => {
-    return () => {
-      anglePreviewUrls.forEach((url) => url && URL.revokeObjectURL(url));
-    };
-  }, [anglePreviewUrls]);
+  function handlePhotoChosen(index: number, file: File) {
+    setPhotos((prev) => prev.map((p, i) => (i === index ? file : p)));
+  }
+  function handlePhotoRemoved(index: number) {
+    setPhotos((prev) => prev.map((p, i) => (i === index ? null : p)));
+  }
+  function handleModeChange(next: CaptureMode | null) {
+    setMode(next);
+    // Switching to single mode discards any angle photos beyond the front
+    // one — multi mode's slots 1-3 have no meaning there, and leaving them
+    // populated would silently resurrect them if the user switches back.
+    if (next === "single") {
+      setPhotos((prev) => prev.map((p, i) => (i === 0 ? p : null)));
+    }
+  }
 
   async function handleCreate() {
+    const file = photos[0];
     if (!file) return;
     setCreating(true);
     setError(null);
     try {
       // Stored on the row (migration 0012) at the one point a File object
-      // exists, whichever input it came from (CaptureChoice.tsx's camera or
-      // gallery file input) — not currently read by MasonryGrid/ModelCard.tsx
+      // exists — not currently read by MasonryGrid/ModelCard.tsx
       // (2026-09-03: every card renders at a fixed MODEL_CARD_ASPECT_RATIO
       // now, object-contain, regardless of the source photo's own shape),
       // but kept as it's cheap, harmless metadata a future feature could
@@ -139,9 +150,10 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       // Sequential, reusing the same useUpload instance as the front photo
       // above — these are optional (rule: never block Create over one), so a
       // failed angle upload is just dropped (logged), not surfaced as an
-      // error the way the required front upload's failure is.
+      // error the way the required front upload's failure is. photos[0] was
+      // already uploaded above; only 1-3 (left/back/right) go here.
       const angleKeys: (string | undefined)[] = [];
-      for (const angleFile of angleFiles) {
+      for (const angleFile of photos.slice(1)) {
         if (!angleFile) {
           angleKeys.push(undefined);
           continue;
@@ -191,8 +203,8 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   }
 
   function resetAfterResult() {
-    setFile(null);
-    setAngleFiles([null, null, null]);
+    setMode(null);
+    setPhotos(Array(PHOTO_SLOT_COUNT).fill(null));
     setGeneratingModel(null);
     setGeneratingPreviewUrl(null);
     setResultModel(null);
@@ -226,63 +238,17 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     >
       <CaptureChoice
         userId={userId}
-        file={file}
-        onFileChosen={setFile}
+        mode={mode}
+        onModeChange={handleModeChange}
+        photos={photos}
+        photoPreviewUrls={photoPreviewUrls}
+        onPhotoChosen={handlePhotoChosen}
+        onPhotoRemoved={handlePhotoRemoved}
         onCreate={handleCreate}
         creating={creating}
         busy={busy}
         error={error}
       />
-
-      {file && previewUrl && !busy && (
-        <div className="relative w-full overflow-hidden rounded-sm bg-surface">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={previewUrl}
-            alt="Сонгосон зураг"
-            className="mx-auto block max-h-72 w-auto max-w-full object-contain"
-          />
-          <button
-            type="button"
-            onClick={() => setFile(null)}
-            disabled={creating}
-            aria-label="Дахин авах"
-            className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-bg/80 text-text hover:bg-bg disabled:opacity-50"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-      )}
-
-      {file && !busy && (
-        // Multi-view input (lib/tripo.ts's multiview_to_model) — 2-4 real
-        // angles produce meaningfully better geometry than one photo can
-        // ever resolve, especially on non-symmetric objects. Purely
-        // additive: skipping all three runs the exact single-photo path
-        // that already existed.
-        <div className="flex flex-col gap-2">
-          <p className="text-small uppercase tracking-wide text-text-muted">
-            Нэмэлт өнцөг нэмэх (заавал биш) — чанар сайжирна
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {angleFiles.map((angleFile, i) => (
-              <AngleSlot
-                key={ANGLE_LABELS[i]}
-                label={ANGLE_LABELS[i]}
-                file={angleFile}
-                previewUrl={anglePreviewUrls[i]}
-                disabled={creating}
-                onChoose={(chosen) =>
-                  setAngleFiles((prev) => prev.map((p, idx) => (idx === i ? chosen : p)))
-                }
-                onRemove={() =>
-                  setAngleFiles((prev) => prev.map((p, idx) => (idx === i ? null : p)))
-                }
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {resultModel ? (
         <ResultStep
@@ -303,60 +269,5 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
         )
       )}
     </div>
-  );
-}
-
-interface AngleSlotProps {
-  label: string;
-  file: File | null;
-  previewUrl: string | null;
-  disabled: boolean;
-  onChoose: (file: File) => void;
-  onRemove: () => void;
-}
-
-/** One optional angle-photo tile in CaptureFlow's multi-view picker — empty ("+" + label) or filled (thumbnail + remove). */
-function AngleSlot({ label, file, previewUrl, disabled, onChoose, onRemove }: AngleSlotProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  if (file && previewUrl) {
-    return (
-      <div className="relative aspect-square overflow-hidden rounded-sm bg-surface">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={previewUrl} alt={label} className="size-full object-cover" />
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={disabled}
-          aria-label={`${label} хасах`}
-          className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-bg/80 text-text hover:bg-bg disabled:opacity-50"
-        >
-          <X className="size-3.5" />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => inputRef.current?.click()}
-      disabled={disabled}
-      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-sm bg-surface-hover text-text-muted hover:opacity-90 disabled:opacity-50"
-    >
-      <Plus className="size-5" />
-      <span className="text-small">{label}</span>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={Object.keys(ALLOWED_IMAGE_TYPES).join(",")}
-        className="hidden"
-        onChange={(event) => {
-          const chosen = event.target.files?.[0];
-          if (chosen) onChoose(chosen);
-          event.target.value = "";
-        }}
-      />
-    </button>
   );
 }
