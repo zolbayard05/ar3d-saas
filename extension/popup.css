@@ -50,6 +50,25 @@ body {
   height: 20px;
   border-radius: 5px;
 }
+.brand span {
+  flex: 1;
+}
+.brand-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.brand-link {
+  width: auto;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--glow-soft);
+  border-radius: 100px;
+}
+.brand-link[hidden] {
+  display: none;
+}
 
 h1 {
   margin: 0;
@@ -239,6 +258,37 @@ button.link {
   100% {
     transform: translateX(350%);
   }
+}
+
+/* "Миний загварууд" view (popup.js's models()/openModelsList) */
+.model-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.model-list-row {
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  padding: 0;
+  gap: 4px;
+  background: transparent;
+}
+.model-list-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--bg);
+}
+.model-list-thumb.placeholder {
+  border: 1px dashed var(--border);
+}
+.model-list-status {
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 .model-preview {

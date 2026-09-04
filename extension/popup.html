@@ -9,7 +9,15 @@
     <div class="wrap">
       <div class="brand">
         <img src="icons/icon-32.png" alt="" />
-        Realify
+        <span>Realify</span>
+        <!-- Static markup, outside #app's re-rendered tree, since this bar
+             stays visible across every view — popup.js's renderBrandBar()
+             (called from render()) toggles [hidden] and updates the credits
+             text; the click handlers are wired once at load, not per-render. -->
+        <div class="brand-actions">
+          <button type="button" id="nav-credits" class="brand-link" title="Кредит цэнэглэх">–</button>
+          <button type="button" id="nav-models" class="brand-link" title="Миний загварууд">Загварууд</button>
+        </div>
       </div>
       <div id="app"></div>
     </div>

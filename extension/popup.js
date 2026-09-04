@@ -26,11 +26,31 @@ if (window.ModelViewerElement) {
 const app = document.getElementById("app");
 let state = { view: "loading" };
 // Set once in boot() (best-effort — stays null on any fetch failure, which
-// just means the views below render without the "Холбогдсон: ..." line
-// rather than blocking anything). See app/api/extension/me/route.ts.
+// just means the views below render without the "Холбогдсон: ..." line/
+// credits badge rather than blocking anything). See app/api/extension/me/route.ts.
 let connectedEmail = null;
+let connectedCredits = null;
+
+// Static markup (popup.html) — stays visible across every view, so it's
+// wired once here rather than rebuilt by the VIEWS render functions below.
+const navCreditsButton = document.getElementById("nav-credits");
+const navModelsButton = document.getElementById("nav-models");
+navCreditsButton.addEventListener("click", () => void openBuyView());
+navModelsButton.addEventListener("click", () => void openModelsList());
+
+function renderBrandBar() {
+  // Nothing useful to show/do before a token even exists, or while the very
+  // first boot() fetch (which populates connectedCredits) hasn't landed yet.
+  const show = state.view !== "need-token" && state.view !== "loading";
+  navCreditsButton.hidden = !show;
+  navModelsButton.hidden = !show;
+  if (show) {
+    navCreditsButton.textContent = connectedCredits != null ? `${connectedCredits} кр.` : "…";
+  }
+}
 
 function render() {
+  renderBrandBar();
   app.innerHTML = "";
   const view = VIEWS[state.view];
   if (view) app.appendChild(view());
@@ -313,7 +333,12 @@ const VIEWS = {
         text: "Холбоос хуулах",
       }),
       el("p", { text: "Утсандаа нээгээд AR-аар шууд өрөөндөө байрлуулж үзээрэй." }),
-      el("button", { class: "secondary", onclick: () => void resetToIdle(), text: "Дуусгах" }),
+      // "Миний загварууд"-с нээсэн үед энэ бол өнөөдрийн шинэ generation биш
+      // өнгөрсөн загвар харж байгаа тул "Дуусгах" (шинэ зурган рүү шилжих)
+      // биш "Буцах" (жагсаалт руу буцах) утга учиртай.
+      state.fromHistory
+        ? el("button", { class: "secondary", onclick: () => void openModelsList(), text: "Буцах" })
+        : el("button", { class: "secondary", onclick: () => void resetToIdle(), text: "Дуусгах" }),
     );
     return el("div", { class: "card" }, items);
   },
@@ -323,6 +348,59 @@ const VIEWS = {
       icon("warning", "danger"),
       el("p", { class: "error", text: state.message || "Алдаа гарлаа." }),
       el("button", { onclick: () => void resetToIdle(), text: "Дахин оролдох" }),
+    ]);
+  },
+
+  models() {
+    const items = [el("button", { class: "link", onclick: () => void boot(), text: "← Буцах" })];
+    if (state.models.length === 0) {
+      items.push(el("p", { text: "Одоогоор загвар алга." }));
+    } else {
+      const STATUS_LABELS = { pending: "Хүлээгдэж байна", processing: "Боловсруулж байна", ready: "Бэлэн", failed: "Амжилтгүй" };
+      const list = el("div", { class: "model-list" });
+      state.models.forEach((m) => {
+        const thumb = m.renderUrl
+          ? el("img", { class: "model-list-thumb", src: new URL(m.renderUrl, REALIFY_API_BASE).href, alt: "" })
+          : el("div", { class: "model-list-thumb placeholder" });
+        // Only a finished model has anything to show — matches this same
+        // gate on app/api/extension/models/[id]/route.ts's own qrDataUrl
+        // (only generated once status === "ready"). Built conditionally, not
+        // `disabled: undefined` — el()'s setAttribute would stringify that
+        // to the literal text "undefined", which is still a truthy HTML
+        // boolean attribute (disables every row regardless of status).
+        const rowProps = { type: "button", class: "model-list-row", onclick: () => void openModelFromHistory(m.id) };
+        if (m.status !== "ready") rowProps.disabled = "";
+        const row = el("button", rowProps, [
+          thumb,
+          el("span", { class: "model-list-status", text: STATUS_LABELS[m.status] || m.status }),
+        ]);
+        list.appendChild(row);
+      });
+      items.push(list);
+    }
+    return el("div", { class: "card" }, items);
+  },
+
+  buy() {
+    const items = [el("button", { class: "link", onclick: () => void boot(), text: "← Буцах" })];
+    state.packs.forEach((pack) => {
+      items.push(
+        el("button", {
+          onclick: () => void buyPack(pack.id),
+          text: `${pack.credits} кредит — ${pack.amountMnt.toLocaleString("mn-MN")}₮`,
+        }),
+      );
+    });
+    return el("div", { class: "card" }, items);
+  },
+
+  "checkout-started"() {
+    return el("div", { class: "card" }, [
+      icon("check", "success"),
+      el("p", {
+        text: "Төлбөрийн цонх шинэ tab дээр нээгдлээ. Төлбөрөө хийгээд буцаж ирээд popup-оо дахин нээгээрэй — кредит шинэчлэгдсэн байх болно.",
+      }),
+      el("button", { class: "secondary", onclick: () => void boot(), text: "Ойлголоо" }),
     ]);
   },
 };
@@ -350,6 +428,74 @@ async function resetToIdle() {
   state = { view: "boot" };
   render();
   boot();
+}
+
+// --------------------------------------------------------- models & credits
+
+async function openModelsList() {
+  state = { view: "loading" };
+  render();
+  try {
+    const body = await api("/api/extension/models");
+    state = { view: "models", models: body.models || [] };
+  } catch (err) {
+    if (err.message === "unauthorized") return; // already rendered need-token
+    state = { view: "error", message: err.message || "Загваруудыг ачаалахад алдаа гарлаа." };
+  }
+  render();
+}
+
+async function openModelFromHistory(id) {
+  state = { view: "loading" };
+  render();
+  try {
+    const body = await api(`/api/extension/models/${id}`);
+    state = { view: "done", result: body, fromHistory: true };
+  } catch (err) {
+    if (err.message === "unauthorized") return;
+    state = { view: "error", message: err.message || "Загварыг ачаалахад алдаа гарлаа." };
+  }
+  render();
+}
+
+async function openBuyView() {
+  state = { view: "loading" };
+  render();
+  try {
+    // Public/unauthenticated (app/api/extension/credit-packs/route.ts — no
+    // user-specific data, just current pricing) — plain fetch, not api(),
+    // which would attach a Bearer token this endpoint doesn't check and
+    // apply 401 handling that doesn't apply here either.
+    const res = await fetch(`${REALIFY_API_BASE}/api/extension/credit-packs`);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Багцуудыг ачаалахад алдаа гарлаа (${res.status})`);
+    state = { view: "buy", packs: body.packs || [] };
+  } catch (err) {
+    state = { view: "error", message: err.message || "Багцуудыг ачаалахад алдаа гарлаа." };
+  }
+  render();
+}
+
+async function buyPack(packId) {
+  state = { view: "loading" };
+  render();
+  try {
+    const body = await api("/api/extension/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ packId, idempotencyKey: crypto.randomUUID() }),
+    });
+    // Not a popup navigation — pay.wire.mn is a different origin, and a
+    // Chrome action popup closes the instant it loses focus (see
+    // background.js's own header comment on this), which would kill a
+    // hosted-checkout page mid-flow. A real tab survives that.
+    chrome.tabs.create({ url: body.url });
+    state = { view: "checkout-started" };
+  } catch (err) {
+    if (err.message === "unauthorized") return;
+    state = { view: "error", message: err.message || "Төлбөр эхлүүлэхэд алдаа гарлаа." };
+  }
+  render();
 }
 
 // ------------------------------------------------------------- generate
@@ -602,6 +748,7 @@ async function boot() {
   try {
     const body = await api("/api/extension/me");
     connectedEmail = body.email || null;
+    connectedCredits = typeof body.credits === "number" ? body.credits : null;
   } catch (err) {
     if (err.message === "unauthorized") return;
     connectedEmail = null;
@@ -614,19 +761,24 @@ async function boot() {
   // Without this check reopening the popup after a background-caught
   // completion would fall through to "no-image" and silently lose the
   // result the badge/notification just announced.
+  //
+  // Deliberately NOT removed from storage just for being read here (unlike
+  // the old behavior) — a "done"/"error" screen should survive ANY number of
+  // popup close/reopen cycles, not just one. The only thing that clears
+  // these now is resetToIdle() (the user explicitly pressing
+  // "Дуусгах"/"Дахин оролдох"), which is also the only place that should:
+  // reopening without dismissing must keep showing the same result.
   const { realifyLastResult, realifyLastError } = await chrome.storage.session.get([
     "realifyLastResult",
     "realifyLastError",
   ]);
   if (realifyLastResult) {
-    await chrome.storage.session.remove("realifyLastResult");
     chrome.action.setBadgeText({ text: "" });
     state = { view: "done", result: realifyLastResult };
     render();
     return;
   }
   if (realifyLastError) {
-    await chrome.storage.session.remove("realifyLastError");
     chrome.action.setBadgeText({ text: "" });
     state = { view: "error", message: realifyLastError };
     render();
