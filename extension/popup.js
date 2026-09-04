@@ -105,18 +105,6 @@ async function clearActiveGeneration() {
   await chrome.storage.session.remove("realifyActiveGeneration");
 }
 
-// See extension/background.js's own comment block — that service worker
-// independently polls the same status endpoint via chrome.alarms so a
-// closed popup doesn't mean losing track of a generation. Clearing its
-// alarm and any result it already stashed here (chrome.storage.session's
-// realifyLastResult/realifyLastError) is what stops a result the popup
-// just showed live from *also* surfacing as a stale badge/notification
-// moments later.
-async function stopBackgroundTracking() {
-  chrome.runtime.sendMessage({ type: "realify-track-stop" }).catch(() => {});
-  await chrome.storage.session.remove(["realifyLastResult", "realifyLastError"]);
-}
-
 // ------------------------------------------------------------------- api
 
 async function api(path, options = {}) {
@@ -247,6 +235,12 @@ const VIEWS = {
 
   working() {
     const spinner = el("span", { class: "spinner lg" });
+    // Indeterminate — pollUntilReady's own elapsed-time message already
+    // tells the user something real, this bar's only job is showing "still
+    // moving" between polls (see .progress-bar/-fill in popup.css). Not
+    // shown at all once real progress can't be inferred, but there's no
+    // total duration to compute a determinate fill from either way.
+    const progressBar = el("div", { class: "progress-bar" }, [el("div", { class: "progress-bar-fill" })]);
     const items = [];
     // Keeps the source photo visible (dimmed, spinner on top) instead of an
     // empty card while working — matches the mobile app's own
@@ -256,8 +250,10 @@ const VIEWS = {
       const img = el("img", { class: "thumb", src: state.image.srcUrl, alt: "" });
       items.push(el("div", { class: "thumb-frame working" }, [img, el("div", { class: "overlay" }, [spinner])]));
       items.push(el("p", { text: state.message || "Боловсруулж байна…" }));
+      items.push(progressBar);
     } else {
       items.push(el("div", { class: "progress" }, [spinner, el("span", { text: state.message || "Боловсруулж байна…" })]));
+      items.push(progressBar);
     }
     return el("div", { class: "card" }, items);
   },
@@ -304,6 +300,13 @@ async function resetToIdle() {
   // new image (see pollUntilReady's non-"failed" error path).
   await clearActiveGeneration();
   await clearPendingImage();
+  // pollUntilReady persists a finished result/error here (chrome.storage.
+  // session) so a popup close right after "done"/"error" can still recover
+  // it — but that means it's still sitting there if the user instead clicks
+  // "Дуусгах"/"Дахин оролдох" WITHOUT closing the popup first. Without this,
+  // boot() below would immediately find that same realifyLastResult again
+  // and show the just-dismissed result a second time instead of moving on.
+  await chrome.storage.session.remove(["realifyLastResult", "realifyLastError"]);
   state = { view: "boot" };
   render();
   boot();
@@ -429,7 +432,10 @@ async function startGeneration() {
     }
     const [leftKey, backKey, rightKey] = angleKeys;
 
-    state = { view: "working", message: "3D болгож байна… (30–100 секунд)", image };
+    // pollUntilReady's own tick() takes over with a real elapsed-time
+    // message the moment actual polling starts, right below — this is only
+    // shown for the brief request itself.
+    state = { view: "working", message: "Эхлүүлж байна…", image };
     render();
     const gen = await api("/api/extension/generate", {
       method: "POST",
@@ -468,35 +474,72 @@ async function startGeneration() {
   }
 }
 
-async function pollUntilReady(modelId, image) {
-  state = { view: "working", message: "3D болгож байна… (30–100 секунд)", image };
-  render();
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < MAX_POLL_MS) {
-    const body = await api(`/api/extension/models/${modelId}`);
-    if (body.status === "ready") {
-      await clearActiveGeneration();
-      // The popup itself just resolved this — stop background.js's own
-      // independent poll (extension/background.js) and drop any result it
-      // might already have raced to store, so reopening the popup later
-      // doesn't replay a stale "done" notification/badge for a result
-      // already shown here.
-      await stopBackgroundTracking();
-      state = { view: "done", result: body };
-      render();
-      return;
+function formatElapsed(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  const clock = m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}с`;
+  return `3D болгож байна… ${clock}`;
+}
+
+// trueStartedAt: when the underlying generation actually started (from
+// realifyActiveGeneration.startedAt — persisted by setActiveGeneration at
+// submission time), NOT necessarily when THIS call to pollUntilReady began.
+// Reopening the popup calls this again from boot()'s resume path, and the
+// elapsed clock shown should read total real time, not reset to 0:00 just
+// because the popup was closed for a while — the generation itself never
+// stopped running server-side.
+async function pollUntilReady(modelId, image, trueStartedAt = Date.now()) {
+  // A per-second visible clock, independent of POLL_INTERVAL_MS's slower
+  // status-check cadence — this is what replaces the old hardcoded
+  // "(30–100 секунд)" text, which was never accurate (rule: real pipeline
+  // is a two-stage GLB+USDZ generation, commonly 3-5 minutes, sometimes
+  // more with a QA regen retry — see app/api/webhooks/tripo/route.ts).
+  const tick = () => {
+    state = { view: "working", message: formatElapsed(Math.floor((Date.now() - trueStartedAt) / 1000)), image };
+    render();
+  };
+  tick();
+  const tickTimer = setInterval(tick, 1000);
+
+  try {
+    const localStartedAt = Date.now();
+    while (Date.now() - localStartedAt < MAX_POLL_MS) {
+      const body = await api(`/api/extension/models/${modelId}`);
+      if (body.status === "ready") {
+        await clearActiveGeneration();
+        // Tell background.js's own independent poll to stop (its job here is
+        // done) WITHOUT clearing realifyLastResult/realifyLastError yet — the
+        // popup itself just resolved this, so it writes its own copy of the
+        // result right below. Without this, closing the popup in the instant
+        // right after seeing "done" left nothing anywhere for boot() to
+        // recover: realifyActiveGeneration/realifyPendingImage were already
+        // cleared earlier, and the old stopBackgroundTracking() call here
+        // wiped realifyLastResult too, before anything had a chance to set
+        // it — reopening fell all the way through to "no-image" instead of
+        // showing the result again. boot()'s existing realifyLastResult
+        // check (below) is what now recovers this, the same way it already
+        // recovers a result background.js discovered first.
+        chrome.runtime.sendMessage({ type: "realify-track-stop" }).catch(() => {});
+        await chrome.storage.session.set({ realifyLastResult: body });
+        state = { view: "done", result: body };
+        render();
+        return;
+      }
+      if (body.status === "failed") {
+        await clearActiveGeneration();
+        chrome.runtime.sendMessage({ type: "realify-track-stop" }).catch(() => {});
+        await chrome.storage.session.set({ realifyLastError: "Үүсгэлт амжилтгүй боллоо. Кредит буцаагдсан." });
+        throw new Error("Үүсгэлт амжилтгүй боллоо. Кредит буцаагдсан.");
+      }
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
     }
-    if (body.status === "failed") {
-      await clearActiveGeneration();
-      await stopBackgroundTracking();
-      throw new Error("Үүсгэлт амжилтгүй боллоо. Кредит буцаагдсан.");
-    }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    // Deliberately NOT clearing realifyActiveGeneration here — the job is
+    // almost certainly still just running long, not stuck, so reopening the
+    // popup should keep checking on it rather than losing track again.
+    throw new Error("Удаж байна — popup-аа хааж дахин нээгээд шалгаарай (загвар боловсруулагдсаар л байна).");
+  } finally {
+    clearInterval(tickTimer);
   }
-  // Deliberately NOT clearing realifyActiveGeneration here — the job is
-  // almost certainly still just running long, not stuck, so reopening the
-  // popup should keep checking on it rather than losing track again.
-  throw new Error("Удаж байна — popup-аа хааж дахин нээгээд шалгаарай (загвар боловсруулагдсаар л байна).");
 }
 
 // -------------------------------------------------------------------- boot
@@ -556,7 +599,11 @@ async function boot() {
   const active = await getActiveGeneration();
   if (active) {
     try {
-      await pollUntilReady(active.modelId);
+      // active.startedAt (set by setActiveGeneration at submission time) is
+      // when the generation truly began — passed through so the elapsed
+      // clock reads real total time instead of resetting to 0:00 just
+      // because the popup was closed for a while.
+      await pollUntilReady(active.modelId, undefined, active.startedAt);
     } catch (err) {
       state = { view: "error", message: err.message || "Алдаа гарлаа." };
       render();
