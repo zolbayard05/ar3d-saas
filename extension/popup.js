@@ -244,7 +244,10 @@ const VIEWS = {
         grid.appendChild(tile);
       });
       children.push(
-        el("p", { style: "font-size: 11px;", text: "Нэмэлт өнцөг сонгох (заавал биш) — сонгосон дараалал зүүн/ард/баруун тал болно:" }),
+        el("p", {
+          style: "font-size: 11px;",
+          text: "Сайн загвар гаргахад хамгийн тохиромжтой нэмэлт өнцгүүдийг автоматаар сонгосон — хэрэгтэй бол өөрчилж болно:",
+        }),
         grid,
       );
     }
@@ -809,7 +812,17 @@ async function boot() {
     render();
     return;
   }
-  state = { view: "ready-to-generate", image: { ...image, selected: [] } };
+  // Auto-pick the first 3 detected candidates rather than starting from
+  // nothing and making the user tap each one — background.js's own scan
+  // already orders these by "found near the clicked image in a real gallery
+  // container" first (the closest proxy to real angle photos available: no
+  // pixel-level similarity check is possible here, since most product
+  // images are cross-origin with no CORS header, which taints a canvas the
+  // instant you'd try to read it back for actual visual comparison). Still
+  // just a default — the picker below stays fully editable so a bad
+  // auto-pick (e.g. near-duplicate crops) can be swapped out by hand.
+  const autoSelected = (image.candidates || []).slice(0, 3).map((c) => c.src);
+  state = { view: "ready-to-generate", image: { ...image, selected: autoSelected } };
   render();
 }
 
