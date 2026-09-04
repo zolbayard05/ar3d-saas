@@ -241,6 +241,20 @@ button.link {
   }
 }
 
+.model-preview {
+  display: block;
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
+  background: var(--bg);
+  /* model-viewer's own default is transparent, which would show this
+     popup's own dark bg through — an explicit background-color here (not
+     just the CSS background above, which model-viewer's shadow DOM canvas
+     paints over) keeps the render itself matching the card instead of
+     going transparent/white depending on the model's own materials. */
+  --poster-color: transparent;
+}
+
 .qr {
   display: block;
   width: 168px;

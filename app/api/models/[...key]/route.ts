@@ -74,6 +74,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ key
     headers: {
       "Content-Type": object.ContentType || "application/octet-stream",
       "Cache-Control": cacheControl,
+      // The web app never needed this (browser-navigated same-origin
+      // requests aren't CORS-gated at all) — added for the Chrome
+      // extension's popup (a genuinely different chrome-extension:// origin)
+      // to render an interactive <model-viewer> preview of the just-
+      // generated model. Same threat model as rule 6/5's public models
+      // bucket already accepts: unguessable UUID keys, no auth, no
+      // credentials on this response — wildcard costs nothing beyond what
+      // guessing the key already would.
+      "Access-Control-Allow-Origin": "*",
     },
   });
 }

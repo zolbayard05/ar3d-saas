@@ -15,6 +15,13 @@
     </div>
     <script src="config.js"></script>
     <script src="lib.js"></script>
+    <!-- Vendored, not a CDN <script src>: Chrome Web Store review disallows
+         remotely-hosted code in an extension (same reason
+         app/api/extension/models/[id]/route.ts generates its QR server-side
+         instead of a client-side library that would fetch one). Must load
+         before popup.js, which creates <model-viewer> elements dynamically —
+         the custom element has to already be defined by then. -->
+    <script src="vendor/model-viewer.min.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

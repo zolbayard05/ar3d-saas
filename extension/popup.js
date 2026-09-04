@@ -6,7 +6,22 @@
 // they're unit-testable (extension/lib.test.mjs) without a DOM/chrome.*
 // mock; nothing here should redefine them.
 const POLL_INTERVAL_MS = 2500;
-const MAX_POLL_MS = 3 * 60 * 1000; // generation is documented as 30-100s; give real headroom before giving up
+// The real pipeline is a sequential GLB+USDZ generation (see
+// app/api/webhooks/tripo/route.ts), commonly 3-5 minutes and sometimes more
+// with a QA regen retry — kept at 3 minutes for now regardless (not
+// re-tuned as part of this change), since closing/reopening the popup
+// already resumes tracking rather than losing the generation.
+const MAX_POLL_MS = 3 * 60 * 1000;
+
+// vendor/model-viewer.min.js (loaded before this file in popup.html) defaults
+// to fetching its Draco decoder from Google's CDN at runtime — exactly the
+// "remotely-hosted code" Chrome Web Store review disallows for an extension.
+// Pointing it at the copy vendored alongside it instead (extension/vendor/
+// draco/) must happen before any <model-viewer> element is created — set
+// here, at module load, rather than inside the "done" view itself.
+if (window.ModelViewerElement) {
+  window.ModelViewerElement.dracoDecoderLocation = chrome.runtime.getURL("vendor/draco/");
+}
 
 const app = document.getElementById("app");
 let state = { view: "loading" };
@@ -262,6 +277,31 @@ const VIEWS = {
     const items = [
       icon("check", "success"),
       el("p", { class: "heading", text: "Бэлэн боллоо!" }),
+    ];
+
+    // Interactive preview right in the popup (drag to orbit, scroll/pinch to
+    // zoom — model-viewer's own default camera-controls behavior, no extra
+    // wiring needed) — see vendor/model-viewer.min.js's header comment in
+    // popup.html for why this is a vendored file, not a CDN <script src>.
+    // glbUrl from app/api/extension/models/[id]/route.ts may be root-relative
+    // (lib/models.ts's buildModelUrl falls back to "/api/models/..." until
+    // NEXT_PUBLIC_MODELS_CDN_URL is set) — resolving it against
+    // REALIFY_API_BASE, not the popup's own chrome-extension:// origin, is
+    // what makes it fetchable at all.
+    if (state.result.glbUrl) {
+      const viewer = document.createElement("model-viewer");
+      viewer.className = "model-preview";
+      viewer.setAttribute("src", new URL(state.result.glbUrl, REALIFY_API_BASE).href);
+      viewer.setAttribute("alt", "3D загвар");
+      viewer.setAttribute("camera-controls", "");
+      viewer.setAttribute("shadow-intensity", "1");
+      viewer.addEventListener("error", () => {
+        viewer.replaceWith(el("p", { class: "error", text: "3D урьдчилан харах ачаалагдсангүй — QR код ажиллах хэвээр." }));
+      });
+      items.push(viewer);
+    }
+
+    items.push(
       el("img", { class: "qr", src: state.result.qrDataUrl, alt: "QR код" }),
       el("p", { class: "share-url", text: state.result.shareUrl }),
       el("button", {
@@ -274,7 +314,7 @@ const VIEWS = {
       }),
       el("p", { text: "Утсандаа нээгээд AR-аар шууд өрөөндөө байрлуулж үзээрэй." }),
       el("button", { class: "secondary", onclick: () => void resetToIdle(), text: "Дуусгах" }),
-    ];
+    );
     return el("div", { class: "card" }, items);
   },
 
