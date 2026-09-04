@@ -188,12 +188,29 @@ const VIEWS = {
   },
 
   "no-image"() {
-    const items = [
-      icon("image"),
-      el("p", { text: "Ямар нэг сайт дээрх бүтээгдэхүүний зурган дээр хулганы баруун товч дараад “Realify — 3D болгох” сонго." }),
+    // 3-step mini walkthrough — the most-seen screen for anyone who's
+    // installed the extension but hasn't right-clicked anything yet, so
+    // it earns more than a single static paragraph (see popup.css's own
+    // .onboard-steps comment).
+    const steps = [
+      "Ямар нэг онлайн дэлгүүрийн бүтээгдэхүүний зурган дээр хулганы баруун товч дар.",
+      "“Realify — 3D болгох” сонго — ойролцоох бусад өнцгийн зургийг автоматаар илрүүлнэ.",
+      "Бэлэн болмогц QR кодоо утасныхаа камераар уншуулаад AR-аар шууд өрөөндөө байрлуул.",
     ];
+    const stepsList = el(
+      "div",
+      { class: "onboard-steps" },
+      steps.map((text, i) =>
+        el("div", { class: "onboard-step" }, [
+          el("span", { class: "onboard-step-num", text: String(i + 1) }),
+          el("p", { text }),
+        ]),
+      ),
+    );
+
+    const items = [icon("image"), stepsList];
     if (connectedEmail) {
-      items.push(el("p", { style: "font-size: 11px;", text: `Холбогдсон: ${connectedEmail}` }));
+      items.push(el("p", { class: "hint", text: `Холбогдсон: ${connectedEmail}` }));
     }
     items.push(el("button", { class: "link", onclick: forgetToken, text: "Токен солих" }));
     return el("div", { class: "card" }, items);
@@ -245,7 +262,7 @@ const VIEWS = {
       });
       children.push(
         el("p", {
-          style: "font-size: 11px;",
+          class: "hint",
           text: "Сайн загвар гаргахад хамгийн тохиромжтой нэмэлт өнцгүүдийг автоматаар сонгосон — хэрэгтэй бол өөрчилж болно:",
         }),
         grid,
@@ -260,11 +277,11 @@ const VIEWS = {
       // that screen entirely, so this is the one place left to say it,
       // even though there's no way here to preview/crop before spending
       // the credit the way the app's own capture flow allows.
-      el("p", { style: "font-size: 11.5px;", text: "Хамгийн сайн үр дүнд: тод, ганц объект дүрсэлсэн, бүдэг биш зураг сонго." }),
-      el("p", { style: "font-size: 11.5px;", text: "1 кредит зарцуулна" }),
+      el("p", { class: "hint", text: "Хамгийн сайн үр дүнд: тод, ганц объект дүрсэлсэн, бүдэг биш зураг сонго." }),
+      el("p", { class: "hint", text: "1 кредит зарцуулна" }),
     );
     if (connectedEmail) {
-      children.push(el("p", { style: "font-size: 11px;", text: `Холбогдсон: ${connectedEmail}` }));
+      children.push(el("p", { class: "hint", text: `Холбогдсон: ${connectedEmail}` }));
     }
     children.push(el("button", { class: "link", onclick: forgetToken, text: "Токен солих" }));
 
@@ -287,10 +304,10 @@ const VIEWS = {
     if (state.image?.srcUrl) {
       const img = el("img", { class: "thumb", src: state.image.srcUrl, alt: "" });
       items.push(el("div", { class: "thumb-frame working" }, [img, el("div", { class: "overlay" }, [spinner])]));
-      items.push(el("p", { text: state.message || "Боловсруулж байна…" }));
+      items.push(el("p", { class: "elapsed", text: state.message || "Боловсруулж байна…" }));
       items.push(progressBar);
     } else {
-      items.push(el("div", { class: "progress" }, [spinner, el("span", { text: state.message || "Боловсруулж байна…" })]));
+      items.push(el("div", { class: "progress" }, [spinner, el("span", { class: "elapsed", text: state.message || "Боловсруулж байна…" })]));
       items.push(progressBar);
     }
     return el("div", { class: "card" }, items);
@@ -324,18 +341,28 @@ const VIEWS = {
       items.push(viewer);
     }
 
+    // Grouped into its own panel below a divider (popup.css) — the preview
+    // above answers "what did I get," this half answers "how do I use it,"
+    // two different jobs that used to just run together in one flat stack.
     items.push(
-      el("img", { class: "qr", src: state.result.qrDataUrl, alt: "QR код" }),
-      el("p", { class: "share-url", text: state.result.shareUrl }),
-      el("button", {
-        onclick: async (e) => {
-          await navigator.clipboard.writeText(state.result.shareUrl);
-          e.target.textContent = "Хуулагдлаа";
-          setTimeout(() => (e.target.textContent = "Холбоос хуулах"), 1500);
-        },
-        text: "Холбоос хуулах",
-      }),
-      el("p", { text: "Утсандаа нээгээд AR-аар шууд өрөөндөө байрлуулж үзээрэй." }),
+      el("div", { class: "section-divider" }),
+      el(
+        "div",
+        { class: "share-panel" },
+        [
+          el("img", { class: "qr", src: state.result.qrDataUrl, alt: "QR код" }),
+          el("p", { class: "share-url", text: state.result.shareUrl }),
+          el("button", {
+            onclick: async (e) => {
+              await navigator.clipboard.writeText(state.result.shareUrl);
+              e.target.textContent = "Хуулагдлаа";
+              setTimeout(() => (e.target.textContent = "Холбоос хуулах"), 1500);
+            },
+            text: "Холбоос хуулах",
+          }),
+          el("p", { class: "hint", text: "Утсандаа нээгээд AR-аар шууд өрөөндөө байрлуулж үзээрэй." }),
+        ],
+      ),
       // "Миний загварууд"-с нээсэн үед энэ бол өнөөдрийн шинэ generation биш
       // өнгөрсөн загвар харж байгаа тул "Дуусгах" (шинэ зурган рүү шилжих)
       // биш "Буцах" (жагсаалт руу буцах) утга учиртай.

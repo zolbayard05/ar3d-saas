@@ -2,7 +2,20 @@
    (styles/themes.css) — this is the actual app surface, not the marketing
    landing page (which is the one place [[feedback-landing-page-rules-exempt]]
    allows an accent color). Values copied as literal oklch(), not imported —
-   this is a standalone extension bundle with no build step. */
+   this is a standalone extension bundle with no build step.
+
+   2026-09-04 redesign — the extension is now the product's primary front
+   door (product decision), so this pass gives it a real design system
+   instead of ad hoc values: a spacing/type scale (replacing scattered
+   inline `style="font-size: 11px"` calls in popup.js), and — the single
+   highest-leverage fix — a real primary/secondary/tertiary button
+   hierarchy. Before this, every button (including "3D болгох", the one
+   click that matters most in the whole popup) used the same low-contrast
+   translucent fill as "Буцах"/"Дуусгах", so nothing ever looked more
+   important than anything else. --text-order is the one deliberate accent
+   exception already justified below (angle-badge pick order) — kept, not
+   expanded; every other polish here comes from elevation/type/spacing/
+   motion, not a new hue. */
 :root {
   --bg: oklch(0.115 0 0);
   --surface: oklch(0.191 0 0);
@@ -11,8 +24,30 @@
   --border-subtle: oklch(0.22 0 0);
   --text: oklch(0.997 0 0);
   --text-muted: oklch(0.63 0 0);
+  --text-faint: oklch(0.46 0 0);
   --danger: oklch(0.65 0.19 25);
   --glow-soft: rgb(255 255 255 / 0.14);
+
+  /* ---- Spacing scale — replaces one-off px values ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* ---- Type scale — replaces popup.js's scattered inline font-size ---- */
+  --text-2xs: 10.5px;
+  --text-xs: 11.5px;
+  --text-sm: 12.5px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 15.5px;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
 }
 
 * {
@@ -28,23 +63,24 @@ body {
   min-height: 200px;
   background: var(--bg);
   color: var(--text);
-  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: var(--text-base) / 1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .wrap {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: var(--space-4);
+  padding: var(--space-4);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  padding-bottom: 12px;
+  gap: var(--space-2);
+  font-weight: 700;
+  font-size: var(--text-md);
+  letter-spacing: -0.01em;
+  padding-bottom: var(--space-3);
   margin-bottom: -2px;
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -63,11 +99,16 @@ body {
 }
 .brand-link {
   width: auto;
-  padding: 4px 8px;
-  font-size: 11.5px;
+  padding: 5px 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   background: var(--glow-soft);
-  border-radius: 100px;
+  color: var(--text);
+  border-radius: var(--radius-full);
+  transition: background-color 0.15s;
+}
+.brand-link:hover {
+  background: rgb(255 255 255 / 0.2);
 }
 .brand-link[hidden] {
   display: none;
@@ -75,25 +116,43 @@ body {
 
 h1 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-md);
   font-weight: 600;
 }
 
 p {
   margin: 0;
   color: var(--text-muted);
+  font-size: var(--text-base);
+}
+
+/* Fine-print annotations (upload guidance, "1 кредит зарцуулна", the
+   connected-account line) — one class replacing six identical
+   `style="font-size: 11px"` inline calls that had drifted to two slightly
+   different values (11px/11.5px) purely by copy-paste, not intent. */
+.hint {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
 }
 
 .card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   border: 1px solid var(--border-subtle);
   background: var(--surface);
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-4);
   text-align: center;
+  /* A faint inset top highlight (the same "lit surface, not a flat block"
+     idea the main app's own glass-card treatment uses — see
+     components/ModelCard.tsx) plus a soft drop shadow for real depth
+     against --bg, instead of the card reading as a same-toned rectangle. */
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.05),
+    0 10px 28px -14px rgb(0 0 0 / 0.6);
 }
 
 .icon {
@@ -110,14 +169,15 @@ p {
 
 .heading {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
 .thumb-frame {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg);
 }
@@ -133,63 +193,99 @@ p {
 input[type="text"],
 input[type="password"] {
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
   font: inherit;
+  font-size: var(--text-base);
+}
+input[type="text"]:focus,
+input[type="password"]:focus {
+  outline: 2px solid var(--text-muted);
+  outline-offset: 1px;
 }
 
+/* ---- Buttons ------------------------------------------------------------
+   Three real tiers now, not one shared translucent style with two overrides:
+   - primary (the unclassed default) — solid, high-contrast, mirrors the
+     main app's own --color-accent/--color-accent-text convention
+     (styles/themes.css: near-white fill, near-black text) rather than
+     inventing a new treatment the two clients would read as different
+     products. Reserved for the one action that matters most per screen
+     ("3D болгох", "Холбох", a credit pack, "Дахин оролдох").
+   - secondary — outlined, for a real but lower-priority action ("Буцах",
+     "Дуусгах", the checkout-started acknowledgement).
+   - link — text-only, for the least important/most-reversible action
+     ("Токен солих", "← Буцах" nav). */
 button {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   width: 100%;
-  padding: 9px 10px;
-  border-radius: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
-  background: var(--glow-soft);
-  color: var(--text);
+  background: var(--text);
+  color: var(--bg);
   font: inherit;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: 700;
   cursor: pointer;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
 }
 button:hover {
-  opacity: 0.9;
+  background: oklch(0.9 0 0);
+}
+button:active {
+  transform: scale(0.98);
 }
 button:disabled {
   opacity: 0.4;
   cursor: default;
+  transform: none;
 }
 button.secondary {
   background: transparent;
   border-color: var(--border);
-  font-weight: 500;
+  color: var(--text);
+  font-weight: 600;
+}
+button.secondary:hover {
+  background: var(--surface-hover);
 }
 button.link {
   background: transparent;
   border: none;
   color: var(--text-muted);
   font-weight: 500;
+  font-size: var(--text-sm);
   text-decoration: underline;
+  text-underline-offset: 2px;
   padding: 4px;
   width: auto;
+}
+button.link:hover {
+  background: transparent;
+  color: var(--text);
 }
 
 .error {
   color: var(--danger);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
 }
 
 .progress {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   color: var(--text-muted);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
 }
 
 .spinner {
@@ -231,6 +327,17 @@ button.link {
   justify-content: center;
 }
 
+/* The live elapsed-time message during polling ("3D болгож байна… 1:24") —
+   tabular figures so the seconds column doesn't visibly jitter in width
+   every tick, and enough weight/size to read as the one real piece of
+   live status information on this screen, not just another caption. */
+.elapsed {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--text);
+}
+
 /* Indeterminate — there's no total duration to compute a real fill from
    (generation time varies too much by object/retries), this is purely
    "still moving" reassurance under the elapsed-time text. */
@@ -263,20 +370,62 @@ button.link {
   }
 }
 
+/* "no-image" first-run state's 3-step mini walkthrough — the most-seen
+   screen for anyone who's installed the extension but hasn't right-clicked
+   anything yet, previously just an icon + one paragraph. Numbered circles
+   (not new icon glyphs) mirror the real landing page's own process-band
+   motif (components/DesktopProcessBand.tsx) rather than inventing a
+   separate visual language for "here's how this works." */
+.onboard-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+}
+.onboard-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.onboard-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+.onboard-step p {
+  color: var(--text);
+  font-size: var(--text-sm);
+  padding-top: 1px;
+}
+
 /* "Миний загварууд" view (popup.js's models()/openModelsList) */
 .model-list {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
 }
 .model-list-row {
   display: flex;
   flex-direction: column;
   width: auto;
-  padding: 0;
+  padding: 4px;
   gap: 4px;
   background: transparent;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s;
+}
+.model-list-row:not(:disabled):hover {
+  background: var(--surface-hover);
 }
 .model-list-thumb {
   display: block;
@@ -290,15 +439,15 @@ button.link {
   border: 1px dashed var(--border);
 }
 .model-list-status {
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  color: var(--text-faint);
 }
 
 .model-preview {
   display: block;
   width: 100%;
-  height: 240px;
-  border-radius: 8px;
+  height: 220px;
+  border-radius: var(--radius-md);
   background: var(--bg);
   /* model-viewer's own default is transparent, which would show this
      popup's own dark bg through — an explicit background-color here (not
@@ -308,19 +457,38 @@ button.link {
   --poster-color: transparent;
 }
 
+/* "done" screen's lower half (QR + link + copy) grouped into its own
+   sub-panel, visually separated from the model preview above by
+   .section-divider — previously both halves just ran together in one flat
+   stack with no signal that "here's the viewer" and "here's how to share
+   it" are two different jobs. */
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 2px 0;
+}
+.share-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+
 .qr {
   display: block;
-  width: 196px;
-  height: 196px;
+  width: 168px;
+  height: 168px;
   margin: 0 auto;
   padding: 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: #fff;
 }
 
 .share-url {
   word-break: break-all;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   text-align: center;
 }
@@ -346,6 +514,7 @@ button.link {
   border: 2px solid var(--border-subtle);
   background: var(--bg);
   overflow: hidden;
+  transition: border-color 0.15s;
 }
 .angle-tile.selected {
   border-color: var(--text);
@@ -374,7 +543,7 @@ button.link {
 
 .footer-link {
   text-align: center;
-  font-size: 11.5px;
+  font-size: var(--text-xs);
 }
 .footer-link a {
   color: var(--text-muted);
