@@ -12,10 +12,9 @@
    hierarchy. Before this, every button (including "3D болгох", the one
    click that matters most in the whole popup) used the same low-contrast
    translucent fill as "Буцах"/"Дуусгах", so nothing ever looked more
-   important than anything else. --text-order is the one deliberate accent
-   exception already justified below (angle-badge pick order) — kept, not
-   expanded; every other polish here comes from elevation/type/spacing/
-   motion, not a new hue. */
+   important than anything else. .angle-badge is the one deliberate accent
+   exception — kept, not expanded; every other polish here comes from
+   elevation/type/spacing/motion, not a new hue. */
 :root {
   --bg: oklch(0.115 0 0);
   --surface: oklch(0.191 0 0);
@@ -493,12 +492,7 @@ button.link:hover {
   text-align: center;
 }
 
-/* Multi-view gallery picker — extension/popup.js's "ready-to-generate" view.
-   Grayscale/no-accent-hue, matching this file's own header note, except the
-   selection badge: a small chromatic accent there is the clearest way to
-   show pick order (1/2/3 = left/back/right) at this size, and it's the same
-   kind of deliberate, scoped exception this project already allows
-   elsewhere for a specific UI legibility need. */
+/* Multi-view gallery picker — extension/popup.js's "ready-to-generate" view. */
 .angle-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CaptureChoice, MAX_MULTIVIEW_PHOTOS, type CaptureMode } from "@/components/CaptureChoice";
+import { CaptureChoice, MAX_PHOTOS_TO_ANALYZE, type CaptureMode } from "@/components/CaptureChoice";
 import { GeneratingStep } from "@/components/GeneratingStep";
 import { ResultStep } from "@/components/ResultStep";
 import { useUpload } from "@/hooks/useUpload";
@@ -53,13 +53,7 @@ interface GeneratingModel {
 export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   const router = useRouter();
   const [mode, setMode] = useState<CaptureMode | null>(null);
-  // photos[0] is the required front photo; 1-3 (only in "multi" mode) are
-  // optional angles for lib/tripo.ts's multiview_to_model (see
-  // MAX_MULTIVIEW_PHOTOS — anything past index 3 is picked but never
-  // uploaded/sent, see handleCreate below). Dynamic length, not a fixed
-  // 4-slot array (2026-09-04: that read as bad UX, forcing one tap per
-  // slot) — CaptureChoice's own multi-select "Нэмэх" tile can append
-  // several files here in one call.
+  // Single mode: one required front photo. Multi mode: any order — handleCreate uploads all and lets /api/classify-angles assign angles.
   const [photos, setPhotos] = useState<File[]>([]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +74,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
       : null,
   );
   const [resultModel, setResultModel] = useState<ModelRow | null>(null);
+  const [generatingNote, setGeneratingNote] = useState<string | null>(null);
   const { upload, error: uploadError } = useUpload();
 
   // GeneratingStep needs photos[0]'s preview after CaptureChoice has moved on
@@ -95,20 +90,13 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
 
   function handlePhotosAdded(files: File[]) {
     if (files.length === 0) return;
-    // Single mode always holds at most one — a new choice replaces it
-    // (PhotoTile's onChoose there is the "change photo" affordance, not
-    // "add another"). Multi mode appends, letting one multi-select action
-    // (CaptureChoice's "Нэмэх" tile) add several at once — capped at
-    // MAX_MULTIVIEW_PHOTOS (lib/tripo.ts's multiview_to_model has exactly
-    // that many slots, [front,left,back,right], no 5th to put anything in)
-    // rather than accepting more and quietly not using the rest; excess
-    // from a multi-select that would overflow is simply dropped.
+    // Single mode replaces; multi mode appends, capped at MAX_PHOTOS_TO_ANALYZE.
     if (mode === "single") {
       setPhotos([files[0]]);
       return;
     }
     setPhotos((prev) => {
-      const room = MAX_MULTIVIEW_PHOTOS - prev.length;
+      const room = MAX_PHOTOS_TO_ANALYZE - prev.length;
       return room <= 0 ? prev : [...prev, ...files.slice(0, room)];
     });
   }
@@ -126,22 +114,75 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
   }
 
   async function handleCreate() {
-    const file = photos[0];
-    if (!file) return;
+    if (photos.length === 0) return;
     setCreating(true);
     setError(null);
+    setGeneratingNote(null);
     try {
-      // Stored on the row (migration 0012) at the one point a File object
-      // exists — not currently read by MasonryGrid/ModelCard.tsx
-      // (2026-09-03: every card renders at a fixed MODEL_CARD_ASPECT_RATIO
-      // now, object-contain, regardless of the source photo's own shape),
-      // but kept as it's cheap, harmless metadata a future feature could
-      // still use. Best-effort: a decode failure just leaves both columns
-      // null, same as any pre-migration-0012 row.
+      let sourceImageKey: string;
+      let sourceImageKeyLeft: string | undefined;
+      let sourceImageKeyBack: string | undefined;
+      let sourceImageKeyRight: string | undefined;
+      let frontFile: File;
+
+      if (mode === "single") {
+        const file = photos[0];
+        const uploaded = await upload(file);
+        // Surface useUpload's own specific reason (auth failure, R2/CORS
+        // error, bad presign response, ...) instead of masking it behind a
+        // generic message — that generic string used to show unconditionally
+        // here regardless of what actually failed, making every upload
+        // failure look identical and undiagnosable from the UI alone.
+        if (!uploaded) throw new Error(uploadError || "Оруулахад алдаа гарлаа");
+        sourceImageKey = uploaded.key;
+        frontFile = file;
+      } else {
+        // Upload every selected photo — order no longer matters. A photo
+        // whose upload itself fails is just dropped from the candidate set
+        // (logged, not surfaced), same "never block Create over one photo"
+        // rule the old per-angle upload loop already followed.
+        const uploads: { file: File; key: string }[] = [];
+        for (const photo of photos) {
+          const uploaded = await upload(photo);
+          if (uploaded) {
+            uploads.push({ file: photo, key: uploaded.key });
+          } else {
+            console.warn("CaptureFlow: a photo failed to upload, continuing without it");
+          }
+        }
+        if (uploads.length === 0) throw new Error(uploadError || "Оруулахад алдаа гарлаа");
+
+        // Classify failure must never block Create — falls through to slots staying null.
+        let slots: { front: string | null; left: string | null; back: string | null; right: string | null } | null = null;
+        try {
+          const classifyRes = await fetch("/api/classify-angles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ keys: uploads.map((u) => u.key) }),
+          });
+          if (classifyRes.ok) {
+            const classifyBody = await classifyRes.json();
+            slots = classifyBody.slots;
+          } else {
+            console.warn("CaptureFlow: classify-angles failed, falling back to the first photo as front");
+          }
+        } catch {
+          console.warn("CaptureFlow: classify-angles request failed, falling back to the first photo as front");
+        }
+
+        if (!slots?.front) setGeneratingNote("Зөвхөн нэг өнцгөөр үүсгэлээ");
+        sourceImageKey = slots?.front ?? uploads[0].key;
+        sourceImageKeyLeft = slots?.left ?? undefined;
+        sourceImageKeyBack = slots?.back ?? undefined;
+        sourceImageKeyRight = slots?.right ?? undefined;
+        frontFile = uploads.find((u) => u.key === sourceImageKey)?.file ?? uploads[0].file;
+      }
+
+      // Read from whichever file ended up as front (multi mode: known only after classification above).
       let sourceImageWidth: number | undefined;
       let sourceImageHeight: number | undefined;
       try {
-        const bitmap = await createImageBitmap(file);
+        const bitmap = await createImageBitmap(frontFile);
         sourceImageWidth = bitmap.width;
         sourceImageHeight = bitmap.height;
         bitmap.close();
@@ -149,43 +190,17 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
         // fall through with both undefined
       }
 
-      const uploaded = await upload(file);
-      // Surface useUpload's own specific reason (auth failure, R2/CORS
-      // error, bad presign response, ...) instead of masking it behind a
-      // generic message — that generic string used to show unconditionally
-      // here regardless of what actually failed, making every upload
-      // failure look identical and undiagnosable from the UI alone.
-      if (!uploaded) throw new Error(uploadError || "Оруулахад алдаа гарлаа");
-
-      // Sequential, reusing the same useUpload instance as the front photo
-      // above — these are optional (rule: never block Create over one), so a
-      // failed angle upload is just dropped (logged), not surfaced as an
-      // error the way the required front upload's failure is. photos[0] was
-      // already uploaded above; only the next MAX_MULTIVIEW_PHOTOS-1 go here
-      // (left/back/right). handlePhotosAdded already caps `photos` at
-      // MAX_MULTIVIEW_PHOTOS, so this slice's upper bound is defensive, not
-      // load-bearing.
-      const angleKeys: (string | undefined)[] = [];
-      for (const angleFile of photos.slice(1, MAX_MULTIVIEW_PHOTOS)) {
-        const angleUploaded = await upload(angleFile);
-        if (!angleUploaded) {
-          console.warn("CaptureFlow: optional angle photo failed to upload, continuing without it");
-        }
-        angleKeys.push(angleUploaded?.key);
-      }
-      while (angleKeys.length < MAX_MULTIVIEW_PHOTOS - 1) angleKeys.push(undefined);
-
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sourceImageKey: uploaded.key,
+          sourceImageKey,
           idempotencyKey: crypto.randomUUID(),
           sourceImageWidth,
           sourceImageHeight,
-          sourceImageKeyLeft: angleKeys[0],
-          sourceImageKeyBack: angleKeys[1],
-          sourceImageKeyRight: angleKeys[2],
+          sourceImageKeyLeft,
+          sourceImageKeyBack,
+          sourceImageKeyRight,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -194,16 +209,19 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
           body.error ?? `Үүсгэлт эхлүүлэхэд алдаа гарлаа (${res.status})`,
         );
 
-      // file stays set (not cleared here) — clearing it now would flip the
-      // previewUrl memo to null on the next render, and the cleanup effect
-      // tied to that memo would revoke this exact blob URL out from under
-      // GeneratingStep, which just received the same string. Cleared in
+      // photos stays set (not cleared here) — clearing it now would flip
+      // photoPreviewUrls to [] on the next render, and the cleanup effect
+      // tied to that memo would revoke these exact blob URLs out from under
+      // GeneratingStep, which just received one of them. Cleared in
       // resetAfterResult instead, once nothing downstream needs it.
+      const frontIndex = photos.indexOf(frontFile);
       setGeneratingModel({
         id: body.modelId,
         createdAt: new Date().toISOString(),
       });
-      setGeneratingPreviewUrl(previewUrl);
+      setGeneratingPreviewUrl(
+        frontIndex >= 0 ? photoPreviewUrls[frontIndex] : previewUrl,
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Үүсгэлт эхлүүлэхэд алдаа гарлаа",
@@ -217,6 +235,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
     setPhotos([]);
     setGeneratingModel(null);
     setGeneratingPreviewUrl(null);
+    setGeneratingNote(null);
     setResultModel(null);
   }
 
@@ -273,6 +292,7 @@ export function CaptureFlow({ userId, initialActiveModel }: CaptureFlowProps) {
             modelId={generatingModel.id}
             previewUrl={generatingPreviewUrl}
             createdAt={generatingModel.createdAt}
+            note={generatingNote}
             onReady={setResultModel}
             onFailed={() => router.push(`/models/${generatingModel.id}`)}
           />

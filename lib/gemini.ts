@@ -41,7 +41,10 @@ const GEMINI_TIMEOUT_MS = 15_000;
 const MIN_PLAUSIBLE_HEIGHT_CM = 1;
 const MAX_PLAUSIBLE_HEIGHT_CM = 400;
 
-function getApiKey(): string {
+// Exported — lib/classifyAngles.ts's multi-image angle-classification call
+// hits the same Gemini API with the same key, no reason for a second
+// env-var-read helper.
+export function getGeminiApiKey(): string {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set");
   return key;
@@ -67,7 +70,7 @@ export async function guessModelHeightCm(imageBytes: Buffer, mimeType: string): 
 
   let res: Response;
   try {
-    res = await fetch(`${GEMINI_API_URL}?key=${getApiKey()}`, {
+    res = await fetch(`${GEMINI_API_URL}?key=${getGeminiApiKey()}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,

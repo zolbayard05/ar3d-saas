@@ -11,6 +11,8 @@ export interface GeneratingStepProps {
   modelId: string;
   previewUrl: string;
   createdAt: string;
+  /** e.g. classify-angles fell back to a single photo — shown under the elapsed time. */
+  note?: string | null;
   /** Model finished successfully — CaptureFlow.tsx shows ResultStep next, doesn't navigate away. */
   onReady: (model: ModelRow) => void;
   /** Model failed — CaptureFlow.tsx sends the user to /models/[id], which already renders the failure state well. */
@@ -34,7 +36,7 @@ export interface GeneratingStepProps {
 // Renders below CaptureFlow.tsx's own CaptureChoice cards, not as a
 // separate full-screen step — no padding of its own, CaptureFlow's shared
 // wrapper owns that once for every phase.
-export function GeneratingStep({ modelId, previewUrl, createdAt, onReady, onFailed }: GeneratingStepProps) {
+export function GeneratingStep({ modelId, previewUrl, createdAt, note, onReady, onFailed }: GeneratingStepProps) {
   const model = useModelRealtime(modelId);
   const elapsed = useElapsedTime(createdAt);
 
@@ -65,6 +67,7 @@ export function GeneratingStep({ modelId, previewUrl, createdAt, onReady, onFail
       <div className="flex flex-col items-center gap-1">
         <p className="text-body text-text">Таны model үүсгэгдэж байна</p>
         <p className="text-small uppercase tracking-wide text-text-muted">{elapsed}</p>
+        {note && <p className="text-small text-text-muted">{note}</p>}
       </div>
     </div>
   );

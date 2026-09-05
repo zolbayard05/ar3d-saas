@@ -6,6 +6,8 @@
 // they're unit-testable (extension/lib.test.mjs) without a DOM/chrome.*
 // mock; nothing here should redefine them.
 const POLL_INTERVAL_MS = 2500;
+// lib/classifyAngles.ts's MAX_CLASSIFY_IMAGES (8) minus the front photo.
+const MAX_EXTRA_ANGLES = 7;
 // The real pipeline is a sequential GLB+USDZ generation (see
 // app/api/webhooks/tripo/route.ts), commonly 3-5 minutes and sometimes more
 // with a QA regen retry — kept at 3 minutes for now regardless (not
@@ -225,30 +227,29 @@ const VIEWS = {
 
     const children = [frame];
 
-    // Multi-view picker — see background.js's realifyScanForGalleryImages.
-    // Optional: 0 selected just runs the existing single-photo path.
+    // Multi-view picker — order doesn't matter, classify-angles assigns it.
     const candidates = state.image.candidates || [];
     const selected = state.image.selected || [];
     if (candidates.length > 0) {
       const grid = el("div", { class: "angle-grid" });
       candidates.forEach((c) => {
-        const order = selected.indexOf(c.src);
+        const isSelected = selected.includes(c.src);
         const thumb = el("img", { class: "angle-thumb", src: c.src, alt: c.alt || "" });
         thumb.addEventListener("error", () => tile.remove());
-        const badge = order >= 0 ? el("span", { class: "angle-badge", text: String(order + 1) }) : null;
+        const badge = isSelected ? el("span", { class: "angle-badge", text: "✓" }) : null;
         const tile = el(
           "button",
           {
             type: "button",
-            class: `angle-tile${order >= 0 ? " selected" : ""}`,
+            class: `angle-tile${isSelected ? " selected" : ""}`,
             onclick: () => {
               const current = state.image.selected || [];
               const idx = current.indexOf(c.src);
               let next;
               if (idx >= 0) {
                 next = current.filter((s) => s !== c.src);
-              } else if (current.length >= 3) {
-                return; // Tripo's files array is capped at [front, left, back, right] — 3 extra max.
+              } else if (current.length >= MAX_EXTRA_ANGLES) {
+                return;
               } else {
                 next = [...current, c.src];
               }
@@ -263,7 +264,7 @@ const VIEWS = {
       children.push(
         el("p", {
           class: "hint",
-          text: "Сайн загвар гаргахад хамгийн тохиромжтой нэмэлт өнцгүүдийг автоматаар сонгосон — хэрэгтэй бол өөрчилж болно:",
+          text: "Тохирохгүй зургийг хасаарай:",
         }),
         grid,
       );
@@ -310,6 +311,9 @@ const VIEWS = {
       items.push(el("div", { class: "progress" }, [spinner, el("span", { class: "elapsed", text: state.message || "Боловсруулж байна…" })]));
       items.push(progressBar);
     }
+    if (state.image?.singleAngleNote) {
+      items.push(el("p", { class: "hint", text: "Зөвхөн нэг өнцгөөр үүсгэлээ" }));
+    }
     return el("div", { class: "card" }, items);
   },
 
@@ -318,6 +322,9 @@ const VIEWS = {
       icon("check", "success"),
       el("p", { class: "heading", text: "Бэлэн боллоо!" }),
     ];
+    if (state.result.singleAngleNote) {
+      items.push(el("p", { class: "hint", text: "Зөвхөн нэг өнцгөөр үүсгэлээ" }));
+    }
 
     // Interactive preview right in the popup (drag to orbit, scroll/pinch to
     // zoom — model-viewer's own default camera-controls behavior, no extra
@@ -546,10 +553,9 @@ function readImageDimensions(blob) {
   });
 }
 
-// Best-effort upload of one additional angle (from the gallery picker) —
-// unlike the required front image below, a failure here must never abort
-// the whole generation. Returns the uploaded key, or null if anything about
-// this particular image didn't work out (download, format, size, upload).
+// Best-effort upload of one additional angle. Returns { key, width, height },
+// or null on any failure (download, format, size, upload) — never aborts
+// the whole generation.
 async function downloadAndUploadImage(url) {
   try {
     const res = await fetch(url);
@@ -559,6 +565,7 @@ async function downloadAndUploadImage(url) {
     if (!contentType) return null;
     if (blob.size > RealifyLib.MAX_UPLOAD_BYTES) return null;
 
+    const { width, height } = await readImageDimensions(blob);
     const presign = await api("/api/extension/upload-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -566,7 +573,7 @@ async function downloadAndUploadImage(url) {
     });
     const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
     if (!putRes.ok) return null;
-    return presign.key;
+    return { key: presign.key, width, height };
   } catch (err) {
     console.warn("Realify: extra angle upload failed, continuing without it", err);
     return null;
@@ -575,9 +582,6 @@ async function downloadAndUploadImage(url) {
 
 async function startGeneration() {
   const srcUrl = state.image.srcUrl;
-  // Order chosen by the user in the picker (extension/popup.js's angle-grid
-  // click handler) — position 0/1/2 map to left/back/right, matching
-  // lib/tripo.ts's multiview [front, left, back, right] slot order.
   const selectedAngles = state.image.selected || [];
   const image = { srcUrl };
 
@@ -634,19 +638,55 @@ async function startGeneration() {
     const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
     if (!putRes.ok) throw new Error("Хуулахад алдаа гарлаа.");
 
-    let angleKeys = [];
+    const uploads = [{ key: presign.key, width, height }];
     if (selectedAngles.length > 0) {
       state = { view: "working", message: "Нэмэлт өнцгүүдийг хуулж байна…", image };
       render();
       // Sequential, not Promise.all: each one is a presign + PUT pair against
       // the same per-user upload-url endpoint — no need to race them for a
       // handful of extra images, and it keeps the "Хуулж байна" message
-      // meaningful rather than firing 3 requests at once with no ordering.
+      // meaningful rather than firing them all at once with no ordering.
       for (const url of selectedAngles) {
-        angleKeys.push(await downloadAndUploadImage(url));
+        const uploaded = await downloadAndUploadImage(url);
+        if (uploaded) uploads.push(uploaded);
       }
     }
-    const [leftKey, backKey, rightKey] = angleKeys;
+
+    let sourceImageKey = uploads[0].key;
+    let sourceImageWidth = uploads[0].width;
+    let sourceImageHeight = uploads[0].height;
+    let sourceImageKeyLeft;
+    let sourceImageKeyBack;
+    let sourceImageKeyRight;
+
+    // Classify failure falls back to "right-clicked photo as front" — never blocks generation.
+    if (uploads.length > 1) {
+      state = { view: "working", message: "Зургуудыг ялгаж байна…", image };
+      render();
+      try {
+        const classifyBody = await api("/api/extension/classify-angles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keys: uploads.map((u) => u.key) }),
+        });
+        const slots = classifyBody.slots;
+        if (slots?.front) {
+          sourceImageKey = slots.front;
+          sourceImageKeyLeft = slots.left || undefined;
+          sourceImageKeyBack = slots.back || undefined;
+          sourceImageKeyRight = slots.right || undefined;
+          const frontUpload = uploads.find((u) => u.key === sourceImageKey);
+          sourceImageWidth = frontUpload ? frontUpload.width : sourceImageWidth;
+          sourceImageHeight = frontUpload ? frontUpload.height : sourceImageHeight;
+        } else {
+          image.singleAngleNote = true;
+        }
+      } catch (err) {
+        if (err.message === "unauthorized") throw err; // already rendered need-token
+        console.warn("Realify: classify-angles failed, falling back to the right-clicked photo as front", err);
+        image.singleAngleNote = true;
+      }
+    }
 
     // pollUntilReady's own tick() takes over with a real elapsed-time
     // message the moment actual polling starts, right below — this is only
@@ -657,13 +697,13 @@ async function startGeneration() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        sourceImageKey: presign.key,
+        sourceImageKey,
         idempotencyKey: crypto.randomUUID(),
-        sourceImageWidth: width,
-        sourceImageHeight: height,
-        sourceImageKeyLeft: leftKey || undefined,
-        sourceImageKeyBack: backKey || undefined,
-        sourceImageKeyRight: rightKey || undefined,
+        sourceImageWidth,
+        sourceImageHeight,
+        sourceImageKeyLeft,
+        sourceImageKeyBack,
+        sourceImageKeyRight,
       }),
     });
 
@@ -736,8 +776,9 @@ async function pollUntilReady(modelId, image, trueStartedAt = Date.now()) {
         // check (below) is what now recovers this, the same way it already
         // recovers a result background.js discovered first.
         chrome.runtime.sendMessage({ type: "realify-track-stop" }).catch(() => {});
-        await chrome.storage.session.set({ realifyLastResult: body });
-        state = { view: "done", result: body };
+        const result = image?.singleAngleNote ? { ...body, singleAngleNote: true } : body;
+        await chrome.storage.session.set({ realifyLastResult: result });
+        state = { view: "done", result };
         render();
         return;
       }
@@ -839,16 +880,8 @@ async function boot() {
     render();
     return;
   }
-  // Auto-pick the first 3 detected candidates rather than starting from
-  // nothing and making the user tap each one — background.js's own scan
-  // already orders these by "found near the clicked image in a real gallery
-  // container" first (the closest proxy to real angle photos available: no
-  // pixel-level similarity check is possible here, since most product
-  // images are cross-origin with no CORS header, which taints a canvas the
-  // instant you'd try to read it back for actual visual comparison). Still
-  // just a default — the picker below stays fully editable so a bad
-  // auto-pick (e.g. near-duplicate crops) can be swapped out by hand.
-  const autoSelected = (image.candidates || []).slice(0, 3).map((c) => c.src);
+  // Auto-select all candidates — classify-angles drops the ones that don't fit.
+  const autoSelected = (image.candidates || []).slice(0, MAX_EXTRA_ANGLES).map((c) => c.src);
   state = { view: "ready-to-generate", image: { ...image, selected: autoSelected } };
   render();
 }

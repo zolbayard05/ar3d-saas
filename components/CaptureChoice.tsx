@@ -9,18 +9,14 @@ import { cn } from "@/lib/utils";
 
 export type CaptureMode = "single" | "multi";
 
-// lib/tripo.ts's multiview_to_model takes at most [front, left, back,
-// right] — a 5th+ photo has no slot to go in. Not enforced as a hard upload
-// limit (2026-09-04: a fixed 4-tile grid the user had to fill one tap at a
-// time read as bad UX before this) — the picker accepts as many as picked
-// in one go, this is only how many of them actually get used.
-export const MAX_MULTIVIEW_PHOTOS = 4;
+// Matches lib/classifyAngles.ts's MAX_CLASSIFY_IMAGES (duplicated — server-only file).
+export const MAX_PHOTOS_TO_ANALYZE = 8;
 
 export interface CaptureChoiceProps {
   userId: string;
   mode: CaptureMode | null;
   onModeChange: (mode: CaptureMode | null) => void;
-  /** photos[0] is "front" (required); index order otherwise matches lib/tripo.ts's multiview [front,left,back,right] — only the first MAX_MULTIVIEW_PHOTOS are ever sent. Single mode holds at most one. */
+  /** Multi mode: any order — /api/classify-angles assigns angles. Single mode holds at most one. */
   photos: File[];
   photoPreviewUrls: string[];
   /** Single mode: replaces whatever's there. Multi mode: appends — a multi-select file input can hand this several files in one call. */
@@ -91,8 +87,8 @@ export function CaptureChoice({
           />
           <ModeCard
             icon={<Images className="size-6" />}
-            title="Олон зураг оруулах (2-4)"
-            description="Өөр өнцгөөс дор хаяж 2 зураг өгвөл AI илүү нарийвчлалтай, бодит хэлбэртэй загвар гаргадаг — ялангуяа тэгш бус хэлбэртэй зүйлд илүү тохиромжтой."
+            title="Олон зураг оруулах"
+            description="Өөр өнцгөөс хэдэн ч зураг нэмж болно."
             onClick={() => onModeChange("multi")}
           />
         </div>
@@ -121,7 +117,7 @@ export function CaptureChoice({
           ) : (
             <>
               <p className="text-small text-text-muted">
-                Хамгийн ихдээ {MAX_MULTIVIEW_PHOTOS} зураг сонгож болно — эхнийх урд талаас, бусад нь өөр өнцгөөс (жишээ нь зүүн/ар/баруун тал) байвал хамгийн сайн үр дүнд хүрнэ.
+                Дараалал хамаагүй.
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {photos.map((photo, i) => (
@@ -133,14 +129,14 @@ export function CaptureChoice({
                     disabled={creating}
                     onRemove={() => onPhotoRemoved(i)}
                     placeholderIcon={<Plus className="size-6" />}
-                    placeholderLabel={i === 0 ? "Урд тал" : `${i + 1}-р зураг`}
+                    placeholderLabel={`${i + 1}-р зураг`}
                   />
                 ))}
                 {/* handlePhotosAdded (CaptureFlow.tsx) already caps at
-                    MAX_MULTIVIEW_PHOTOS by dropping overflow — hiding this
+                    MAX_PHOTOS_TO_ANALYZE by dropping overflow — hiding this
                     tile once full is what actually stops the user from
-                    trying to add a 5th, rather than silently no-op'ing. */}
-                {photos.length < MAX_MULTIVIEW_PHOTOS && (
+                    trying to add more, rather than silently no-op'ing. */}
+                {photos.length < MAX_PHOTOS_TO_ANALYZE && (
                   <PhotoTile
                     className="aspect-square"
                     file={null}
