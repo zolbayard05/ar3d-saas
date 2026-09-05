@@ -79,7 +79,7 @@ export async function updateSession(request: NextRequest) {
   // manifest.webmanifest, icons/, sw.js are) got redirected to "/" just
   // like a real page nav would, so the browser silently received the
   // landing page's HTML instead of PNG bytes for an <img src> — broke the
-  // wordmark icon AND, less obviously, DesktopQrCard's logo-badge Image()
+  // wordmark icon AND, less obviously, any other page's own icon Image()
   // load (its onerror fired even though the request "succeeded": it
   // successfully fetched HTML, which isn't decodable as an image).
   // Sec-Fetch-Dest is a standard Fetch Metadata header modern browsers send

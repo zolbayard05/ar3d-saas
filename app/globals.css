@@ -89,44 +89,6 @@
  */
 @theme {
   --animate-breathe: breathe 4s ease-in-out infinite;
-  /* Process section phone-mockup animations (mockup's scanmove/ringspin/
-     ringpulse) — landing-only, but registered the same way as
-     --animate-breathe since there's no per-page-scoped @theme in Tailwind
-     v4; these three names are distinctive enough not to collide. */
-  --animate-landing-scan: landing-scanmove 2.6s ease-in-out infinite;
-  --animate-landing-ringspin: landing-ringspin 3.2s ease-in-out infinite;
-  --animate-landing-ringpulse: landing-ringpulse 2.4s ease-in-out infinite;
-
-  /* The desktop marketing landing's own palette — verbatim from the
-   * approved mockup (realify-landing-v3.html), namespaced --color-landing-*
-   * so it never touches --color-accent/--color-bg/etc. (the real app's
-   * shared dark-only/no-accent-hue tokens, still used everywhere outside
-   * components/Desktop*.tsx — HomeFeed, dashboard, buttons...). The
-   * landing page is now an intentional 1:1 clone of the mockup, colors
-   * included; this is the isolated place that lives, so the rest of the
-   * product is never at risk of inheriting an orange accent by accident.
-   */
-  --color-landing-bg: #0a0a0a;
-  --color-landing-surface: #141414;
-  --color-landing-surface-2: #1a1a1a;
-  --color-landing-border: #262626;
-  --color-landing-border-glass: rgb(255 255 255 / 0.12);
-  --color-landing-text: #f7f6f4;
-  --color-landing-text-muted: #a3a39f;
-  --color-landing-text-faint: #6d6d69;
-  --color-landing-glow-strong: rgb(255 255 255 / 0.22);
-  --color-landing-glow-soft: rgb(255 255 255 / 0.1);
-  --color-landing-glow-faint: rgb(255 255 255 / 0.03);
-  --color-landing-cream: #f3efe6;
-  --color-landing-cream-2: #eae3d3;
-  --color-landing-ink: #1c170f;
-  --color-landing-ink-muted: #59503f;
-  --color-landing-border-cream: rgb(28 23 15 / 0.14);
-  --color-landing-accent: #cc6a3c;
-  --color-landing-accent-soft: rgb(204 106 60 / 0.14);
-  --color-landing-live: #a9e6b4;
-  --color-landing-problem: #c98a6a;
-  --color-landing-problem-soft: rgb(201 138 106 / 0.1);
 }
 @keyframes breathe {
   0%,
@@ -137,42 +99,6 @@
   50% {
     opacity: 1;
     transform: scale(1.08);
-  }
-}
-@keyframes landing-scanmove {
-  0% {
-    top: 8%;
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    top: 92%;
-    opacity: 0;
-  }
-}
-@keyframes landing-ringspin {
-  0% {
-    stroke-dashoffset: 230;
-  }
-  50% {
-    stroke-dashoffset: 40;
-  }
-  100% {
-    stroke-dashoffset: 230;
-  }
-}
-@keyframes landing-ringpulse {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
   }
 }
 
