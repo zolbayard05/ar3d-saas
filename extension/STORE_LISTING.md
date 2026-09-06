@@ -48,6 +48,13 @@ before submitting.
 - **`notifications`** — shows a single native OS notification when a
   generation the user started finishes or fails, since that can happen
   while they're on a different tab or site.
+- **`scripting`** — right after the user right-clicks a product image, a
+  one-shot injected function (`background.js`'s `realifyScanForGalleryImages`)
+  scans the same page for other images near the clicked one (a thumbnail
+  gallery rail) so the user can optionally include other angles of the same
+  product. Runs only immediately after that explicit right-click, reads only
+  `<img>` `src`/`alt`/dimensions already visible in the page's own DOM, and
+  never runs automatically or on a page the user hasn't interacted with.
 - **Host permissions (`http://*/*`, `https://*/*`)** — needed to fetch the
   bytes of the specific product image the user right-clicked, from
   whatever site it's hosted on. Most e-commerce image hosts don't send

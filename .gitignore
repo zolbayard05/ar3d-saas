@@ -48,3 +48,7 @@ next-env.d.ts
 # files (100s of MB) copied here just to feed a one-off seeding script into
 # R2/Supabase; never meant to live in the repo, same as .env.local.
 /public/feed-models/
+
+# built for direct upload to the Chrome Web Store Developer Dashboard —
+# a build artifact, not source; re-zip from extension/ whenever it changes.
+/extension/realify-extension.zip
