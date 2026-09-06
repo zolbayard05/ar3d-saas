@@ -44,14 +44,17 @@ export function DesktopMaterialSection() {
         </p>
       </div>
 
-      {/* Real close-up crop of an actual showcase model's render (the same
-          wooden-chair model DesktopCategoriesSection.tsx's "Тавилга" card
-          uses) — this was the last section on the page still filled with
-          CSS-only placeholder art (a crosshatch pattern, no real photo),
-          and "Ширхэг бүр чухал" (every detail matters) is a strange thing
-          to illustrate with nothing real. Crosshatch/radial gradient kept
-          as a subtle overlay on top, tying it back to the section's
-          original texture motif instead of dropping it outright. */}
+      {/* Close-up crop of the same licensed chair photo
+          DesktopCategoriesSection.tsx's "Тавилга" card uses (Pexels
+          License, free for commercial use) — shows both material grain
+          and joinery geometry, matching this section's own copy. First
+          filled with CSS-only placeholder art (a crosshatch pattern, no
+          real photo at all), then briefly a crop of a 1024px is_showcase
+          model render (DesktopCategoriesSection.tsx's own header comment
+          has the story on why that whole approach got replaced) —
+          crosshatch/radial gradient kept as a subtle overlay on top
+          either way, tying it back to the section's original texture
+          motif instead of dropping it outright. */}
       <div
         className="relative aspect-square lg:aspect-auto"
         style={{ backgroundColor: "rgb(20, 18, 15)" }}

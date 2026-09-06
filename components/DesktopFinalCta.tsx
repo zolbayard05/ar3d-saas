@@ -4,13 +4,14 @@
 
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { buildModelUrl } from "@/lib/models";
 
-// Real render of a curated is_showcase=true model in production (same
-// source as DesktopCategoriesSection.tsx's cards), not the plain-color
-// circle this replaced — the diagonal shine overlay is kept, now as a
-// highlight over a real photo instead of decorating an empty blob.
-const SOFA_RENDER = buildModelUrl("models/49fc52be-989b-44ae-83d2-4c5b809f77a0.71a163ef.webp");
+// Licensed stock photo (Pexels License: free for commercial use), not
+// the plain-color circle this replaced and not a low-res 3D render
+// thumbnail (DesktopCategoriesSection.tsx's own header comment has the
+// full story on why that first replacement got swapped out) — the
+// diagonal shine overlay is kept, now as a highlight over a real photo
+// instead of decorating an empty blob.
+const SOFA_PHOTO = "/icons/cta/sofa.webp";
 
 export function DesktopFinalCta() {
   return (
@@ -56,7 +57,7 @@ export function DesktopFinalCta() {
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative size-[55%] overflow-hidden rounded-[9999px]" style={{ background: "rgb(36 38 34)" }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- remote R2/CDN asset, no next/image remote-pattern config for it */}
-              <img src={SOFA_RENDER} alt="" className="absolute inset-0 size-full object-cover object-center" />
+              <img src={SOFA_PHOTO} alt="" className="absolute inset-0 size-full object-cover object-center" />
               <div
                 style={{
                   position: "absolute",

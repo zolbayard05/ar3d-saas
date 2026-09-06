@@ -12,21 +12,19 @@
 // that same real breadth (footwear/bags/furniture/home goods) rather than
 // a fixed furniture catalog structure the app doesn't have.
 //
-// Every image below is a REAL Realify render, not stock photography or
-// CSS placeholder art (the previous CardArt gradient blobs this replaced):
-// Гутал/Тавилга/Гэрийн бараа are the server-rendered `render_url` webp of
-// three real `models` rows curated is_showcase=true in production
-// (sneaker/wooden chair/vase — buildModelUrl resolves the same way
-// ARViewer.tsx and ModelCard.tsx already do); Цүнх reuses the backpack
-// photo set from DesktopIntroSection.tsx, since none of the current
-// showcase models happens to be a bag.
-import { buildModelUrl } from "@/lib/models";
-
+// Every image below is a real photo, not CSS placeholder art (the
+// original CardArt gradient blobs) or a low-res 3D render thumbnail (the
+// first pass at this replaced CardArt with is_showcase model render_url
+// webps, which read as noticeably lower quality up close than real
+// photography once actually used at card size) — licensed stock photos
+// (Pexels License: free for commercial use, no attribution required),
+// each picked for a dark studio background matching this page's palette.
+// Цүнх still reuses the backpack photo set from DesktopIntroSection.tsx.
 const CARDS = [
-  { num: "01", label: "Гутал", src: buildModelUrl("models/20fef5e3-a970-40b5-a8d7-2a8fd57d6196.612451ce.webp"), featured: true },
+  { num: "01", label: "Гутал", src: "/icons/categories/sneaker.webp", featured: true },
   { num: "02", label: "Цүнх", src: "/icons/intro/backpack-front.webp" },
-  { num: "03", label: "Тавилга", src: buildModelUrl("models/090b7751-5b57-419e-80a4-7f495cfaeffc.67b70637.webp") },
-  { num: "04", label: "Гэрийн бараа", src: buildModelUrl("models/2913cd29-8000-4cbd-bf15-da3222efbd07.ecd77b0c.webp") },
+  { num: "03", label: "Тавилга", src: "/icons/categories/chair.webp" },
+  { num: "04", label: "Гэрийн бараа", src: "/icons/categories/vase.webp" },
 ];
 
 export function DesktopCategoriesSection() {
