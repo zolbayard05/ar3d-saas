@@ -8,8 +8,13 @@ const nextConfig: NextConfig = {
   // actual cause of an earlier bug that looked like a broken sign-in form
   // (hydration never completed, so the browser fell back to a native form
   // submit). Only wildcards ngrok's free-tier domain pattern; add other
-  // tunnel hosts here if the tunnel URL changes.
-  allowedDevOrigins: ["*.ngrok-free.dev", "*.ngrok-free.app"],
+  // tunnel hosts here if the tunnel URL changes. "192.168.1.6" is this dev
+  // machine's own LAN IP (`ipconfig`) — needed to test a phone-only route
+  // (app/ar/[item]/page.tsx) from an actual phone on the same network,
+  // hitting the dev server directly instead of through a tunnel. DHCP can
+  // reassign this address later; re-check `ipconfig` if LAN testing stops
+  // working after a network change.
+  allowedDevOrigins: ["*.ngrok-free.dev", "*.ngrok-free.app", "192.168.1.6"],
   // draco3dgltf loads its .wasm file via a relative path computed from its
   // own module location at runtime. Left to Turbopack's default bundling,
   // that path gets rewritten to a bundler-internal virtual root

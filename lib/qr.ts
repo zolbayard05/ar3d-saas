@@ -11,8 +11,9 @@ import QRCode from "qrcode";
  *
  * Browser-only (canvas, Image) — call from a client component, after mount.
  * Shared by components/ModelShare.tsx (a model's own share link) and
- * components/DesktopLanding.tsx (the site's root URL, "scan on your
- * phone") rather than each keeping its own copy.
+ * components/DesktopShowcaseSection.tsx (the desktop landing's AR demo,
+ * pointing a phone at app/ar/[item]/page.tsx) rather than each keeping its
+ * own copy.
  */
 export async function buildLogoQr(url: string): Promise<string> {
   const canvas = document.createElement("canvas");

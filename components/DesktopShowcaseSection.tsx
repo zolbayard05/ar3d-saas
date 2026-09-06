@@ -11,24 +11,40 @@
 // files (copied into public/icons/mockup/ alongside the GLBs) so iOS Quick
 // Look works too, not just Android scene-viewer.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ArrowUpRight } from "lucide-react";
+import { buildLogoQr } from "@/lib/qr";
+import { AR_SHOWCASE_ITEMS as ITEMS } from "@/lib/arShowcaseItems";
 
 const DesktopArViewer = dynamic(
   () => import("@/components/DesktopArViewer").then((m) => m.DesktopArViewer),
   { ssr: false },
 );
 
-const ITEMS = [
-  { key: "backpack", label: "Цүнх", src: "/icons/mockup/backpack.glb", iosSrc: "/icons/mockup/backpack.usdz", alt: "Цүнх" },
-  { key: "sneaker", label: "Гутал", src: "/icons/mockup/sneaker.glb", iosSrc: "/icons/mockup/sneaker.usdz", alt: "Гутал" },
-] as const;
-
 export function DesktopShowcaseSection() {
   const [activeIdx, setActiveIdx] = useState(0);
   const viewerRef = useRef<{ activateAR: () => void }>(null);
   const active = ITEMS[activeIdx];
+
+  // A desktop visitor has no AR hardware — the "Өөрийн орчинд харах" button
+  // below only works for whoever's actually holding a phone. This QR is the
+  // real way most people here would ever launch it: scan, land on
+  // app/ar/[item]/page.tsx (a phone-only route — desktop UAs never reach it,
+  // see lib/supabase/proxy.ts's device gate), tap the same AR button there.
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  useEffect(() => {
+    setQrDataUrl(null);
+    let cancelled = false;
+    buildLogoQr(`${window.location.origin}/ar/${active.key}`)
+      .then((dataUrl) => {
+        if (!cancelled) setQrDataUrl(dataUrl);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [active.key]);
 
   return (
     <section className="px-6 py-24 lg:px-16 lg:py-[140px]" style={{ background: "rgb(217, 215, 206)" }}>
@@ -123,6 +139,23 @@ export function DesktopShowcaseSection() {
             WebAR-г үзэх
             <ArrowUpRight className="size-3.5" />
           </a>
+
+          <div className="mt-8 flex items-center gap-4">
+            {qrDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a remote/static asset next/image can optimize.
+              <img
+                src={qrDataUrl}
+                alt={`${active.label} — утсаараа AR-аар үзэх QR код`}
+                className="size-20 rounded-md"
+                style={{ boxShadow: "0 1px 2px rgb(0 0 0 / 0.12)" }}
+              />
+            ) : (
+              <div className="size-20 animate-pulse rounded-md" style={{ background: "rgb(200, 198, 189)" }} />
+            )}
+            <p style={{ maxWidth: "200px", fontSize: "12px", fontWeight: 400, lineHeight: "17px", color: "rgb(96, 98, 89)" }}>
+              Утасныхаа камераар уншуулаад шууд AR-аар өрөөндөө байрлуулж үзээрэй.
+            </p>
+          </div>
         </div>
       </div>
     </section>
