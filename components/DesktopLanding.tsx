@@ -16,50 +16,6 @@ import { ArrowUpRight } from "lucide-react";
 const NAV_LINK_STYLE = { fontSize: "11px", fontWeight: 400, color: "rgb(170, 170, 170)", lineHeight: "16.5px" };
 
 /**
- * Every section below sets its own flat background color, and several
- * neighboring pairs land on opposite ends of the palette (near-black to
- * cream, back to near-black) — a hard 1px color cut at the boundary reads
- * as stacked blocks rather than one continuous page. Skipped between
- * sections whose colors are already close (hero->intro, showcase->pipeline,
- * material->final CTA are each near-identical tones) since there's no
- * visible cut there to begin with.
- *
- * A plain 2-stop linear-gradient strip here (first attempt) looked wrong —
- * a flat, sharp-edged ramp reads as a visible band/smudge (Mach-band
- * illusion: the eye sees false edges right where the ramp starts and stops,
- * since a straight ramp's rate of change jumps from 0 to constant and back
- * to 0 with no easing). A genuine "dissolve" needs zero sharp edges
- * anywhere, which a gradient alone can't give — so this blurs a hard
- * 50/50 split instead: `filter: blur()` on a step function produces a
- * smooth sigmoid-like falloff with continuously-varying slope, the actual
- * visual signature of one color dissolving into another. The blurred inner
- * layer is sized well past the visible window on both sides (its own
- * height minus 2x OVERHANG) so the blur kernel always has real color to
- * sample near the window's edges — without that margin, blur pulls in
- * transparency from past the element's own bounding box and leaves a
- * second, subtler hard edge exactly where this was trying to avoid one.
- */
-const BLEND_HEIGHT = 72;
-const BLEND_OVERHANG = 48;
-const BLEND_BLUR = 28;
-
-function SectionBlend({ from, to }: { from: string; to: string }) {
-  return (
-    <div aria-hidden="true" className="relative overflow-hidden" style={{ height: BLEND_HEIGHT }}>
-      <div
-        className="absolute inset-x-0"
-        style={{
-          top: -BLEND_OVERHANG,
-          bottom: -BLEND_OVERHANG,
-          background: `linear-gradient(180deg, ${from} 50%, ${to} 50%)`,
-          filter: `blur(${BLEND_BLUR}px)`,
-        }}
-      />
-    </div>
-  );
-}
-
-/**
  * Desktop's entire experience (app/page.tsx branches here for any non-mobile
  * UA — see lib/isMobileUserAgent.ts). Being rebuilt section by section per
  * the user's explicit request (2026-09-05) — only the hero is wired up so
@@ -129,14 +85,10 @@ export async function DesktopLanding() {
 
       <DesktopHeroTumble />
       <DesktopIntroSection />
-      <SectionBlend from="#0a0b0c" to="rgb(232, 230, 223)" />
       <DesktopCategoriesSection />
-      <SectionBlend from="rgb(232, 230, 223)" to="rgb(17, 18, 16)" />
       <DesktopWireframeSection />
-      <SectionBlend from="rgb(17, 18, 16)" to="rgb(217, 215, 206)" />
       <DesktopShowcaseSection />
       <DesktopPipelineSection />
-      <SectionBlend from="rgb(233, 231, 223)" to="rgb(13, 14, 13)" />
       <DesktopMaterialSection />
       <DesktopFinalCta />
     </main>
