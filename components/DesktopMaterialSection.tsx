@@ -44,15 +44,35 @@ export function DesktopMaterialSection() {
         </p>
       </div>
 
+      {/* Real close-up crop of an actual showcase model's render (the same
+          wooden-chair model DesktopCategoriesSection.tsx's "Тавилга" card
+          uses) — this was the last section on the page still filled with
+          CSS-only placeholder art (a crosshatch pattern, no real photo),
+          and "Ширхэг бүр чухал" (every detail matters) is a strange thing
+          to illustrate with nothing real. Crosshatch/radial gradient kept
+          as a subtle overlay on top, tying it back to the section's
+          original texture motif instead of dropping it outright. */}
       <div
         className="relative aspect-square lg:aspect-auto"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(45deg, rgb(255 255 255 / 0.06) 0px, rgb(255 255 255 / 0.06) 1px, transparent 1px, transparent 14px)," +
-            "radial-gradient(45% 45% at 65% 40%, rgb(230 210 170 / 0.55), transparent 70%)",
-          backgroundColor: "rgb(20, 18, 15)",
-        }}
+        style={{ backgroundColor: "rgb(20, 18, 15)" }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- fixed local /public asset, no remote optimization needed */}
+        <img
+          src="/icons/material/chair-detail.webp"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 size-full object-cover object-center opacity-90"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, rgb(255 255 255 / 0.05) 0px, rgb(255 255 255 / 0.05) 1px, transparent 1px, transparent 14px)," +
+              "radial-gradient(45% 45% at 65% 40%, rgb(230 210 170 / 0.25), transparent 70%)," +
+              "linear-gradient(0deg, rgb(20 18 15 / 0.55), transparent 45%)",
+          }}
+        />
         <div className="absolute bottom-8 left-8">
           <span
             className="inline-flex items-center gap-2 uppercase"

@@ -26,9 +26,9 @@ const MUTED_WEIGHT = 450;
 // "Front"/"Back"/... captions are trimmed off since the card already
 // prints its own Mongolian label below).
 const CARDS = [
-  { num: "01", label: "ӨМНӨӨС", src: "/icons/intro/backpack-front.webp" },
+  { num: "01", label: "УРД ТАЛААС", src: "/icons/intro/backpack-front.webp" },
   { num: "02", label: "ЗҮҮН ТАЛААС", src: "/icons/intro/backpack-left.webp" },
-  { num: "03", label: "ХОЙНООС", src: "/icons/intro/backpack-back.webp" },
+  { num: "03", label: "АРД ТАЛААС", src: "/icons/intro/backpack-back.webp" },
 ];
 
 const FLOW = [
