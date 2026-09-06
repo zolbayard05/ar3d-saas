@@ -267,9 +267,30 @@ export function DesktopHeroTumble() {
                 className="relative"
                 style={{
                   pointerEvents: i === 0 ? "auto" : "none",
+                  // The plain min(Xvw, cap) sizing below was tuned against a
+                  // ~1920px viewport (this file's own header comment) and
+                  // never re-checked at narrower ones — verified live: at
+                  // 1024-1440px the object's box actually overlapped the
+                  // text column's right edge (up to ~225px of overlap at
+                  // 1280px, confirmed via getBoundingClientRect on both).
+                  // The extra calc() term reserves the text column's own
+                  // width (px-16 + max-w-xl/lg) plus a fixed gap, so the
+                  // object's box can never grow wide enough to reach it,
+                  // at any viewport width — it still hits the original
+                  // vw/px-cap sizing untouched once the viewport is wide
+                  // enough that the reserved-space term stops being the
+                  // smallest of the three.
                   ...(beat.object === "chair"
-                    ? { width: "min(58vw, 800px)", height: "min(58vw, 800px)", filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))" }
-                    : { width: "min(42vw, 580px)", height: "min(42vw, 580px)", filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))" }),
+                    ? {
+                        width: "max(240px, min(58vw, 800px, calc(100vw - 820px)))",
+                        height: "max(240px, min(58vw, 800px, calc(100vw - 820px)))",
+                        filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))",
+                      }
+                    : {
+                        width: "max(200px, min(42vw, 580px, calc(92vw - 624px)))",
+                        height: "max(200px, min(42vw, 580px, calc(92vw - 624px)))",
+                        filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))",
+                      }),
                 }}
               >
                 {beat.object === "chair" && (

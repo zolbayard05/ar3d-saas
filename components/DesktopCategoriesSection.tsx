@@ -96,11 +96,21 @@ export function DesktopCategoriesSection() {
           харагдах ёстой.
         </h2>
 
-        <div className="flex flex-wrap gap-[15px]">
+        {/* flex-wrap's own algorithm wraps based on each card's un-grown
+            flex-basis sum (260 + 220*3 + 3*15 gaps = 965px) vs the
+            available width — verified live: that stops fitting once the
+            viewport (minus its own padding) drops below ~1093px, which
+            includes the whole lg range (1024-1279px), producing a broken
+            "3 cards + 1 lone full-width-stretched card" row rather than a
+            clean wrap. A 2-column grid below xl sidesteps the flex-wrap
+            math entirely — the featured card spans both columns as a
+            banner, the other 3 land 2-then-1 with no stretch — and xl:flex
+            restores the original, pixel-matched 4-across row untouched. */}
+        <div className="grid grid-cols-2 gap-[15px] xl:flex xl:flex-wrap">
           {CARDS.map((card) => (
             <div
               key={card.num}
-              className="relative aspect-[300/385]"
+              className={`relative aspect-[300/385] ${card.featured ? "col-span-2 xl:col-span-1" : ""}`}
               style={{
                 background: card.gradient,
                 flex: card.featured ? "1.55 1 260px" : "1 1 220px",

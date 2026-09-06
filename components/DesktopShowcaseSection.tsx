@@ -32,23 +32,36 @@ export function DesktopShowcaseSection() {
   // real way most people here would ever launch it: scan, land on
   // app/ar/[item]/page.tsx (a phone-only route — desktop UAs never reach it,
   // see lib/supabase/proxy.ts's device gate), tap the same AR button there.
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  // Keyed to the item it was generated for, not just the data URL itself —
+  // deriving qrDataUrl below from a key comparison (instead of resetting to
+  // null synchronously inside the effect on every active.key change) is
+  // what a plain useState reset would need react-hooks/set-state-in-effect
+  // to warn about; render-time derivation avoids the extra render pass.
+  const [qr, setQr] = useState<{ key: string; dataUrl: string } | null>(null);
   useEffect(() => {
-    setQrDataUrl(null);
     let cancelled = false;
     buildLogoQr(`${window.location.origin}/ar/${active.key}`)
       .then((dataUrl) => {
-        if (!cancelled) setQrDataUrl(dataUrl);
+        if (!cancelled) setQr({ key: active.key, dataUrl });
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [active.key]);
+  const qrDataUrl = qr?.key === active.key ? qr.dataUrl : null;
 
   return (
     <section className="px-6 py-24 lg:px-16 lg:py-[140px]" style={{ background: "rgb(217, 215, 206)" }}>
-      <div className="mx-auto grid max-w-[1400px] items-center gap-16 lg:grid-cols-[1fr_minmax(0,430px)]">
+      {/* The fixed 430px right column only leaves the left (viewer) column
+          ~400px at 1024px-1279px widths (1024 - px-16*2 - 430 - gap-16) —
+          verified live: that's too narrow for the bottom bar's tab
+          switcher and "Өөрийн орчинд харах" button to both fit, and they
+          visibly overlapped. xl: (not lg:) is the earliest breakpoint
+          where the left column is wide enough for that bar; below it, the
+          plain `grid` here has no column definition, so the two children
+          just stack full-width instead. */}
+      <div className="mx-auto grid max-w-[1400px] items-center gap-16 xl:grid-cols-[1fr_minmax(0,430px)]">
         <div className="relative aspect-[772/600] w-full" style={{ background: "rgb(36 38 34)" }}>
           <div className="absolute inset-0 flex items-center justify-between p-[17px]">
             <span
