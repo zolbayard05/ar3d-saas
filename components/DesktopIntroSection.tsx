@@ -18,10 +18,17 @@
 const MUTED_TEXT = "rgb(203, 208, 191)";
 const MUTED_WEIGHT = 450;
 
+// Real photos (not this section's old CSS placeholder art) — the same
+// object shot from 3 of lib/classifyAngles.ts's 4 canonical angles
+// (front/left/back/right; this card row only ever shows 3), cropped from
+// one AI-generated 4-up reference sheet down to just the product itself
+// (public/icons/intro/crop.mjs-style extraction — the sheet's own baked-in
+// "Front"/"Back"/... captions are trimmed off since the card already
+// prints its own Mongolian label below).
 const CARDS = [
-  { num: "01", label: "ЭМНЭЭС" },
-  { num: "02", label: "ЗҮҮН ТАЛААС" },
-  { num: "03", label: "ХОЙНООС" },
+  { num: "01", label: "ЭМНЭЭС", src: "/icons/intro/backpack-front.webp" },
+  { num: "02", label: "ЗҮҮН ТАЛААС", src: "/icons/intro/backpack-left.webp" },
+  { num: "03", label: "ХОЙНООС", src: "/icons/intro/backpack-back.webp" },
 ];
 
 const FLOW = [
@@ -29,35 +36,6 @@ const FLOW = [
   { label: "ГАРАЛТ", value: "3D ЗАГВАР" },
   { label: "БАЙРШИЛ", value: "WEB AR" },
 ];
-
-function PlaceholderArt() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <div
-        style={{
-          position: "absolute",
-          top: "16%",
-          left: "24%",
-          width: "2px",
-          height: "72%",
-          background: "linear-gradient(180deg, rgb(227 228 220 / 0.7), transparent)",
-          transform: "rotate(28deg)",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: "10%",
-          right: "16%",
-          width: "110px",
-          height: "130px",
-          borderRadius: "9999px",
-          background: "radial-gradient(50% 50% at 50% 50%, rgb(10 11 9 / 0.85), transparent 72%)",
-        }}
-      />
-    </div>
-  );
-}
 
 export function DesktopIntroSection() {
   return (
@@ -101,7 +79,19 @@ export function DesktopIntroSection() {
               className="relative aspect-[358/390]"
               style={{ background: "rgb(36, 38, 34)", border: "1px solid rgb(48, 49, 46)" }}
             >
-              <PlaceholderArt />
+              {/* eslint-disable-next-line @next/next/no-img-element -- fixed local /public asset, no remote optimization needed */}
+              <img
+                src={card.src}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 size-full object-cover object-center"
+              />
+              {/* Scrim so the label/num row stays legible over whatever
+                  falls directly behind it in the source photo. */}
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-20"
+                style={{ background: "linear-gradient(180deg, rgb(10 11 9 / 0.55), transparent)" }}
+              />
               <div className="relative flex items-center justify-between p-[17px]">
                 <span
                   className="uppercase"

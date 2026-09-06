@@ -11,54 +11,23 @@
 // product" (chair, sneaker, backpack side by side), so these instead show
 // that same real breadth (footwear/bags/furniture/home goods) rather than
 // a fixed furniture catalog structure the app doesn't have.
+//
+// Every image below is a REAL Realify render, not stock photography or
+// CSS placeholder art (the previous CardArt gradient blobs this replaced):
+// Гутал/Тавилга/Гэрийн бараа are the server-rendered `render_url` webp of
+// three real `models` rows curated is_showcase=true in production
+// (sneaker/wooden chair/vase — buildModelUrl resolves the same way
+// ARViewer.tsx and ModelCard.tsx already do); Цүнх reuses the backpack
+// photo set from DesktopIntroSection.tsx, since none of the current
+// showcase models happens to be a bag.
+import { buildModelUrl } from "@/lib/models";
 
 const CARDS = [
-  { num: "01", label: "Гутал", gradient: "linear-gradient(145deg, rgb(212, 213, 206), rgb(116, 118, 110))", featured: true },
-  { num: "02", label: "Цүнх", gradient: "linear-gradient(140deg, rgb(70, 72, 62), rgb(184, 183, 171))" },
-  { num: "03", label: "Тавилга", gradient: "linear-gradient(140deg, rgb(185, 175, 160), rgb(65, 60, 54))" },
-  { num: "04", label: "Гэрийн бараа", gradient: "linear-gradient(140deg, rgb(129, 134, 125), rgb(218, 214, 201))" },
+  { num: "01", label: "Гутал", src: buildModelUrl("models/20fef5e3-a970-40b5-a8d7-2a8fd57d6196.612451ce.webp"), featured: true },
+  { num: "02", label: "Цүнх", src: "/icons/intro/backpack-front.webp" },
+  { num: "03", label: "Тавилга", src: buildModelUrl("models/090b7751-5b57-419e-80a4-7f495cfaeffc.67b70637.webp") },
+  { num: "04", label: "Гэрийн бараа", src: buildModelUrl("models/2913cd29-8000-4cbd-bf15-da3222efbd07.ecd77b0c.webp") },
 ];
-
-function CardArt({ featured }: { featured?: boolean }) {
-  if (featured) {
-    return (
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
-        <div className="relative size-[62%] overflow-hidden rounded-[9999px]" style={{ background: "rgb(36 38 34 / 0.85)" }}>
-          <div
-            style={{
-              position: "absolute",
-              inset: "-20%",
-              background: "linear-gradient(35deg, transparent 45%, rgb(255 255 255 / 0.35) 50%, transparent 55%)",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              bottom: "10%",
-              right: "14%",
-              width: "26%",
-              height: "26%",
-              borderRadius: "9999px",
-              background: "rgb(10 11 9 / 0.6)",
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
-      <div
-        className="h-[46%] w-[36%] rounded-t-[9999px]"
-        style={{ border: "3px solid rgb(20 21 17 / 0.7)", borderBottom: "none" }}
-      />
-      <div
-        className="absolute h-[18%] w-[20%]"
-        style={{ background: "rgb(20 21 17 / 0.7)", bottom: "27%" }}
-      />
-    </div>
-  );
-}
 
 export function DesktopCategoriesSection() {
   return (
@@ -110,17 +79,22 @@ export function DesktopCategoriesSection() {
           {CARDS.map((card) => (
             <div
               key={card.num}
-              className={`relative aspect-[300/385] ${card.featured ? "col-span-2 xl:col-span-1" : ""}`}
+              className={`relative aspect-[300/385] overflow-hidden ${card.featured ? "col-span-2 xl:col-span-1" : ""}`}
               style={{
-                background: card.gradient,
+                background: "rgb(20, 21, 17)",
                 flex: card.featured ? "1.55 1 260px" : "1 1 220px",
               }}
             >
-              <CardArt featured={card.featured} />
+              {/* eslint-disable-next-line @next/next/no-img-element -- remote R2/CDN + a fixed local asset, no next/image remote-pattern config for either */}
+              <img src={card.src} alt="" aria-hidden="true" className="absolute inset-0 size-full object-cover object-center" />
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-16"
+                style={{ background: "linear-gradient(180deg, rgb(10 11 9 / 0.6), transparent)" }}
+              />
               <div className="relative p-[17px]">
                 <span
                   className="uppercase"
-                  style={{ fontSize: "9px", fontWeight: 400, color: "rgb(21, 22, 18)", letterSpacing: "1.17px" }}
+                  style={{ fontSize: "9px", fontWeight: 400, color: "rgb(240, 240, 235)", letterSpacing: "1.17px" }}
                 >
                   {card.num} / {card.label}
                 </span>
