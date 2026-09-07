@@ -175,7 +175,7 @@ export function DesktopHeroTumble() {
                 beat.align === "right" ? "justify-end text-right" : "justify-start text-left"
               }`}
             >
-              <div className={`flex flex-col gap-5 ${beat.big ? "max-w-xl" : "max-w-lg"}`}>
+              <div className={`flex flex-col gap-5 pl-6 lg:pl-10 ${beat.big ? "max-w-xl" : "max-w-lg"}`}>
                 {beat.eyebrow && (
                   <span
                     className="inline-flex w-fit items-center gap-2 uppercase"
