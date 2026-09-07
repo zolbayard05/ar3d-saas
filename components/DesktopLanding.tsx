@@ -4,6 +4,7 @@ import { DesktopIntroSection } from "@/components/DesktopIntroSection";
 import { DesktopCategoriesSection } from "@/components/DesktopCategoriesSection";
 import { DesktopShowcaseSection } from "@/components/DesktopShowcaseSection";
 import { DesktopPipelineSection } from "@/components/DesktopPipelineSection";
+import { DesktopFinalCta } from "@/components/DesktopFinalCta";
 import { DesktopWaitlistCta } from "@/components/DesktopWaitlistCta";
 import Link from "next/link";
 
@@ -104,6 +105,7 @@ export async function DesktopLanding() {
       <DesktopCategoriesSection />
       <DesktopShowcaseSection />
       <DesktopPipelineSection />
+      <DesktopFinalCta />
     </main>
   );
 }
