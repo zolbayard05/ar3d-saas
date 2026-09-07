@@ -49,13 +49,23 @@ export function DesktopPipelineSection() {
         </h2>
 
         <div>
+          {/* Every other section on this page is doing something (hero
+              rotates, intro/categories cards sit on real photos, the
+              wireframe section drags, showcase orbits) — this list was the
+              one flat, inert spot. Hover-only (no cursor-pointer, no
+              chevron) since these rows aren't links to anything; it's
+              liveliness, not a false affordance. */}
           {STEPS.map((step) => (
             <div
               key={step.num}
-              className="grid grid-cols-[3rem_auto_1fr] items-center gap-4 py-[22px]"
-              style={{ borderBottom: "1px solid rgb(184, 184, 174)" }}
+              className="group grid grid-cols-[3rem_auto_1fr] items-center gap-4 border-b border-b-[rgb(184,184,174)] py-[22px] transition-[padding-left,border-color] duration-300 hover:border-b-[rgb(21,22,18)] hover:pl-2"
             >
-              <span style={{ fontSize: "10px", fontWeight: 400, color: "rgb(114, 116, 107)" }}>{step.num}</span>
+              <span
+                className="text-[rgb(114,116,107)] transition-colors duration-300 group-hover:text-[rgb(21,22,18)]"
+                style={{ fontSize: "10px", fontWeight: 400 }}
+              >
+                {step.num}
+              </span>
               <b
                 className="uppercase not-italic"
                 style={{ fontSize: "15px", fontWeight: 550, color: "rgb(21, 22, 18)", letterSpacing: "1.35px" }}
@@ -64,8 +74,7 @@ export function DesktopPipelineSection() {
               </b>
               <i
                 aria-hidden="true"
-                className="not-italic"
-                style={{ borderBottom: "1px dashed rgb(184, 184, 174)" }}
+                className="not-italic border-b border-dashed border-b-[rgb(184,184,174)] transition-colors duration-300 group-hover:border-b-[rgb(21,22,18)]"
               />
             </div>
           ))}
