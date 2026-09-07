@@ -205,23 +205,6 @@ export function DesktopShowcaseSection() {
             WebAR-г үзэх
             <ArrowUpRight className="size-3.5" />
           </a>
-
-          <div className="mt-8 flex items-center gap-4">
-            {qrDataUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a remote/static asset next/image can optimize.
-              <img
-                src={qrDataUrl}
-                alt={`${active.label} — утсаараа AR-аар үзэх QR код`}
-                className="size-20 rounded-md"
-                style={{ boxShadow: "0 1px 2px rgb(0 0 0 / 0.12)" }}
-              />
-            ) : (
-              <div className="size-20 animate-pulse rounded-md" style={{ background: "rgb(200, 198, 189)" }} />
-            )}
-            <p style={{ maxWidth: "200px", fontSize: "12px", fontWeight: 400, lineHeight: "17px", color: "rgb(96, 98, 89)" }}>
-              Утасныхаа камераар уншуулаад шууд AR-аар өрөөндөө байрлуулж үзээрэй.
-            </p>
-          </div>
         </div>
       </div>
     </section>
