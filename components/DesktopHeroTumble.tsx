@@ -156,11 +156,22 @@ export function DesktopHeroTumble() {
             ref={(el) => {
               beatRefs.current[i] = el;
             }}
-            className="absolute inset-0 z-20 flex flex-col justify-start pt-[150px] will-change-transform"
+            className="absolute inset-0 z-20 flex flex-col will-change-transform"
             style={{ opacity: i === 0 ? 1 : 0, pointerEvents: i === 0 ? "auto" : "none" }}
           >
+            {/* pt-[150px] lives on this text div specifically, not the
+                outer beat wrapper — the object below is absolutely
+                positioned, and CSS padding on a positioned ancestor shifts
+                an absolute child's containing block too (unlike
+                justify-content, which only affects in-flow children).
+                Padding here instead of on the wrapper is what lets the
+                text move up under the nav while the object stays exactly
+                where it always was (still centered via its own
+                items-center below), per direct correction — an earlier
+                attempt put the padding on the shared wrapper and pulled
+                the object up with it, which wasn't asked for. */}
             <div
-              className={`flex w-full px-6 lg:px-16 ${
+              className={`flex w-full px-6 pt-[150px] lg:px-16 ${
                 beat.align === "right" ? "justify-end text-right" : "justify-start text-left"
               }`}
             >
@@ -269,7 +280,7 @@ export function DesktopHeroTumble() {
                 mechanism, but the same "here's a real object, not a
                 photo" point. */}
             <div
-              className={`pointer-events-none absolute inset-0 z-10 flex items-start justify-end pt-[150px] ${
+              className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-end ${
                 beat.object === "chair" ? "pr-6 lg:pr-[132px]" : "pr-6 lg:pr-[8vw]"
               }`}
               aria-hidden={beat.object !== "chair"}
@@ -285,27 +296,19 @@ export function DesktopHeroTumble() {
                   // ~1920px viewport and never re-checked at narrower ones —
                   // verified live: at 1024-1440px the object's box actually
                   // overlapped the text column's right edge. The extra
-                  // calc(100vw - ...) term reserves the text column's own
-                  // width (px-16 + max-w-xl/lg) plus a fixed gap, so the
-                  // object's box can never grow wide enough to reach it, at
-                  // any viewport width. The calc(100dvh - 230px) term is new
-                  // (object went from vertically-centered to top-anchored at
-                  // pt-[150px], same offset as the text column, so both sit
-                  // on one shared line right below the nav) — without a
-                  // height-aware cap too, a short viewport would let the
-                  // (still square, width===height) box overflow past the
-                  // bottom edge; 230px = the 150px top offset plus a ~80px
-                  // bottom margin so the box's own bottom-corner annotation
-                  // label never gets clipped.
+                  // calc() term reserves the text column's own width
+                  // (px-16 + max-w-xl/lg) plus a fixed gap, so the object's
+                  // box can never grow wide enough to reach it, at any
+                  // viewport width.
                   ...(beat.object === "chair"
                     ? {
-                        width: "max(240px, min(58vw, 800px, calc(100vw - 820px), calc(100dvh - 230px)))",
-                        height: "max(240px, min(58vw, 800px, calc(100vw - 820px), calc(100dvh - 230px)))",
+                        width: "max(240px, min(58vw, 800px, calc(100vw - 820px)))",
+                        height: "max(240px, min(58vw, 800px, calc(100vw - 820px)))",
                         filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))",
                       }
                     : {
-                        width: "max(200px, min(42vw, 580px, calc(92vw - 624px), calc(100dvh - 230px)))",
-                        height: "max(200px, min(42vw, 580px, calc(92vw - 624px), calc(100dvh - 230px)))",
+                        width: "max(200px, min(42vw, 580px, calc(92vw - 624px)))",
+                        height: "max(200px, min(42vw, 580px, calc(92vw - 624px)))",
                         filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))",
                       }),
                 }}
