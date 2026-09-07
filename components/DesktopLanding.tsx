@@ -2,11 +2,8 @@ import { DesktopHeroTumble } from "@/components/DesktopHeroTumble";
 import { DesktopHowItWorksSection } from "@/components/DesktopHowItWorksSection";
 import { DesktopIntroSection } from "@/components/DesktopIntroSection";
 import { DesktopCategoriesSection } from "@/components/DesktopCategoriesSection";
-import { DesktopWireframeSection } from "@/components/DesktopWireframeSection";
 import { DesktopShowcaseSection } from "@/components/DesktopShowcaseSection";
 import { DesktopPipelineSection } from "@/components/DesktopPipelineSection";
-import { DesktopMaterialSection } from "@/components/DesktopMaterialSection";
-import { DesktopFinalCta } from "@/components/DesktopFinalCta";
 import { DesktopWaitlistCta } from "@/components/DesktopWaitlistCta";
 import Link from "next/link";
 
@@ -105,11 +102,8 @@ export async function DesktopLanding() {
       <DesktopHowItWorksSection />
       <DesktopIntroSection />
       <DesktopCategoriesSection />
-      <DesktopWireframeSection />
       <DesktopShowcaseSection />
       <DesktopPipelineSection />
-      <DesktopMaterialSection />
-      <DesktopFinalCta />
     </main>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
-// Fourth section after DesktopWireframeSection.tsx. Every style value below
-// is copied verbatim from getComputedStyle() against the reference
-// mockup's own document — see DesktopHeroTumble.tsx for the method.
+// Every style value below is copied verbatim from getComputedStyle()
+// against the reference mockup's own document — see DesktopHeroTumble.tsx
+// for the method.
 //
 // The "View in your space" button here is a REAL AR launch (DesktopArViewer
 // -> model-viewer's activateAR(), same rule-7/8 config ARViewer.tsx uses),

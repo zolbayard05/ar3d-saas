@@ -66,18 +66,19 @@ export interface DesktopMockupObjectProps {
   cameraY?: number;
   cameraZ?: number;
   /**
-   * "wireframe" (DesktopWireframeSection.tsx) skips the texture/envMap load
-   * entirely and renders the same OBJ geometry as bare edges — a cheaper,
-   * simpler branch than the shaded path, not a different render pipeline.
+   * "wireframe" skips the texture/envMap load entirely and renders the
+   * same OBJ geometry as bare edges — a cheaper, simpler branch than the
+   * shaded path, not a different render pipeline. (No current caller uses
+   * this — was built for a wireframe/shaded comparison section that's
+   * since been removed from the landing page — kept as a real, working
+   * capability of this component rather than stripped out.)
    */
   renderMode?: "shaded" | "wireframe";
   /**
    * mode="sway" only: fixes the idle-rotation phase instead of the default
-   * random start. DesktopWireframeSection.tsx passes the same value to its
-   * two side-by-side instances so both chairs sway in lockstep instead of
-   * drifting out of sync (each mount otherwise starts its own random
-   * phase — fine for a single standalone preview, wrong for a wireframe/
-   * shaded comparison of "the same object").
+   * random start, so multiple side-by-side instances of the same object
+   * can sway in lockstep instead of drifting out of sync (each mount
+   * otherwise starts its own random phase).
    */
   swaySeed?: number;
 }
