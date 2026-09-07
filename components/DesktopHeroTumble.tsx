@@ -159,9 +159,16 @@ export function DesktopHeroTumble() {
             className="absolute inset-0 z-20 flex flex-col justify-start pt-[150px] will-change-transform"
             style={{ opacity: i === 0 ? 1 : 0, pointerEvents: i === 0 ? "auto" : "none" }}
           >
+            {/* Text column and object now sit as siblings in one flex row
+                (was: two independent absolutely-positioned full-width
+                overlays, one right-anchored) — that left a large empty gap
+                between them whenever the text was narrower than the space
+                the object's right-anchor reserved. gap-16 keeps them close
+                and paired together right below the nav, per direct
+                request, rather than pushed to opposite edges. */}
             <div
-              className={`flex w-full px-6 lg:px-16 ${
-                beat.align === "right" ? "justify-end text-right" : "justify-start text-left"
+              className={`flex w-full items-start gap-10 px-6 lg:gap-16 lg:px-16 ${
+                beat.align === "right" ? "flex-row-reverse text-right" : "text-left"
               }`}
             >
               <div className={`flex flex-col gap-5 ${beat.big ? "max-w-xl" : "max-w-lg"}`}>
@@ -246,39 +253,36 @@ export function DesktopHeroTumble() {
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Each beat's own bare floating 3D object, same slot every
-                time — this is what actually crossfades beat to beat (its
-                parent div's opacity/transform, driven by the scroll
-                handler above), not just the copy. Reverted from the
-                browser-window-mockup treatment per direct request (keep
-                this exact bare-object + corner-annotation look; nav/copy
-                elsewhere unchanged) — chair uses DesktopMockupObject's
-                mode="sway" (a small idle side-to-side sway), matching the
-                last-known-good pre-Phase-1 version exactly (commit
-                da19ea3). An earlier revert attempt here mistakenly used
-                mode="scroll" (a full continuous 360° turn tied to scroll
-                position across the whole wrapperRef range) — at some
-                scroll positions mid-rotation the chair's legs visibly
-                tilted/drooped, which is what got reported and fixed.
-                sneaker/backpack are
-                real converted product scans (usdz -> glb, unscaled and
-                unprocessed at the user's explicit request) shown via
-                <model-viewer>'s own auto-rotate — a different rotation
-                mechanism, but the same "here's a real object, not a
-                photo" point. */}
-            <div
-              className={`pointer-events-none absolute inset-0 z-10 flex items-start justify-end pt-[150px] ${
-                beat.object === "chair" ? "pr-6 lg:pr-[132px]" : "pr-6 lg:pr-[8vw]"
-              }`}
-              aria-hidden={beat.object !== "chair"}
-            >
+              {/* Each beat's own bare floating 3D object, now a normal flex
+                  sibling of the text column (was: a separate absolutely-
+                  positioned full-width overlay, right-anchored — that's
+                  what created the large empty gap between text and object
+                  whenever the text was narrower than the reserved space).
+                  Still what actually crossfades beat to beat, via the
+                  shared parent beat wrapper's opacity/transform. Reverted
+                  from the browser-window-mockup treatment per direct
+                  request (keep this exact bare-object + corner-annotation
+                  look; nav/copy elsewhere unchanged) — chair uses
+                  DesktopMockupObject's mode="sway" (a small idle side-to-
+                  side sway), matching the last-known-good pre-Phase-1
+                  version exactly (commit da19ea3). An earlier revert
+                  attempt here mistakenly used mode="scroll" (a full
+                  continuous 360° turn tied to scroll position across the
+                  whole wrapperRef range) — at some scroll positions mid-
+                  rotation the chair's legs visibly tilted/drooped, which is
+                  what got reported and fixed. sneaker/backpack are real
+                  converted product scans (usdz -> glb, unscaled and
+                  unprocessed at the user's explicit request) shown via
+                  <model-viewer>'s own auto-rotate — a different rotation
+                  mechanism, but the same "here's a real object, not a
+                  photo" point. */}
               <div
                 ref={(el) => {
                   objectRefs.current[i] = el;
                 }}
-                className="relative"
+                className="relative shrink-0"
+                aria-hidden={beat.object !== "chair"}
                 style={{
                   pointerEvents: i === 0 ? "auto" : "none",
                   // The plain min(Xvw, cap) sizing below was tuned against a
