@@ -156,20 +156,25 @@ export function DesktopHeroTumble() {
             ref={(el) => {
               beatRefs.current[i] = el;
             }}
-            className="absolute inset-0 z-20 flex flex-col will-change-transform"
+            className={`absolute inset-0 z-20 flex flex-col will-change-transform ${beat.big ? "" : "justify-center"}`}
             style={{ opacity: i === 0 ? 1 : 0, pointerEvents: i === 0 ? "auto" : "none" }}
           >
-            {/* pt-[150px] lives on this text div specifically, not the
-                outer beat wrapper — the object below is absolutely
-                positioned, and CSS padding on a positioned ancestor shifts
-                an absolute child's containing block too (unlike
-                justify-content, which only affects in-flow children).
-                Padding here instead of on the wrapper is what lets the
-                text move up under the nav while the object stays exactly
-                where it always was (still centered via its own
+            {/* pt-[150px] (beat 0/"big" only) lives on this text div
+                specifically, not the outer beat wrapper — the object below
+                is absolutely positioned, and CSS padding on a positioned
+                ancestor shifts an absolute child's containing block too
+                (unlike justify-content, which only affects in-flow
+                children). Padding here instead of on the wrapper is what
+                lets the text move up under the nav while the object stays
+                exactly where it always was (still centered via its own
                 items-center below), per direct correction — an earlier
                 attempt put the padding on the shared wrapper and pulled
-                the object up with it, which wasn't asked for. */}
+                the object up with it, which wasn't asked for.
+                Beats 1/2 (sneaker/backpack) skip that padding and instead
+                get justify-center on the outer wrapper above — direct
+                request to bring their text to "the same level as the
+                model" (the object's own items-center), not pinned under
+                the nav like beat 0's. */}
             {/* Left padding that aligns the text column with the nav logo
                 (below) lives on THIS row, not the max-w-xl/lg column
                 itself — Tailwind's border-box preflight means padding on
@@ -179,7 +184,7 @@ export function DesktopHeroTumble() {
                 instead. Padding on this unconstrained row just shifts
                 everything right without shrinking anything. */}
             <div
-              className={`flex w-full pl-6 pr-6 pt-[150px] lg:pl-[269px] lg:pr-16 ${
+              className={`flex w-full pl-6 pr-6 lg:pl-[269px] lg:pr-16 ${beat.big ? "pt-[150px]" : ""} ${
                 beat.align === "right" ? "justify-end text-right" : "justify-start text-left"
               }`}
             >
