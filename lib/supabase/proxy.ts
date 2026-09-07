@@ -114,6 +114,17 @@ export async function updateSession(request: NextRequest) {
   // /privacy is exempt too — Chrome Web Store's listing requires a linked,
   // publicly-reachable privacy policy URL, and a reviewer opening that link
   // is almost certainly on desktop.
+  // /dashboard is exempt too (found live, same bug shape as the /login fix
+  // above): it dropped out of PROTECTED_PREFIXES when it became the public
+  // showcase feed (app/(app)/dashboard/page.tsx — same models for every
+  // visitor, session or not), but nothing added it here, and it's also the
+  // *default* post-login redirect (app/auth/confirm/route.ts's `next`
+  // falls back to "/dashboard", and neither the landing nav's "Нэвтрэх"
+  // link nor the pricing section's login CTA set a `next` of their own).
+  // Net effect: a desktop visitor's Google/email sign-in genuinely
+  // succeeded (session cookie set), but landed on "/dashboard", which this
+  // gate then silently bounced back to "/" for a non-mobile UA — from the
+  // visitor's side indistinguishable from login just not working.
   const isExemptFromDeviceGate =
     isSubResourceRequest ||
     pathname === "/" ||
@@ -121,7 +132,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/api/") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/login") ||
-    pathname.startsWith("/privacy");
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/dashboard");
 
   if (!isMobileUserAgent(userAgent) && !isExemptFromDeviceGate) {
     const url = request.nextUrl.clone();
