@@ -52,12 +52,10 @@ export async function DesktopLanding() {
             boxShadow: "0 10px 30px -12px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.25)",
           }}
         >
-          <Link
-            href="/"
-            className="uppercase text-[#f5f4ef]"
-            style={{ fontSize: "14px", fontWeight: 750, letterSpacing: "-0.84px" }}
-          >
-            Realify3D
+          <Link href="/" className="flex items-center gap-2 uppercase text-[#f5f4ef]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- fixed local /public asset, no remote optimization needed */}
+            <img src="/icon-192.png" alt="" className="size-6 rounded-md" />
+            <span style={{ fontSize: "14px", fontWeight: 750, letterSpacing: "-0.84px" }}>Realify3D</span>
           </Link>
           {/* All 4 targets are real anchors now — #product/#commerce/#ar
               are added to DesktopCategoriesSection/DesktopPipelineSection/
