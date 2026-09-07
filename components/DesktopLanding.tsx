@@ -3,6 +3,7 @@ import { DesktopHowItWorksSection } from "@/components/DesktopHowItWorksSection"
 import { DesktopIntroSection } from "@/components/DesktopIntroSection";
 import { DesktopCategoriesSection } from "@/components/DesktopCategoriesSection";
 import { DesktopShowcaseSection } from "@/components/DesktopShowcaseSection";
+import { DesktopPricingSection } from "@/components/DesktopPricingSection";
 import { DesktopPipelineSection } from "@/components/DesktopPipelineSection";
 import { DesktopFinalCta } from "@/components/DesktopFinalCta";
 import { DesktopWaitlistCta } from "@/components/DesktopWaitlistCta";
@@ -73,6 +74,9 @@ export async function DesktopLanding() {
             <a href="#ar" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
               AR
             </a>
+            <a href="#pricing" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
+              Үнэ
+            </a>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/login" className="hidden hover:text-[#f5f4ef] lg:block" style={NAV_LINK_STYLE}>
@@ -104,6 +108,7 @@ export async function DesktopLanding() {
       <DesktopIntroSection />
       <DesktopCategoriesSection />
       <DesktopShowcaseSection />
+      <DesktopPricingSection />
       <DesktopPipelineSection />
       <DesktopFinalCta />
     </main>
