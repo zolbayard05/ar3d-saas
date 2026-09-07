@@ -254,9 +254,15 @@ export function DesktopHeroTumble() {
                 handler above), not just the copy. Reverted from the
                 browser-window-mockup treatment per direct request (keep
                 this exact bare-object + corner-annotation look; nav/copy
-                elsewhere unchanged) — chair keeps the precise scroll-driven
-                360° turn (DesktopMockupObject's own mode="scroll", still
-                tied to the whole wrapperRef range); sneaker/backpack are
+                elsewhere unchanged) — chair uses DesktopMockupObject's
+                mode="sway" (a small idle side-to-side sway), matching the
+                last-known-good pre-Phase-1 version exactly (commit
+                da19ea3). An earlier revert attempt here mistakenly used
+                mode="scroll" (a full continuous 360° turn tied to scroll
+                position across the whole wrapperRef range) — at some
+                scroll positions mid-rotation the chair's legs visibly
+                tilted/drooped, which is what got reported and fixed.
+                sneaker/backpack are
                 real converted product scans (usdz -> glb, unscaled and
                 unprocessed at the user's explicit request) shown via
                 <model-viewer>'s own auto-rotate — a different rotation
@@ -303,7 +309,7 @@ export function DesktopHeroTumble() {
                       textureUrl="/icons/mockup/chair_diffuse.png"
                       metalness={0.3}
                       roughness={0.42}
-                      mode="scroll"
+                      mode="sway"
                       className="size-full"
                     />
                     <span
