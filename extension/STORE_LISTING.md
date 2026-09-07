@@ -67,10 +67,35 @@ before submitting.
 ## Before submitting
 
 - [x] Support contact in `app/privacy/page.tsx` — zolbayar.d05+realify@gmail.com.
-- [ ] Promotional images: a 1280×800 or 640×400 screenshot, and (optional
-      but recommended) a 440×280 small promo tile.
-- [ ] Bump `"version"` in `extension/manifest.json` for each resubmission.
+- [x] Promotional screenshot: `store-assets/screenshot-1-generate-model.jpg`
+      (1280×800) — the real "done" popup (real `popup.js`/`popup.css`
+      markup, a real showcase model's own render, a real generated QR
+      pointing at its share URL) on a branded backdrop. Optional 440×280
+      small promo tile still not made — add one if the listing form asks.
+- [ ] Bump `"version"` in `extension/manifest.json` for each resubmission
+      (currently `0.1.0` — fine for the first submission).
 - [ ] Broad host permissions (`http(s)://*/*`) route new/updated
       submissions through Google's more thorough review queue — budget
       extra time (historically days, not hours) before a release date
       depends on it.
+
+## Submission steps (Developer Dashboard — needs your own Google account + the one-time $5 registration fee, so this part is on you)
+
+1. https://chrome.google.com/webstore/devconsole → pay the $5 registration
+   fee if you haven't already (one-time, per Google account).
+2. "New item" → upload `extension/realify-extension.zip` (already built,
+   matches the current source — see the file timestamps note below if you
+   change any extension source file first).
+3. Store listing tab: paste in the Name/description/category from this
+   file. Upload `store-assets/screenshot-1-generate-model.jpg` as the
+   screenshot. Privacy policy URL is already live at the link above.
+4. Privacy practices tab: you'll have to justify each permission — the
+   "Permission justifications" section above is written for exactly that
+   form, copy it in per-permission.
+5. Submit for review. Expect it to sit in Google's queue for days (broad
+   host permissions trigger extra scrutiny) — this is normal, not a sign
+   something's wrong.
+
+If you change any file under `extension/` (other than this doc or
+`store-assets/`) before submitting, rebuild the zip first:
+`cd extension && zip -r realify-extension.zip . -x "store-assets/*" "STORE_LISTING.md" "*.zip" "lib.test.mjs"`
