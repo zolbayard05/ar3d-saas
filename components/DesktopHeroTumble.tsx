@@ -39,14 +39,22 @@ interface Beat {
 const MUTED_TEXT = "rgb(203, 208, 191)";
 const MUTED_WEIGHT = 450;
 
-// Which real photo + fake URL each beat's DesktopBrowserMockup shows before
-// "activating" — reuses already-sourced real product photos (Pexels/user-
-// supplied, see components/DesktopCategoriesSection.tsx and
-// DesktopIntroSection.tsx's own header comments for provenance), no new
-// image sourcing needed.
+// Which "before" photo + fake URL each beat's DesktopBrowserMockup shows
+// before "activating" into the real 3D object. chair/sneaker use a real
+// render of that exact same asset (cropped screenshot of
+// DesktopMockupObject's chair.obj / the sneaker.glb via
+// DesktopShowcaseSection, public/icons/mockup/{chair,sneaker}-photo.webp)
+// instead of an unrelated stock photo — the first pass used Pexels photos
+// from DesktopCategoriesSection that didn't actually depict the same
+// product as the 3D reveal (a leather Eames-style chair photo fading into
+// a black tufted chesterfield; a studio sneaker photo fading into a red/
+// blue trail shoe), which undercut the "here's its real 3D twin" point of
+// the whole demo. backpack already used a real photo of the literal
+// physical backpack the GLB was scanned from (see DesktopIntroSection's
+// own header comment) — already correct, left unchanged.
 const MOCKUP_META: Record<Beat["object"], { photoSrc: string; urlLabel: string }> = {
-  chair: { photoSrc: "/icons/categories/chair.webp", urlLabel: "mebel-shop.mn/tavilga/sandal" },
-  sneaker: { photoSrc: "/icons/categories/sneaker.webp", urlLabel: "gutal.mn/product/sneaker-42" },
+  chair: { photoSrc: "/icons/mockup/chair-photo.webp", urlLabel: "mebel-shop.mn/tavilga/sandal" },
+  sneaker: { photoSrc: "/icons/mockup/sneaker-photo.webp", urlLabel: "gutal.mn/product/sneaker-42" },
   backpack: { photoSrc: "/icons/intro/backpack-front.webp", urlLabel: "delguur.mn/cunh/jansport" },
 };
 
