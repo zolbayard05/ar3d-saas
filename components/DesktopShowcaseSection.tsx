@@ -9,7 +9,11 @@
 // not a decorative mockup — backed by the same sneaker/backpack GLBs
 // already used in the hero, now paired with their original USDZ source
 // files (copied into public/icons/mockup/ alongside the GLBs) so iOS Quick
-// Look works too, not just Android scene-viewer.
+// Look works too, not just Android scene-viewer. One tab (headphones) is
+// an exception: only a .glb was supplied, no .usdz, so per rule 2 (iOS
+// Quick Look fails silently without a real USDZ) it's real-3D-viewer only —
+// the AR button and QR/link block below are hidden whenever the active
+// item has no iosSrc (see lib/arShowcaseItems.ts's own doc comment).
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -39,6 +43,11 @@ export function DesktopShowcaseSection() {
   // to warn about; render-time derivation avoids the extra render pass.
   const [qr, setQr] = useState<{ key: string; dataUrl: string } | null>(null);
   useEffect(() => {
+    // Items with no iosSrc (e.g. headphones — .glb only, no .usdz) aren't
+    // wired up for AR at all (rule 2: iOS Quick Look fails silently
+    // without a real USDZ) — skip generating a QR that would lead to a
+    // non-functional AR page for them.
+    if (!active.iosSrc) return;
     let cancelled = false;
     buildLogoQr(`${window.location.origin}/ar/${active.key}`)
       .then((dataUrl) => {
@@ -48,7 +57,7 @@ export function DesktopShowcaseSection() {
     return () => {
       cancelled = true;
     };
-  }, [active.key]);
+  }, [active.key, active.iosSrc]);
   const qrDataUrl = qr?.key === active.key ? qr.dataUrl : null;
 
   return (
@@ -106,14 +115,16 @@ export function DesktopShowcaseSection() {
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => viewerRef.current?.activateAR()}
-              className="flex items-center gap-2 bg-[#eeeee9] text-[#111111] hover:opacity-90"
-              style={{ fontSize: "13px", fontWeight: 400, padding: "12px 16px" }}
-            >
-              Өөрийн орчинд харах
-              <ArrowUpRight className="size-4" />
-            </button>
+            {active.iosSrc && (
+              <button
+                onClick={() => viewerRef.current?.activateAR()}
+                className="flex items-center gap-2 bg-[#eeeee9] text-[#111111] hover:opacity-90"
+                style={{ fontSize: "13px", fontWeight: 400, padding: "12px 16px" }}
+              >
+                Өөрийн орчинд харах
+                <ArrowUpRight className="size-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -153,22 +164,24 @@ export function DesktopShowcaseSection() {
             <ArrowUpRight className="size-3.5" />
           </a>
 
-          <div className="mt-8 flex items-center gap-4">
-            {qrDataUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a remote/static asset next/image can optimize.
-              <img
-                src={qrDataUrl}
-                alt={`${active.label} — утсаараа AR-аар үзэх QR код`}
-                className="size-20 rounded-md"
-                style={{ boxShadow: "0 1px 2px rgb(0 0 0 / 0.12)" }}
-              />
-            ) : (
-              <div className="size-20 animate-pulse rounded-md" style={{ background: "rgb(200, 198, 189)" }} />
-            )}
-            <p style={{ maxWidth: "200px", fontSize: "12px", fontWeight: 400, lineHeight: "17px", color: "rgb(96, 98, 89)" }}>
-              Утасныхаа камераар уншуулаад шууд AR-аар өрөөндөө байрлуулж үзээрэй.
-            </p>
-          </div>
+          {active.iosSrc && (
+            <div className="mt-8 flex items-center gap-4">
+              {qrDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a remote/static asset next/image can optimize.
+                <img
+                  src={qrDataUrl}
+                  alt={`${active.label} — утсаараа AR-аар үзэх QR код`}
+                  className="size-20 rounded-md"
+                  style={{ boxShadow: "0 1px 2px rgb(0 0 0 / 0.12)" }}
+                />
+              ) : (
+                <div className="size-20 animate-pulse rounded-md" style={{ background: "rgb(200, 198, 189)" }} />
+              )}
+              <p style={{ maxWidth: "200px", fontSize: "12px", fontWeight: 400, lineHeight: "17px", color: "rgb(96, 98, 89)" }}>
+                Утасныхаа камераар уншуулаад шууд AR-аар өрөөндөө байрлуулж үзээрэй.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>

@@ -45,21 +45,25 @@ export function ArLaunchView({ item }: { item: ArShowcaseItem }) {
       </div>
 
       <div className="relative flex flex-col gap-2 px-4 pb-8 pt-2">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -inset-x-4 -top-4 h-24 animate-breathe rounded-full opacity-40 blur-2xl"
-          style={{
-            background: "radial-gradient(ellipse at center, var(--color-glow-strong) 0%, transparent 70%)",
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => viewerRef.current?.activateAR()}
-          className="relative flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover"
-        >
-          <Box className="size-5" />
-          AR-аар байрлуулах
-        </button>
+        {item.iosSrc && (
+          <>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-x-4 -top-4 h-24 animate-breathe rounded-full opacity-40 blur-2xl"
+              style={{
+                background: "radial-gradient(ellipse at center, var(--color-glow-strong) 0%, transparent 70%)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => viewerRef.current?.activateAR()}
+              className="relative flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover"
+            >
+              <Box className="size-5" />
+              AR-аар байрлуулах
+            </button>
+          </>
+        )}
         <p className="text-center text-small text-text-muted">{item.label} — Realify демо загвар</p>
       </div>
     </div>

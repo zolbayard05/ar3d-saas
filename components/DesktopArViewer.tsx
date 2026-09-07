@@ -5,7 +5,8 @@ import "@google/model-viewer";
 
 export interface DesktopArViewerProps {
   src: string;
-  iosSrc: string;
+  /** Omit for an item with no real USDZ — `ar`/`ar-modes`/`ios-src` are then left off entirely rather than pointing iOS Quick Look at nothing (rule 2: silent failure). */
+  iosSrc?: string;
   alt: string;
   className?: string;
 }
@@ -41,9 +42,7 @@ export const DesktopArViewer = forwardRef<DesktopArViewerHandle, DesktopArViewer
       <model-viewer
         ref={viewerRef}
         src={src}
-        ios-src={iosSrc}
-        ar
-        ar-modes="webxr scene-viewer quick-look"
+        {...(iosSrc ? { "ios-src": iosSrc, ar: true, "ar-modes": "webxr scene-viewer quick-look" } : {})}
         camera-controls
         auto-rotate
         shadow-intensity="1"
@@ -51,7 +50,7 @@ export const DesktopArViewer = forwardRef<DesktopArViewerHandle, DesktopArViewer
         className={className}
         style={{ background: "transparent" }}
       >
-        <button slot="ar-button" aria-hidden="true" tabIndex={-1} style={{ display: "none" }} />
+        {iosSrc && <button slot="ar-button" aria-hidden="true" tabIndex={-1} style={{ display: "none" }} />}
       </model-viewer>
     );
   },
