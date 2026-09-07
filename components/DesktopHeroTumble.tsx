@@ -170,12 +170,23 @@ export function DesktopHeroTumble() {
                 items-center below), per direct correction — an earlier
                 attempt put the padding on the shared wrapper and pulled
                 the object up with it, which wasn't asked for. */}
+            {/* Left padding that aligns the text column with the nav logo
+                (below) lives on THIS row, not the max-w-xl/lg column
+                itself — Tailwind's border-box preflight means padding on
+                an element with its own max-width eats directly into that
+                element's content budget, which is what caused the 7-line
+                wrap when this padding briefly lived on the inner div
+                instead. Padding on this unconstrained row just shifts
+                everything right without shrinking anything. */}
             <div
-              className={`flex w-full px-6 pt-[150px] lg:px-16 ${
+              className={`flex w-full pl-6 pr-6 pt-[150px] lg:pl-[269px] lg:pr-16 ${
                 beat.align === "right" ? "justify-end text-right" : "justify-start text-left"
               }`}
             >
-              <div className={`flex flex-col gap-5 pl-6 lg:pl-10 ${beat.big ? "max-w-xl" : "max-w-lg"}`}>
+              {/* pl-6 lg:pl-[269px] above + this div's own pl-6 = 293px
+                  total, measured live to match the nav logo's own left
+                  edge exactly (getBoundingClientRect on both at 1920px). */}
+              <div className={`flex flex-col gap-5 pl-6 ${beat.big ? "max-w-xl" : "max-w-lg"}`}>
                 {beat.eyebrow && (
                   <span
                     className="inline-flex w-fit items-center gap-2 uppercase"
