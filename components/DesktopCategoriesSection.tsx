@@ -26,7 +26,7 @@ const CARDS = [
   { num: "01", label: "Гутал", photoSrc: "/icons/categories/sneaker.webp", glbSrc: "/icons/mockup/sneaker.glb", featured: true },
   { num: "02", label: "Цүнх", photoSrc: "/icons/categories/backpack.webp", glbSrc: "/icons/mockup/backpack.glb" },
   { num: "03", label: "Хувцас", photoSrc: "/icons/categories/vest.webp", glbSrc: "/icons/mockup/vest.glb" },
-  { num: "04", label: "Гэрийн бараа", photoSrc: "/icons/categories/vase.webp", glbSrc: "/icons/mockup/rose.glb" },
+  { num: "04", label: "Цэцэг", photoSrc: "/icons/categories/vase.webp", glbSrc: "/icons/mockup/rose.glb" },
 ];
 
 import { useState } from "react";
