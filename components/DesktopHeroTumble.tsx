@@ -40,7 +40,6 @@ const MUTED_WEIGHT = 450;
 
 const BEATS: Beat[] = [
   {
-    eyebrow: "Веб дээрх 3D давхарга",
     big: true,
     object: "chair",
     heading: (
@@ -330,32 +329,14 @@ export function DesktopHeroTumble() {
                 }}
               >
                 {beat.object === "chair" && (
-                  <>
-                    <DesktopMockupObject
-                      objUrl="/icons/mockup/chair.obj"
-                      textureUrl="/icons/mockup/chair_diffuse.png"
-                      metalness={0.3}
-                      roughness={0.42}
-                      mode="sway"
-                      className="size-full"
-                    />
-                    <span
-                      className="pointer-events-none absolute text-tiny uppercase tracking-wide text-[#7a7b76]"
-                      style={{ top: "1.5rem", right: 0, textAlign: "right" }}
-                    >
-                      01
-                      <br />
-                      Жинхэнэ материал
-                    </span>
-                    <span
-                      className="pointer-events-none absolute text-tiny uppercase tracking-wide text-[#7a7b76]"
-                      style={{ bottom: "1.5rem", left: 0 }}
-                    >
-                      02
-                      <br />
-                      Веб-д бэлэн геометр
-                    </span>
-                  </>
+                  <DesktopMockupObject
+                    objUrl="/icons/mockup/chair.obj"
+                    textureUrl="/icons/mockup/chair_diffuse.png"
+                    metalness={0.3}
+                    roughness={0.42}
+                    mode="sway"
+                    className="size-full"
+                  />
                 )}
                 {beat.object === "sneaker" && (
                   <DesktopHeroModelViewer src="/icons/mockup/sneaker.glb" alt="Гутал" className="size-full" />
