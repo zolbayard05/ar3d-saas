@@ -62,7 +62,7 @@ const BEATS: Beat[] = [
         <span className="block" style={{ color: MUTED_TEXT, fontWeight: MUTED_WEIGHT }}>3D загвар болгох боломж.</span>
       </>
     ),
-    body: "Chrome Extension ашиглан веб дээрх бүтээгдэхүүнийг интерактив 3D болон AR туршлага болгон үз.",
+    body: "Chrome Extension ашиглан веб дээрх бүтээгдэхүүнийг интерактив 3D загвар болон гар утаснаасаа AR-аар туршиж үз.",
   },
   {
     object: "sneaker",
