@@ -57,8 +57,9 @@ const BEATS: Beat[] = [
     object: "chair",
     heading: (
       <>
-        <span className="block">Вэбийг</span>
-        <span className="block" style={{ color: MUTED_TEXT, fontWeight: MUTED_WEIGHT }}>3D болго.</span>
+        <span className="block">Хүссэн бараа</span>
+        <span className="block">бүтээгдэхүүнээ</span>
+        <span className="block" style={{ color: MUTED_TEXT, fontWeight: MUTED_WEIGHT }}>3D загвар болгох боломж.</span>
       </>
     ),
     body: "Chrome Extension ашиглан веб дээрх бүтээгдэхүүнийг интерактив 3D болон AR туршлага болгон үз.",
@@ -197,7 +198,15 @@ export function DesktopHeroTumble() {
                     style={
                       beat.big
                         ? {
-                            fontSize: "clamp(2.75rem, 6.15vw, 7.375rem)",
+                            // Reduced from clamp(2.75rem, 6.15vw, 7.375rem)
+                            // — that size was tuned for the original short
+                            // 2-line headline; the new, longer 3-line copy
+                            // wrapped to 5 visual lines and overwhelmed the
+                            // fold at that size. Matches the scale already
+                            // used sitewide for every other section heading
+                            // (Categories/Pipeline/Showcase/Material/
+                            // HowItWorks/FinalCta all use this exact clamp).
+                            fontSize: "clamp(2.2rem, 4.95vw, 5.9375rem)",
                             fontWeight: 650,
                             lineHeight: 0.91,
                             letterSpacing: "-0.075em",
