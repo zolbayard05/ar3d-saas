@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { ChevronDown, PlayCircle } from "lucide-react";
 import { DesktopMockupObject } from "@/components/DesktopMockupObject";
-import { DesktopWaitlistCta } from "@/components/DesktopWaitlistCta";
 
 // Rule 11 (this project's own convention, extended to DesktopHeroModelViewer
 // too): "@google/model-viewer"'s customElements.define() touches `window`
@@ -250,17 +249,6 @@ export function DesktopHeroTumble() {
                 </p>
                 {beat.big && (
                   <div className="flex flex-wrap items-center gap-5 pt-1">
-                    <DesktopWaitlistCta
-                      source="hero"
-                      className="flex items-center gap-2 bg-[#eeeee9] uppercase text-[#111111] hover:opacity-90"
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        letterSpacing: "0.33px",
-                        lineHeight: "16.5px",
-                        padding: "17px 20px",
-                      }}
-                    />
                     <a
                       href="#how-it-works"
                       className="flex items-center gap-2 text-[#f5f4ef] hover:opacity-80"
