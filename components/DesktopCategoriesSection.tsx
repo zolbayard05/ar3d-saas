@@ -29,7 +29,7 @@ const CARDS = [
 
 export function DesktopCategoriesSection() {
   return (
-    <section className="px-6 py-24 lg:px-16 lg:py-[160px]" style={{ background: "rgb(232, 230, 223)" }}>
+    <section id="product" className="px-6 py-24 lg:px-16 lg:py-[160px]" style={{ background: "rgb(232, 230, 223)" }}>
       <div className="mx-auto max-w-[1400px]">
         <p
           className="uppercase"

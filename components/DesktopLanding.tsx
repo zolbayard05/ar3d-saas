@@ -1,4 +1,5 @@
 import { DesktopHeroTumble } from "@/components/DesktopHeroTumble";
+import { DesktopHowItWorksSection } from "@/components/DesktopHowItWorksSection";
 import { DesktopIntroSection } from "@/components/DesktopIntroSection";
 import { DesktopCategoriesSection } from "@/components/DesktopCategoriesSection";
 import { DesktopWireframeSection } from "@/components/DesktopWireframeSection";
@@ -6,8 +7,8 @@ import { DesktopShowcaseSection } from "@/components/DesktopShowcaseSection";
 import { DesktopPipelineSection } from "@/components/DesktopPipelineSection";
 import { DesktopMaterialSection } from "@/components/DesktopMaterialSection";
 import { DesktopFinalCta } from "@/components/DesktopFinalCta";
+import { DesktopWaitlistCta } from "@/components/DesktopWaitlistCta";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 
 // The reference mockup's real, own-document computed font-family (extracted
 // via direct navigation to its cross-origin iframe's src, not the wrapper
@@ -58,35 +59,34 @@ export async function DesktopLanding() {
           >
             Realify3D
           </Link>
+          {/* All 4 targets are real anchors now — #product/#commerce/#ar
+              are added to DesktopCategoriesSection/DesktopPipelineSection/
+              DesktopShowcaseSection below; #how-it-works is the new section
+              inserted right after the hero. Previously 4 of 5 links here
+              pointed at IDs that didn't exist anywhere in the codebase. */}
           <div className="hidden items-center gap-8 lg:flex">
-            <a href="#categories" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
+            <a href="#product" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
               Бүтээгдэхүүн
             </a>
             <a href="#how-it-works" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
               Хэрхэн ажилладаг
             </a>
-            <a href="#" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
-              Бизнест
+            <a href="#commerce" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
+              3D Commerce
             </a>
-            <a href="#" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
-              Технологи
-            </a>
-            <a href="#" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
-              Үнэ
+            <a href="#ar" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
+              AR
             </a>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/login" className="hidden hover:text-[#f5f4ef] lg:block" style={NAV_LINK_STYLE}>
               Нэвтрэх
             </Link>
-            <Link
-              href="/login"
+            <DesktopWaitlistCta
+              source="nav"
               className="flex items-center gap-1.5 rounded-full bg-[#eeeee9] text-[#111111] hover:opacity-90"
               style={{ fontSize: "11px", fontWeight: 700, padding: "12px 16px", lineHeight: "16.5px" }}
-            >
-              Эхлэх
-              <ArrowUpRight className="size-3.5" />
-            </Link>
+            />
           </div>
         </div>
       </nav>
@@ -104,6 +104,7 @@ export async function DesktopLanding() {
       />
 
       <DesktopHeroTumble />
+      <DesktopHowItWorksSection />
       <DesktopIntroSection />
       <DesktopCategoriesSection />
       <DesktopWireframeSection />

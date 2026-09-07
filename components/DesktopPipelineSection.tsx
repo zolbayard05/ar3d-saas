@@ -22,7 +22,7 @@ const STEPS = [
 
 export function DesktopPipelineSection() {
   return (
-    <section className="px-6 py-24 lg:px-16 lg:py-[140px]" style={{ background: "rgb(233, 231, 223)" }}>
+    <section id="commerce" className="px-6 py-24 lg:px-16 lg:py-[140px]" style={{ background: "rgb(233, 231, 223)" }}>
       <div className="mx-auto max-w-[1400px]">
         <p
           className="uppercase"

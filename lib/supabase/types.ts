@@ -151,6 +151,22 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["api_tokens"]["Insert"]>;
         Relationships: [];
       };
+      waitlist_signups: {
+        Row: {
+          id: string;
+          email: string;
+          source: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          source?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["waitlist_signups"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

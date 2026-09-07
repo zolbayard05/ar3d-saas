@@ -52,7 +52,7 @@ export function DesktopShowcaseSection() {
   const qrDataUrl = qr?.key === active.key ? qr.dataUrl : null;
 
   return (
-    <section className="px-6 py-24 lg:px-16 lg:py-[140px]" style={{ background: "rgb(217, 215, 206)" }}>
+    <section id="ar" className="px-6 py-24 lg:px-16 lg:py-[140px]" style={{ background: "rgb(217, 215, 206)" }}>
       {/* The fixed 430px right column only leaves the left (viewer) column
           ~400px at 1024px-1279px widths (1024 - px-16*2 - 430 - gap-16) —
           verified live: that's too narrow for the bottom bar's tab

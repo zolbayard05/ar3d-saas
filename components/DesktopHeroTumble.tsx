@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ArrowUpRight, ChevronDown, PlayCircle } from "lucide-react";
+import { ChevronDown, PlayCircle } from "lucide-react";
 import { DesktopMockupObject } from "@/components/DesktopMockupObject";
+import { DesktopBrowserMockup } from "@/components/DesktopBrowserMockup";
+import { DesktopWaitlistCta } from "@/components/DesktopWaitlistCta";
 
 // Rule 11 (this project's own convention, extended to DesktopHeroModelViewer
 // too): "@google/model-viewer"'s customElements.define() touches `window`
@@ -38,39 +39,49 @@ interface Beat {
 const MUTED_TEXT = "rgb(203, 208, 191)";
 const MUTED_WEIGHT = 450;
 
+// Which real photo + fake URL each beat's DesktopBrowserMockup shows before
+// "activating" — reuses already-sourced real product photos (Pexels/user-
+// supplied, see components/DesktopCategoriesSection.tsx and
+// DesktopIntroSection.tsx's own header comments for provenance), no new
+// image sourcing needed.
+const MOCKUP_META: Record<Beat["object"], { photoSrc: string; urlLabel: string }> = {
+  chair: { photoSrc: "/icons/categories/chair.webp", urlLabel: "mebel-shop.mn/tavilga/sandal" },
+  sneaker: { photoSrc: "/icons/categories/sneaker.webp", urlLabel: "gutal.mn/product/sneaker-42" },
+  backpack: { photoSrc: "/icons/intro/backpack-front.webp", urlLabel: "delguur.mn/cunh/jansport" },
+};
+
 const BEATS: Beat[] = [
   {
-    eyebrow: "AI арилжааны дэд бүтэц",
+    eyebrow: "Веб дээрх 3D давхарга",
     big: true,
     object: "chair",
     heading: (
       <>
-        <span className="block">Бүтээгдэхүүнээ</span>
-        <span className="block" style={{ color: MUTED_TEXT, fontWeight: MUTED_WEIGHT }}>3D арилжаа</span>
-        <span className="block" style={{ color: MUTED_TEXT, fontWeight: MUTED_WEIGHT }}>болго.</span>
+        <span className="block">Вэбийг</span>
+        <span className="block" style={{ color: MUTED_TEXT, fontWeight: MUTED_WEIGHT }}>3D болго.</span>
       </>
     ),
-    body: "Бүтээгдэхүүний зургаа AI-гаар бодит 3D загвар, WebAR туршлага болгон хувиргана.",
+    body: "Chrome Extension ашиглан веб дээрх бүтээгдэхүүнийг интерактив 3D болон AR туршлага болгон үз.",
   },
   {
     object: "sneaker",
     heading: (
       <>
-        Гутлаас эхлээд тавилга хүртэл —{" "}
-        <em className="font-extrabold not-italic" style={{ color: MUTED_TEXT }}>ямар ч бүтээгдэхүүн.</em>
+        Дурын онлайн дэлгүүрийн зурган дээр —{" "}
+        <em className="font-extrabold not-italic" style={{ color: MUTED_TEXT }}>шууд 3D-ээр.</em>
       </>
     ),
-    body: "Ганцхан зураг — ангилалын хязгааргүй, өөрөө эргэдэг бодит 3D объект.",
+    body: "Right-click хийхэд л хангалттай — ямар ч бүтээгдэхүүн, ямар ч сайт дээр эргэдэг, чирж үзэх бодит 3D объект болно.",
   },
   {
     object: "backpack",
     heading: (
       <>
-        Төсөөлөх шаардлагагүй.{" "}
-        <em className="font-extrabold not-italic" style={{ color: MUTED_TEXT }}>Одоо шууд харна.</em>
+        Худалдан авахаасаа өмнө.{" "}
+        <em className="font-extrabold not-italic" style={{ color: MUTED_TEXT }}>Өөрийн орчинд.</em>
       </>
     ),
-    body: "Илүү бодит туршлага. Илүү итгэлтэй сонголт.",
+    body: "Боломжтой бүтээгдэхүүнийг AR-аар өрөөндөө байрлуулж, бодит хэмжээгээр нь харна.",
   },
 ];
 
@@ -216,8 +227,8 @@ export function DesktopHeroTumble() {
                 </p>
                 {beat.big && (
                   <div className="flex flex-wrap items-center gap-5 pt-1">
-                    <Link
-                      href="/login"
+                    <DesktopWaitlistCta
+                      source="hero"
                       className="flex items-center gap-2 bg-[#eeeee9] uppercase text-[#111111] hover:opacity-90"
                       style={{
                         fontSize: "11px",
@@ -226,10 +237,7 @@ export function DesktopHeroTumble() {
                         lineHeight: "16.5px",
                         padding: "17px 20px",
                       }}
-                    >
-                      Эхний 3D загвараа үүсгэ
-                      <ArrowUpRight className="size-4" />
-                    </Link>
+                    />
                     <a
                       href="#how-it-works"
                       className="flex items-center gap-2 text-[#f5f4ef] hover:opacity-80"
@@ -243,23 +251,19 @@ export function DesktopHeroTumble() {
               </div>
             </div>
 
-            {/* Each beat's own 3D object, same slot every time — this is
-                what actually crossfades beat to beat (its parent div's
-                opacity/transform, driven by the scroll handler above),
-                not just the copy. Chair keeps the precise scroll-driven
-                360° turn (DesktopMockupObject's own mode="scroll", still
-                tied to the whole wrapperRef range); sneaker/backpack are
-                real converted product scans (usdz -> glb, unscaled and
-                unprocessed at the user's explicit request) shown via
-                <model-viewer>'s own auto-rotate — a different rotation
-                mechanism, but the same "here's a real object, not a
-                photo" point. */}
-            <div
-              className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-end ${
-                beat.object === "chair" ? "pr-6 lg:pr-[132px]" : "pr-6 lg:pr-[8vw]"
-              }`}
-              aria-hidden={beat.object !== "chair"}
-            >
+            {/* Each beat's own DesktopBrowserMockup — a stylized browser
+                window (product photo -> extension "activates" -> real 3D
+                object), same slot every time, crossfading beat to beat via
+                the parent div's opacity/transform (the scroll handler
+                above). Dramatizes what the extension actually does instead
+                of showing a bare floating object with no context for what
+                the "3D" is a transform of. Chair keeps the exact same
+                DesktopMockupObject (mode="sway" now — mode="scroll"'s
+                precise scroll-tied turn didn't fit inside a framed window
+                the way it did floating free); sneaker/backpack keep their
+                exact same real-GLB <model-viewer>, camera-controls and all
+                — drag-to-orbit still works, unchanged. */}
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-end pr-6 lg:pr-[96px]">
               <div
                 ref={(el) => {
                   objectRefs.current[i] = el;
@@ -267,34 +271,24 @@ export function DesktopHeroTumble() {
                 className="relative"
                 style={{
                   pointerEvents: i === 0 ? "auto" : "none",
-                  // The plain min(Xvw, cap) sizing below was tuned against a
-                  // ~1920px viewport (this file's own header comment) and
-                  // never re-checked at narrower ones — verified live: at
-                  // 1024-1440px the object's box actually overlapped the
-                  // text column's right edge (up to ~225px of overlap at
-                  // 1280px, confirmed via getBoundingClientRect on both).
-                  // The extra calc() term reserves the text column's own
-                  // width (px-16 + max-w-xl/lg) plus a fixed gap, so the
-                  // object's box can never grow wide enough to reach it,
-                  // at any viewport width — it still hits the original
-                  // vw/px-cap sizing untouched once the viewport is wide
-                  // enough that the reserved-space term stops being the
-                  // smallest of the three.
-                  ...(beat.object === "chair"
-                    ? {
-                        width: "max(240px, min(58vw, 800px, calc(100vw - 820px)))",
-                        height: "max(240px, min(58vw, 800px, calc(100vw - 820px)))",
-                        filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))",
-                      }
-                    : {
-                        width: "max(200px, min(42vw, 580px, calc(92vw - 624px)))",
-                        height: "max(200px, min(42vw, 580px, calc(92vw - 624px)))",
-                        filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))",
-                      }),
+                  // Same overlap-prevention approach as before this file's
+                  // own prior header comment describes (verified at
+                  // 1024-1440px via getBoundingClientRect): the calc() term
+                  // reserves the text column's own width + a fixed gap so
+                  // this box can never grow wide enough to reach it. One
+                  // shared formula across all 3 beats now (previously
+                  // chair had a larger range than sneaker/backpack) since
+                  // all 3 render through the same browser-window frame —
+                  // a size jump between beats would look jarring.
+                  width: "max(260px, min(46vw, 640px, calc(100vw - 820px)))",
                 }}
               >
-                {beat.object === "chair" && (
-                  <>
+                <DesktopBrowserMockup
+                  photoSrc={MOCKUP_META[beat.object].photoSrc}
+                  urlLabel={MOCKUP_META[beat.object].urlLabel}
+                  className="w-full"
+                >
+                  {beat.object === "chair" && (
                     <DesktopMockupObject
                       objUrl="/icons/mockup/chair.obj"
                       textureUrl="/icons/mockup/chair_diffuse.png"
@@ -303,30 +297,14 @@ export function DesktopHeroTumble() {
                       mode="sway"
                       className="size-full"
                     />
-                    <span
-                      className="pointer-events-none absolute text-tiny uppercase tracking-wide text-[#7a7b76]"
-                      style={{ top: "1.5rem", right: 0, textAlign: "right" }}
-                    >
-                      01
-                      <br />
-                      Жинхэнэ материал
-                    </span>
-                    <span
-                      className="pointer-events-none absolute text-tiny uppercase tracking-wide text-[#7a7b76]"
-                      style={{ bottom: "1.5rem", left: 0 }}
-                    >
-                      02
-                      <br />
-                      Веб-д бэлэн геометр
-                    </span>
-                  </>
-                )}
-                {beat.object === "sneaker" && (
-                  <DesktopHeroModelViewer src="/icons/mockup/sneaker.glb" alt="Гутал" className="size-full" />
-                )}
-                {beat.object === "backpack" && (
-                  <DesktopHeroModelViewer src="/icons/mockup/backpack.glb" alt="Цүнх" className="size-full" />
-                )}
+                  )}
+                  {beat.object === "sneaker" && (
+                    <DesktopHeroModelViewer src="/icons/mockup/sneaker.glb" alt="Гутал" className="size-full" />
+                  )}
+                  {beat.object === "backpack" && (
+                    <DesktopHeroModelViewer src="/icons/mockup/backpack.glb" alt="Цүнх" className="size-full" />
+                  )}
+                </DesktopBrowserMockup>
               </div>
             </div>
           </div>
