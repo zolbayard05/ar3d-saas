@@ -7,8 +7,6 @@ import { DesktopPricingSection } from "@/components/DesktopPricingSection";
 import { DesktopPipelineSection } from "@/components/DesktopPipelineSection";
 import { DesktopFinalCta } from "@/components/DesktopFinalCta";
 import { DesktopWaitlistCta } from "@/components/DesktopWaitlistCta";
-import { SignOutButton } from "@/components/SignOutButton";
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
 // The reference mockup's real, own-document computed font-family (extracted
@@ -29,14 +27,6 @@ const NAV_LINK_STYLE = { fontSize: "11px", fontWeight: 400, color: "rgb(170, 170
  * for how that measurement was taken.
  */
 export async function DesktopLanding() {
-  // rule 31: getUser(), not getSession() — this only decides which nav
-  // link to render, but the repo-wide convention is to always revalidate
-  // against the Auth server rather than trust the cookie, even for display.
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   return (
     <main className="relative flex min-h-dvh flex-col bg-[#050505]">
       {/* Apple "Liquid Glass" (WWDC 2025) treatment: a floating capsule,
@@ -89,13 +79,9 @@ export async function DesktopLanding() {
             </a>
           </div>
           <div className="flex items-center gap-6">
-            {user ? (
-              <SignOutButton className="hidden hover:text-[#f5f4ef] lg:block" style={NAV_LINK_STYLE} />
-            ) : (
-              <Link href="/login" className="hidden hover:text-[#f5f4ef] lg:block" style={NAV_LINK_STYLE}>
-                Нэвтрэх
-              </Link>
-            )}
+            <Link href="/login" className="hidden hover:text-[#f5f4ef] lg:block" style={NAV_LINK_STYLE}>
+              Нэвтрэх
+            </Link>
             <DesktopWaitlistCta
               source="nav"
               className="flex items-center gap-1.5 rounded-full bg-[#eeeee9] text-[#111111] hover:opacity-90"
