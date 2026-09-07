@@ -4,20 +4,19 @@
 // against the reference mockup's own document — see DesktopHeroTumble.tsx
 // for the method.
 //
-// The "View in your space" button here is a REAL AR launch (DesktopArViewer
-// -> model-viewer's activateAR(), same rule-7/8 config ARViewer.tsx uses),
-// not a decorative mockup — backed by the same sneaker/backpack GLBs
-// already used in the hero, now paired with their original USDZ source
-// files (copied into public/icons/mockup/ alongside the GLBs) so iOS Quick
-// Look works too, not just Android scene-viewer. One tab (headphones) is
-// an exception: only a .glb was supplied, no .usdz, so per rule 2 (iOS
-// Quick Look fails silently without a real USDZ) it's real-3D-viewer only —
-// the AR button and QR/link block below are hidden whenever the active
-// item has no iosSrc (see lib/arShowcaseItems.ts's own doc comment).
+// A desktop visitor has no AR hardware, so the in-panel "AR-аар харах"
+// button no longer calls model-viewer's activateAR() (that only ever did
+// anything on a phone anyway) — it reveals a QR overlay, styled like the
+// nav's own Liquid Glass capsule (DesktopLanding.tsx), right over the
+// viewer. Scanning it lands on app/ar/[item]/page.tsx (phone-only route),
+// same as the sidebar's own QR. Shown for every item now, headphones
+// included — that item just has no real .usdz (only a .glb was supplied),
+// so its phone page shows the real interactive 3D viewer without an AR-
+// placement button (ArLaunchView.tsx's own guard), not a broken one.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, X } from "lucide-react";
 import { buildLogoQr } from "@/lib/qr";
 import { AR_SHOWCASE_ITEMS as ITEMS } from "@/lib/arShowcaseItems";
 
@@ -26,16 +25,21 @@ const DesktopArViewer = dynamic(
   { ssr: false },
 );
 
+// Same recipe as the nav's floating capsule (DesktopLanding.tsx) — kept in
+// sync manually since Desktop*.tsx has no shared token file to pull from.
+const LIQUID_GLASS_STYLE = {
+  background: "linear-gradient(180deg, rgb(255 255 255 / 0.16) 0%, rgb(255 255 255 / 0.03) 65%), rgb(14 14 12 / 0.55)",
+  backdropFilter: "blur(20px) saturate(160%)",
+  WebkitBackdropFilter: "blur(20px) saturate(160%)",
+  border: "1px solid rgb(255 255 255 / 0.16)",
+  boxShadow: "0 10px 30px -12px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.25)",
+} as const;
+
 export function DesktopShowcaseSection() {
   const [activeIdx, setActiveIdx] = useState(0);
-  const viewerRef = useRef<{ activateAR: () => void }>(null);
+  const [showQrOverlay, setShowQrOverlay] = useState(false);
   const active = ITEMS[activeIdx];
 
-  // A desktop visitor has no AR hardware — the "Өөрийн орчинд харах" button
-  // below only works for whoever's actually holding a phone. This QR is the
-  // real way most people here would ever launch it: scan, land on
-  // app/ar/[item]/page.tsx (a phone-only route — desktop UAs never reach it,
-  // see lib/supabase/proxy.ts's device gate), tap the same AR button there.
   // Keyed to the item it was generated for, not just the data URL itself —
   // deriving qrDataUrl below from a key comparison (instead of resetting to
   // null synchronously inside the effect on every active.key change) is
@@ -43,11 +47,6 @@ export function DesktopShowcaseSection() {
   // to warn about; render-time derivation avoids the extra render pass.
   const [qr, setQr] = useState<{ key: string; dataUrl: string } | null>(null);
   useEffect(() => {
-    // Items with no iosSrc (e.g. headphones — .glb only, no .usdz) aren't
-    // wired up for AR at all (rule 2: iOS Quick Look fails silently
-    // without a real USDZ) — skip generating a QR that would lead to a
-    // non-functional AR page for them.
-    if (!active.iosSrc) return;
     let cancelled = false;
     buildLogoQr(`${window.location.origin}/ar/${active.key}`)
       .then((dataUrl) => {
@@ -57,7 +56,7 @@ export function DesktopShowcaseSection() {
     return () => {
       cancelled = true;
     };
-  }, [active.key, active.iosSrc]);
+  }, [active.key]);
   const qrDataUrl = qr?.key === active.key ? qr.dataUrl : null;
 
   return (
@@ -88,7 +87,6 @@ export function DesktopShowcaseSection() {
           </div>
 
           <DesktopArViewer
-            ref={viewerRef}
             key={active.key}
             src={active.src}
             iosSrc={active.iosSrc}
@@ -101,7 +99,10 @@ export function DesktopShowcaseSection() {
               {ITEMS.map((item, i) => (
                 <button
                   key={item.key}
-                  onClick={() => setActiveIdx(i)}
+                  onClick={() => {
+                    setActiveIdx(i);
+                    setShowQrOverlay(false);
+                  }}
                   className="border-b pb-1 uppercase"
                   style={{
                     fontSize: "9px",
@@ -115,17 +116,57 @@ export function DesktopShowcaseSection() {
                 </button>
               ))}
             </div>
-            {active.iosSrc && (
-              <button
-                onClick={() => viewerRef.current?.activateAR()}
-                className="flex items-center gap-2 bg-[#eeeee9] text-[#111111] hover:opacity-90"
-                style={{ fontSize: "13px", fontWeight: 400, padding: "12px 16px" }}
-              >
-                Өөрийн орчинд харах
-                <ArrowUpRight className="size-4" />
-              </button>
-            )}
+            <button
+              onClick={() => setShowQrOverlay(true)}
+              className="flex items-center gap-2 bg-[#eeeee9] text-[#111111] hover:opacity-90"
+              style={{ fontSize: "13px", fontWeight: 400, padding: "12px 16px" }}
+            >
+              AR-аар харах
+              <ArrowUpRight className="size-4" />
+            </button>
           </div>
+
+          {/* Liquid Glass QR overlay — see LIQUID_GLASS_STYLE's own comment
+              for why these values are hand-kept in sync with the nav
+              capsule rather than shared from a token file. Click-outside
+              (the dark scrim) or the explicit X both close it; switching
+              tabs above also closes it (stale QR mid-transition otherwise). */}
+          {showQrOverlay && (
+            <div
+              className="absolute inset-0 z-20 flex items-center justify-center"
+              style={{ background: "rgb(0 0 0 / 0.5)" }}
+              onClick={() => setShowQrOverlay(false)}
+            >
+              <div
+                className="relative flex flex-col items-center gap-4 rounded-2xl px-9 py-8"
+                style={LIQUID_GLASS_STYLE}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setShowQrOverlay(false)}
+                  aria-label="Хаах"
+                  className="absolute flex items-center justify-center rounded-full hover:opacity-80"
+                  style={{ top: "10px", right: "10px", width: "24px", height: "24px", background: "rgb(255 255 255 / 0.14)", color: "rgb(240, 240, 235)" }}
+                >
+                  <X className="size-3.5" />
+                </button>
+                {qrDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a remote/static asset next/image can optimize.
+                  <img
+                    src={qrDataUrl}
+                    alt={`${active.label} — утсаараа AR-аар үзэх QR код`}
+                    className="rounded-lg bg-white p-2"
+                    style={{ width: "168px", height: "168px" }}
+                  />
+                ) : (
+                  <div className="animate-pulse rounded-lg" style={{ width: "168px", height: "168px", background: "rgb(255 255 255 / 0.16)" }} />
+                )}
+                <p className="text-center" style={{ maxWidth: "200px", fontSize: "12px", lineHeight: "17px", color: "rgb(220, 222, 214)" }}>
+                  Утасныхаа камераар уншуулаад {active.label.toLowerCase()}-г AR-аар өрөөндөө байрлуулж үзээрэй.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
@@ -164,24 +205,22 @@ export function DesktopShowcaseSection() {
             <ArrowUpRight className="size-3.5" />
           </a>
 
-          {active.iosSrc && (
-            <div className="mt-8 flex items-center gap-4">
-              {qrDataUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a remote/static asset next/image can optimize.
-                <img
-                  src={qrDataUrl}
-                  alt={`${active.label} — утсаараа AR-аар үзэх QR код`}
-                  className="size-20 rounded-md"
-                  style={{ boxShadow: "0 1px 2px rgb(0 0 0 / 0.12)" }}
-                />
-              ) : (
-                <div className="size-20 animate-pulse rounded-md" style={{ background: "rgb(200, 198, 189)" }} />
-              )}
-              <p style={{ maxWidth: "200px", fontSize: "12px", fontWeight: 400, lineHeight: "17px", color: "rgb(96, 98, 89)" }}>
-                Утасныхаа камераар уншуулаад шууд AR-аар өрөөндөө байрлуулж үзээрэй.
-              </p>
-            </div>
-          )}
+          <div className="mt-8 flex items-center gap-4">
+            {qrDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a remote/static asset next/image can optimize.
+              <img
+                src={qrDataUrl}
+                alt={`${active.label} — утсаараа AR-аар үзэх QR код`}
+                className="size-20 rounded-md"
+                style={{ boxShadow: "0 1px 2px rgb(0 0 0 / 0.12)" }}
+              />
+            ) : (
+              <div className="size-20 animate-pulse rounded-md" style={{ background: "rgb(200, 198, 189)" }} />
+            )}
+            <p style={{ maxWidth: "200px", fontSize: "12px", fontWeight: 400, lineHeight: "17px", color: "rgb(96, 98, 89)" }}>
+              Утасныхаа камераар уншуулаад шууд AR-аар өрөөндөө байрлуулж үзээрэй.
+            </p>
+          </div>
         </div>
       </div>
     </section>
