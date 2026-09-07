@@ -152,16 +152,17 @@ export function DesktopShowcaseSection() {
                 </button>
                 {qrDataUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a remote/static asset next/image can optimize.
+                  // buildLogoQr renders at 480x480 (lib/qr.ts) — 360px display is still upscaling room to spare, no blur.
                   <img
                     src={qrDataUrl}
                     alt={`${active.label} — утсаараа AR-аар үзэх QR код`}
-                    className="rounded-lg bg-white p-2"
-                    style={{ width: "168px", height: "168px" }}
+                    className="rounded-xl bg-white p-3"
+                    style={{ width: "360px", height: "360px" }}
                   />
                 ) : (
-                  <div className="animate-pulse rounded-lg" style={{ width: "168px", height: "168px", background: "rgb(255 255 255 / 0.16)" }} />
+                  <div className="animate-pulse rounded-xl" style={{ width: "360px", height: "360px", background: "rgb(255 255 255 / 0.16)" }} />
                 )}
-                <p className="text-center" style={{ maxWidth: "200px", fontSize: "12px", lineHeight: "17px", color: "rgb(220, 222, 214)" }}>
+                <p className="text-center" style={{ maxWidth: "300px", fontSize: "13px", lineHeight: "19px", color: "rgb(220, 222, 214)" }}>
                   Утасныхаа камераар уншуулаад {active.label.toLowerCase()}-г AR-аар өрөөндөө байрлуулж үзээрэй.
                 </p>
               </div>
