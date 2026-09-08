@@ -22,5 +22,4 @@ export interface ArShowcaseItem {
 export const AR_SHOWCASE_ITEMS: ArShowcaseItem[] = [
   { key: "backpack", label: "Цүнх", src: "/icons/mockup/backpack.glb", iosSrc: "/icons/mockup/backpack.usdz", alt: "Цүнх" },
   { key: "sneaker", label: "Гутал", src: "/icons/mockup/sneaker.glb", iosSrc: "/icons/mockup/sneaker.usdz", alt: "Гутал" },
-  { key: "headphones", label: "Чихэвч", src: "/icons/mockup/headphones.glb", iosSrc: "/icons/mockup/headphones.usdz", alt: "Чихэвч" },
 ];

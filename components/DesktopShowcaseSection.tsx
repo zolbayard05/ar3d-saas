@@ -9,9 +9,9 @@
 // anything on a phone anyway) — it reveals a QR overlay, styled like the
 // nav's own Liquid Glass capsule (DesktopLanding.tsx), right over the
 // viewer. Scanning it lands on app/ar/[item]/page.tsx (phone-only route),
-// same as the sidebar's own QR. Shown for every item, headphones included
-// — all three now have a real .usdz (lib/arShowcaseItems.ts), so every
-// item's phone page offers the AR-placement button, not just a web viewer.
+// same as the sidebar's own QR. Shown for every item — each has a real
+// .usdz (lib/arShowcaseItems.ts), so every item's phone page offers the
+// AR-placement button, not just a web viewer.
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
