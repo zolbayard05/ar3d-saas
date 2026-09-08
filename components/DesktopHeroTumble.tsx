@@ -107,9 +107,22 @@ export function DesktopHeroTumble() {
     // strictly inside the pinned range (0 < p < 1) — never yanks the page
     // back into the hero once the visitor has scrolled on past it, and
     // never fires while the hero hasn't started scroll-jacking yet.
-    let snapTimeout: ReturnType<typeof setTimeout> | null = null;
+    //
+    // Driven by requestAnimationFrame, not a fixed setTimeout debounce —
+    // a per-frame "did scrollY actually move since last frame" check is
+    // the tightest a stop-detector can get (bounded by frame rate itself,
+    // ~16ms, rather than an arbitrary wall-clock guess), so the snap
+    // engages the instant scrolling genuinely stops instead of after a
+    // perceptible extra wait. 2 still frames (not 1) as the threshold —
+    // real momentum/wheel scrolling moves scrollY on essentially every
+    // frame, so this still doesn't fire mid-scroll; it's a two-frame
+    // safety margin, not a timing budget.
     let lastF = 0;
     let lastP = 0;
+    let lastScrollY = window.scrollY;
+    let stillFrames = 0;
+    let settledAtCurrentPosition = true;
+    let rafId = 0;
 
     function onScroll() {
       if (!wrapper) return;
@@ -148,29 +161,38 @@ export function DesktopHeroTumble() {
         }
       });
 
-      if (snapTimeout) clearTimeout(snapTimeout);
-      if (lastP > 0 && lastP < 1) {
-        // Short enough to feel instant once scrolling actually stops —
-        // momentum/wheel scroll events keep firing every ~8-16ms while
-        // still in motion, so 50ms is still a safe "has stopped" signal,
-        // not a race against genuine in-progress scrolling.
-        snapTimeout = setTimeout(() => {
-          if (!wrapper) return;
-          const nearest = Math.round(lastF);
-          if (Math.abs(lastF - nearest) < 0.02) return;
-          const targetTotal = wrapper.offsetHeight - window.innerHeight;
-          if (targetTotal <= 0) return;
-          const targetP = nearest / (BEATS.length - 1);
-          const wrapperTop = wrapper.getBoundingClientRect().top + window.scrollY;
-          window.scrollTo({ top: wrapperTop + targetP * targetTotal, behavior: "smooth" });
-        }, 50);
-      }
+      // A real scroll event means motion is still happening — reset the
+      // frame-stillness count and allow the next stop to trigger a snap.
+      stillFrames = 0;
+      settledAtCurrentPosition = false;
     }
+
+    function tick() {
+      const y = window.scrollY;
+      stillFrames = y === lastScrollY ? stillFrames + 1 : 0;
+      lastScrollY = y;
+
+      if (!settledAtCurrentPosition && stillFrames >= 2 && lastP > 0 && lastP < 1 && wrapper) {
+        const nearest = Math.round(lastF);
+        if (Math.abs(lastF - nearest) >= 0.02) {
+          const targetTotal = wrapper.offsetHeight - window.innerHeight;
+          if (targetTotal > 0) {
+            const targetP = nearest / (BEATS.length - 1);
+            const wrapperTop = wrapper.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({ top: wrapperTop + targetP * targetTotal, behavior: "smooth" });
+          }
+        }
+        settledAtCurrentPosition = true;
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
+    rafId = requestAnimationFrame(tick);
     return () => {
       window.removeEventListener("scroll", onScroll);
-      if (snapTimeout) clearTimeout(snapTimeout);
+      cancelAnimationFrame(rafId);
     };
   }, []);
 
