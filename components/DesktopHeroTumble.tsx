@@ -4,6 +4,12 @@ import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { ChevronDown, PlayCircle } from "lucide-react";
 import { DesktopMockupObject } from "@/components/DesktopMockupObject";
+import { DesktopVideoDialog } from "@/components/DesktopVideoDialog";
+
+// "Хэрхэн ажилладагийг үзэх" opens this exact demo video rather than
+// scrolling to #how-it-works — a real walkthrough answers "how does this
+// work" more directly than the static numbered list further down the page.
+const HOW_IT_WORKS_VIDEO_ID = "wLpbTi2dV1o";
 
 // Rule 11 (this project's own convention, extended to DesktopHeroModelViewer
 // too): "@google/model-viewer"'s customElements.define() touches `window`
@@ -260,14 +266,14 @@ export function DesktopHeroTumble() {
                 )}
                 {beat.big && (
                   <div className="flex flex-wrap items-center gap-5 pt-1">
-                    <a
-                      href="#how-it-works"
+                    <DesktopVideoDialog
+                      videoId={HOW_IT_WORKS_VIDEO_ID}
                       className="flex items-center gap-2 text-[#f5f4ef] hover:opacity-80"
                       style={{ fontSize: "13px", fontWeight: 400 }}
                     >
                       <PlayCircle className="size-5" />
                       Хэрхэн ажилладагийг үзэх
-                    </a>
+                    </DesktopVideoDialog>
                   </div>
                 )}
               </div>
