@@ -220,7 +220,26 @@ const VIEWS = {
 
   "ready-to-generate"() {
     const img = el("img", { class: "thumb", src: state.image.srcUrl, alt: "" });
-    const frame = el("div", { class: "thumb-frame" }, [img]);
+    // Lets the user back out before spending a credit — without this the
+    // right-clicked image just sat there with no way to clear it short of
+    // actually generating (or navigating away and losing the selection some
+    // other way).
+    const removeBtn = el(
+      "button",
+      {
+        type: "button",
+        class: "thumb-remove",
+        "aria-label": "Зургийг хасах",
+        onclick: async () => {
+          await clearPendingImage();
+          state = { view: "no-image" };
+          render();
+        },
+      },
+      [],
+    );
+    removeBtn.textContent = "✕";
+    const frame = el("div", { class: "thumb-frame" }, [img, removeBtn]);
     img.addEventListener("error", () => {
       frame.replaceWith(el("p", { class: "error", text: "Энэ зургийг урьдчилан харах боломжгүй байна — генерац хийхэд саад болохгүй." }));
     });
@@ -264,7 +283,7 @@ const VIEWS = {
       children.push(
         el("p", {
           class: "hint",
-          text: "Тохирохгүй зургийг хасаарай:",
+          text: "Ойролцоох бусад өнцгийн зураг олдлоо — нэмэхийг хүссэн зургаа сонго:",
         }),
         grid,
       );
@@ -880,9 +899,12 @@ async function boot() {
     render();
     return;
   }
-  // Auto-select all candidates — classify-angles drops the ones that don't fit.
-  const autoSelected = (image.candidates || []).slice(0, MAX_EXTRA_ANGLES).map((c) => c.src);
-  state = { view: "ready-to-generate", image: { ...image, selected: autoSelected } };
+  // Nothing pre-selected — a nearby gallery thumbnail only joins the
+  // generation once the user explicitly taps it below (see the angle-grid
+  // tiles in "ready-to-generate"). Auto-including every scanned candidate
+  // made it look like images were "appearing on their own" right after
+  // connecting a token / right-clicking, before the user chose anything.
+  state = { view: "ready-to-generate", image: { ...image, selected: [] } };
   render();
 }
 

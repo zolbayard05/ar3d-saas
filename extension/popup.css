@@ -189,6 +189,29 @@ p {
   background: var(--bg);
 }
 
+/* Cancels the pending image from "ready-to-generate" (extension/popup.js) —
+   sits over the top-right corner of .thumb-frame, which is already
+   position: relative. */
+.thumb-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  border: none;
+  background: rgb(0 0 0 / 0.55);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  backdrop-filter: blur(2px);
+}
+.thumb-remove:hover {
+  background: rgb(0 0 0 / 0.75);
+}
+
 input[type="text"],
 input[type="password"] {
   width: 100%;
