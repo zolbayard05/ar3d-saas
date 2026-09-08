@@ -150,6 +150,10 @@ export function DesktopHeroTumble() {
 
       if (snapTimeout) clearTimeout(snapTimeout);
       if (lastP > 0 && lastP < 1) {
+        // Short enough to feel instant once scrolling actually stops —
+        // momentum/wheel scroll events keep firing every ~8-16ms while
+        // still in motion, so 50ms is still a safe "has stopped" signal,
+        // not a race against genuine in-progress scrolling.
         snapTimeout = setTimeout(() => {
           if (!wrapper) return;
           const nearest = Math.round(lastF);
@@ -159,7 +163,7 @@ export function DesktopHeroTumble() {
           const targetP = nearest / (BEATS.length - 1);
           const wrapperTop = wrapper.getBoundingClientRect().top + window.scrollY;
           window.scrollTo({ top: wrapperTop + targetP * targetTotal, behavior: "smooth" });
-        }, 150);
+        }, 50);
       }
     }
     window.addEventListener("scroll", onScroll, { passive: true });
