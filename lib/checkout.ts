@@ -1,11 +1,33 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createPaymentIntent, createCheckoutSession } from "@/lib/wire";
-import { CREDIT_PACKS } from "@/lib/creditPacks";
+import { CREDIT_PACKS, applyFirstPurchaseDiscount } from "@/lib/creditPacks";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type StartCheckoutResult = { ok: true; url: string } | { ok: false; status: number; error: string };
+
+/**
+ * Whether `userId` has never completed a purchase — the gate for
+ * lib/creditPacks.ts's FIRST_PURCHASE_DISCOUNT_RATE. Exported so
+ * app/(app)/credits/page.tsx can resolve the same answer server-side to
+ * show BuyCredits.tsx the correct (discounted or not) price up front,
+ * rather than the purchase screen and the actual wire.mn charge disagreeing.
+ *
+ * Accepted edge case: two concurrent checkout attempts from the same
+ * never-purchased user (e.g. two tabs) could both read zero completed
+ * purchases and both get the discount once each — a minor promo-abuse
+ * window, not a security issue, not worth a heavier lock for this.
+ */
+export async function isFirstPurchaseEligible(userId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { count } = await admin
+    .from("credit_purchases")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "completed");
+  return (count ?? 0) === 0;
+}
 
 /**
  * Shared by app/api/checkout/route.ts (cookie-authed web app) and
@@ -48,10 +70,12 @@ export async function startCheckout(
 
   // Fast path: a retry of the same attempt (lost response, double-click)
   // resends this exact key — return the already-created row's checkout
-  // rather than starting a second PaymentIntent for it.
+  // rather than starting a second PaymentIntent for it. amount_mnt is
+  // fetched too so a retry reuses whatever was already decided for this
+  // row (discounted or not) instead of re-running the eligibility check.
   const { data: existing } = await admin
     .from("credit_purchases")
-    .select("id, status, provider_payment_id")
+    .select("id, status, provider_payment_id, amount_mnt")
     .eq("user_id", userId)
     .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
@@ -61,15 +85,24 @@ export async function startCheckout(
   }
 
   let purchaseId: string;
+  let chargeAmountMnt: number;
   if (existing) {
     purchaseId = existing.id;
+    chargeAmountMnt = existing.amount_mnt;
   } else {
+    // First-purchase discount (lib/creditPacks.ts) — decided once, here,
+    // for a brand-new purchase attempt only; credits stays the pack's full
+    // value regardless (see isFirstPurchaseEligible's own comment for why
+    // that's sufficient).
+    const eligible = await isFirstPurchaseEligible(userId);
+    chargeAmountMnt = eligible ? applyFirstPurchaseDiscount(pack.amountMnt) : pack.amountMnt;
+
     const { data: purchase, error: insertError } = await admin
       .from("credit_purchases")
       .insert({
         user_id: userId,
         credits: pack.credits,
-        amount_mnt: pack.amountMnt,
+        amount_mnt: chargeAmountMnt,
         idempotency_key: idempotencyKey,
       })
       .select("id")
@@ -83,7 +116,7 @@ export async function startCheckout(
 
   try {
     const paymentIntent = await createPaymentIntent({
-      amountMnt: pack.amountMnt,
+      amountMnt: chargeAmountMnt,
       description: `${pack.credits} кредит — Realify`,
       metadata: { credit_purchase_id: purchaseId, user_id: userId },
       // Namespaced under the purchase's own key — a distinct wire.mn

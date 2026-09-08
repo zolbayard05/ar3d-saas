@@ -19,7 +19,7 @@
 
 import Link from "next/link";
 import { ArrowUpRight, Zap } from "lucide-react";
-import { CREDIT_PACKS } from "@/lib/creditPacks";
+import { CREDIT_PACKS, applyFirstPurchaseDiscount } from "@/lib/creditPacks";
 
 const PACK_COPY: Record<string, string> = {
   "pack-5": "Түргэн турших, цөөн загвар хийхэд.",
@@ -57,6 +57,28 @@ export function DesktopPricingSection() {
           Сарын төлбөр, захиалга байхгүй — хэрэгцээндээ тохирсон багц худалдаж аваад л шууд ашиглаж эхэлнэ.
         </p>
 
+        {/* New-customer discount banner — real, not decorative: gated on
+            the same isFirstPurchaseEligible check lib/checkout.ts's
+            startCheckout() itself uses to decide the actual wire.mn charge
+            (see that file's own comment). Unauthenticated here (this is
+            the public landing page), so shown to every visitor as a
+            standing "new customers" offer — actual eligibility resolves
+            once they sign in and reach checkout. */}
+        <div
+          className="mb-4 flex w-fit max-w-full items-center gap-3 rounded-full px-5 py-3"
+          style={{ background: "rgb(223, 227, 210)" }}
+        >
+          <span
+            className="flex shrink-0 items-center justify-center rounded-full uppercase"
+            style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.5px", color: "rgb(20, 21, 17)", background: "rgb(20 21 17 / 0.08)", padding: "4px 10px" }}
+          >
+            −50%
+          </span>
+          <span style={{ fontSize: "13px", fontWeight: 600, color: "rgb(20, 21, 17)" }}>
+            Шинэ хэрэглэгчид: эхний худалдан авалтад хагас үнэ.
+          </span>
+        </div>
+
         {/* The "1 credit = 1 model" explainer the user asked for, as a
             standalone callout pill rather than buried in a paragraph — it's
             the single fact a first-time visitor most needs before the price
@@ -79,7 +101,8 @@ export function DesktopPricingSection() {
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           {CREDIT_PACKS.map((pack) => {
-            const perCredit = Math.round(pack.amountMnt / pack.credits);
+            const discountedAmountMnt = applyFirstPurchaseDiscount(pack.amountMnt);
+            const perCredit = Math.round(discountedAmountMnt / pack.credits);
             return (
               <div
                 key={pack.id}
@@ -114,13 +137,16 @@ export function DesktopPricingSection() {
                 </div>
 
                 <div className="relative">
-                  <div className="flex items-baseline gap-2">
-                    <span style={{ fontSize: "36px", fontWeight: 650, letterSpacing: "-0.02em", color: "rgb(245, 244, 239)" }}>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span style={{ fontSize: "18px", fontWeight: 500, textDecoration: "line-through", color: "rgb(114, 116, 107)" }}>
                       {pack.amountMnt.toLocaleString("mn-MN")}₮
+                    </span>
+                    <span style={{ fontSize: "36px", fontWeight: 650, letterSpacing: "-0.02em", color: "rgb(245, 244, 239)" }}>
+                      {discountedAmountMnt.toLocaleString("mn-MN")}₮
                     </span>
                   </div>
                   <p style={{ marginTop: "4px", fontSize: "12px", fontWeight: 400, color: "rgb(174, 177, 165)" }}>
-                    ~{perCredit.toLocaleString("mn-MN")}₮ / загвар
+                    ~{perCredit.toLocaleString("mn-MN")}₮ / загвар — эхний худалдан авалтад
                   </p>
                 </div>
 

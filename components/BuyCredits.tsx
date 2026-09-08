@@ -5,7 +5,12 @@ import Link from "next/link";
 import { ArrowLeft, Zap } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/utils";
-import { CREDIT_PACKS } from "@/lib/creditPacks";
+import { CREDIT_PACKS, applyFirstPurchaseDiscount } from "@/lib/creditPacks";
+
+export interface BuyCreditsProps {
+  /** Resolved server-side (app/(app)/credits/page.tsx) via lib/checkout.ts's isFirstPurchaseEligible — the same check startCheckout() itself gates the real charge on, so this never shows a price the actual wire.mn checkout won't honor. */
+  isFirstPurchaseEligible?: boolean;
+}
 
 // Reuses ModelDetail.tsx's exact h-12 back-arrow header bar (rule 40: no
 // new header pattern per screen).
@@ -22,7 +27,7 @@ import { CREDIT_PACKS } from "@/lib/creditPacks";
 // against the real API. amountMnt in lib/creditPacks.ts is what actually
 // gets charged now, not a placeholder — update that comment/these numbers
 // together if the pricing itself is still meant to change.
-export function BuyCredits() {
+export function BuyCredits({ isFirstPurchaseEligible }: BuyCreditsProps) {
   const [pendingPackId, setPendingPackId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,18 +124,37 @@ export function BuyCredits() {
                     </span>
                   )}
                 </div>
-                <span
-                  className={cn(
-                    "relative flex items-center gap-2 font-medium text-text",
-                    pack.highlight ? "text-heading" : "text-body",
-                  )}
-                >
-                  {pending ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    `${pack.amountMnt.toLocaleString("mn-MN")}₮`
-                  )}
-                </span>
+                {pending ? (
+                  <Spinner size="sm" />
+                ) : isFirstPurchaseEligible ? (
+                  <span className="relative flex flex-col gap-1">
+                    <span className="flex items-center gap-2">
+                      <span className="text-small text-text-muted line-through">
+                        {pack.amountMnt.toLocaleString("mn-MN")}₮
+                      </span>
+                      <span className="text-small font-semibold uppercase tracking-wide text-success">
+                        -50%
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "flex items-center gap-2 font-medium text-success",
+                        pack.highlight ? "text-heading" : "text-body",
+                      )}
+                    >
+                      {applyFirstPurchaseDiscount(pack.amountMnt).toLocaleString("mn-MN")}₮
+                    </span>
+                  </span>
+                ) : (
+                  <span
+                    className={cn(
+                      "relative flex items-center gap-2 font-medium text-text",
+                      pack.highlight ? "text-heading" : "text-body",
+                    )}
+                  >
+                    {pack.amountMnt.toLocaleString("mn-MN")}₮
+                  </span>
+                )}
               </button>
             );
           })}
