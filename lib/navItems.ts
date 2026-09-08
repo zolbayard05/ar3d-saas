@@ -1,4 +1,4 @@
-import { LayoutGrid, Plus, Columns2, type LucideIcon } from "lucide-react";
+import { Compass, Camera, Boxes, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -12,7 +12,7 @@ export interface NavItem {
 // rendered two different ways depending on viewport, not two independently
 // maintained lists that could drift.
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", icon: LayoutGrid, label: "Нүүр", key: "home" },
-  { href: "/create", icon: Plus, label: "Үүсгэх", key: "create" },
-  { href: "/library", icon: Columns2, label: "Миний Model", key: "library" },
+  { href: "/dashboard", icon: Compass, label: "Нүүр", key: "home" },
+  { href: "/create", icon: Camera, label: "Үүсгэх", key: "create" },
+  { href: "/library", icon: Boxes, label: "Миний Model", key: "library" },
 ];
