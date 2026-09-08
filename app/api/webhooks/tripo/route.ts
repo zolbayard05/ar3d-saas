@@ -304,6 +304,7 @@ export async function POST(request: Request) {
         })
         .eq("id", model.id)
         .is("usdz_url", null)
+        .neq("status", "failed")
         .select("id");
 
       if (!updated || updated.length === 0) {
