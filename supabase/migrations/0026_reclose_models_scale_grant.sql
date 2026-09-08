@@ -1,0 +1,31 @@
+-- ============================================================================
+-- 0026_reclose_models_scale_grant.sql
+--
+-- 0023 revoked `authenticated`'s UPDATE on models.title/scale (title is a
+-- fully removed feature; scale must only ever be written by
+-- app/api/models/rescale/route.ts, service-role, because that route bakes
+-- the value into the GLB's own geometry — a direct DB-only scale write
+-- desyncs the displayed "W×D×H CM" text from the actual mesh, see 0023's
+-- own comment for the full incident).
+--
+-- 0024, one migration later, re-granted it right back:
+--   grant update (title, scale) on models to authenticated;
+-- That line is copy-pasted boilerplate from 0004 (where this grant
+-- originated) — 0024's own stated purpose was only the multiview columns
+-- and regen_retry_count, its comment never mentions title/scale, and
+-- re-granting directly contradicts the fix 0023 had just made. Net effect
+-- on HEAD before this migration: any signed-in user can
+-- `update models set scale = x where id = <their own model>` directly
+-- (satisfied by the pre-existing "models: owner update" RLS policy),
+-- reintroducing the exact bug 0023 fixed. This is the same rule-33/35/36
+-- class of gap this project has now hit four times — RLS restricts rows,
+-- not columns, and a column-level grant has to be checked and re-checked
+-- independently of any row policy.
+--
+-- No later migration should ever re-grant this without a stated reason;
+-- if you're about to copy a revoke/grant block from an older migration
+-- into a new one, check whether a *later* migration already narrowed it
+-- first.
+-- ============================================================================
+
+revoke update (title, scale) on models from authenticated;
