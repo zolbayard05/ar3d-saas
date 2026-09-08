@@ -103,7 +103,7 @@ export function ApiTokenSettings() {
       </div>
 
       <div className="flex flex-col gap-4 px-4 pt-2 lg:mx-auto lg:w-full lg:max-w-xl lg:px-0 lg:pt-6">
-        <p className="text-body font-semibold text-text">Chrome өргөтгөл</p>
+        <p className="text-body font-semibold text-text">Chrome Extension</p>
         <p className="text-small text-text-muted">
           Realify extension холбох токен энд үүсгэнэ — компьютер бүрт тусдаа токен ашиглаж болно. Токен нэг л
           удаа бүтэн харагдана, хадгалж авахаа мартуузай.

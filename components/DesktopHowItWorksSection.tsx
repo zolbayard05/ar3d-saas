@@ -77,7 +77,7 @@ export function DesktopHowItWorksSection() {
           Дөрвөн алхам.
           <br />
           <em className="hidden not-italic lg:inline" style={{ color: MUTED_TEXT, fontWeight: 450 }}>
-            Нэг өргөтгөл.
+            Нэг Extension.
           </em>
           <em className="not-italic lg:hidden" style={{ color: MUTED_TEXT, fontWeight: 450 }}>
             Нэг апп.
