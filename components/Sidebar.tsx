@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, Zap } from "lucide-react";
+import { Plus, Settings, Zap } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/navItems";
 import { useCredits } from "@/hooks/useCredits";
+import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 export interface SidebarProps {
@@ -77,18 +78,23 @@ export function Sidebar({ hasActiveJob, userId }: SidebarProps) {
           rather than rendering a meaningless "0 кредит". */}
       {userId && (
         <div className="mt-auto border-t border-border-subtle pt-4">
-          <Link
-            href="/credits"
-            className="flex items-center justify-between rounded-md px-3 py-2.5 text-small text-text-muted hover:bg-surface-hover hover:text-text"
-          >
-            <span className="flex items-center gap-2 uppercase tracking-wide">
-              <Zap className="size-4" />
-              {loading ? "…" : `${credits ?? 0} кредит`}
+          <div className="flex items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-hover px-3 py-2.5">
+            <span className="flex items-center gap-2">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-accent-text">
+                <Zap className="size-3.5" />
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="text-small font-semibold text-text">
+                  {loading ? "…" : credits ?? 0}
+                </span>
+                <span className="text-small text-text-muted">кредит</span>
+              </span>
             </span>
-            <span className="uppercase tracking-wide underline underline-offset-2">
+            <Link href="/credits" className={buttonVariants({ variant: "primary", size: "sm" })}>
+              <Plus className="size-3.5" />
               Нэмэх
-            </span>
-          </Link>
+            </Link>
+          </div>
           <Link
             href="/settings"
             aria-current={pathname === "/settings" ? "page" : undefined}

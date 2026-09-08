@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Plus, Zap } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 import { MasonryGrid } from "@/components/MasonryGrid";
@@ -151,15 +152,21 @@ export function LibraryFeed({
           established this max-w-feed convention, reused exactly here). */}
       <div className="flex shrink-0 flex-col gap-1 px-2 pt-4 pb-3 lg:mx-auto lg:w-full lg:max-w-feed lg:px-6 lg:pt-6">
         <p className="text-body font-semibold text-text">Миний Model</p>
-        <div className="flex items-center gap-2">
-          <p className="text-small uppercase tracking-wide text-text-muted">
-            {loading ? "…" : `${credits ?? 0} кредит үлдсэн`}
-          </p>
-          <Link
-            href="/credits"
-            className="text-small uppercase tracking-wide text-text-muted hover:text-text"
-          >
-            · Нэмэх
+        <div className="mt-1 flex items-center justify-between gap-3 rounded-card border border-border-subtle bg-surface-hover px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-text">
+              <Zap className="size-4" />
+            </span>
+            <div className="flex flex-col leading-tight">
+              <span className="text-body font-semibold text-text">
+                {loading ? "…" : credits ?? 0}
+              </span>
+              <span className="text-small text-text-muted">кредит үлдсэн</span>
+            </div>
+          </div>
+          <Link href="/credits" className={buttonVariants({ variant: "primary", size: "sm" })}>
+            <Plus className="size-4" />
+            Нэмэх
           </Link>
         </div>
       </div>
