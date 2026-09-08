@@ -97,6 +97,20 @@ export function DesktopHeroTumble() {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
 
+    // Settles the scroll position on whichever beat is nearest once the
+    // user stops scrolling mid-crossfade — otherwise resting between two
+    // beats leaves both partially visible/overlapping (the crossfade math
+    // below is intentionally unchanged; this only nudges where scrolling
+    // comes to rest, same idea as CSS scroll-snap, hand-rolled because the
+    // "snap points" here are scroll positions inside one continuous
+    // sticky-pinned range, not separate child elements). Only fires while
+    // strictly inside the pinned range (0 < p < 1) — never yanks the page
+    // back into the hero once the visitor has scrolled on past it, and
+    // never fires while the hero hasn't started scroll-jacking yet.
+    let snapTimeout: ReturnType<typeof setTimeout> | null = null;
+    let lastF = 0;
+    let lastP = 0;
+
     function onScroll() {
       if (!wrapper) return;
       const rect = wrapper.getBoundingClientRect();
@@ -108,6 +122,8 @@ export function DesktopHeroTumble() {
       // scroll range, not 0..BEATS.length (which left the last beat
       // fading OUT by the time scroll finished).
       const f = p * (BEATS.length - 1);
+      lastF = f;
+      lastP = p;
       beatRefs.current.forEach((el, i) => {
         if (!el) return;
         const center = i;
@@ -131,10 +147,27 @@ export function DesktopHeroTumble() {
           if (modelViewer) modelViewer.style.pointerEvents = op > 0.5 ? "auto" : "none";
         }
       });
+
+      if (snapTimeout) clearTimeout(snapTimeout);
+      if (lastP > 0 && lastP < 1) {
+        snapTimeout = setTimeout(() => {
+          if (!wrapper) return;
+          const nearest = Math.round(lastF);
+          if (Math.abs(lastF - nearest) < 0.02) return;
+          const targetTotal = wrapper.offsetHeight - window.innerHeight;
+          if (targetTotal <= 0) return;
+          const targetP = nearest / (BEATS.length - 1);
+          const wrapperTop = wrapper.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo({ top: wrapperTop + targetP * targetTotal, behavior: "smooth" });
+        }, 150);
+      }
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (snapTimeout) clearTimeout(snapTimeout);
+    };
   }, []);
 
   return (
