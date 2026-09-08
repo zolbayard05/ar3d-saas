@@ -58,7 +58,7 @@ export function DesktopPipelineSection() {
           {STEPS.map((step) => (
             <div
               key={step.num}
-              className="group grid grid-cols-[3rem_auto_1fr] items-center gap-4 border-b border-b-[rgb(184,184,174)] py-[22px] transition-[padding-left,border-color] duration-300 hover:border-b-[rgb(21,22,18)] hover:pl-2"
+              className="group grid grid-cols-[3rem_1fr] items-center gap-4 border-b border-b-[rgb(184,184,174)] py-[22px] transition-[padding-left,border-color] duration-300 hover:border-b-[rgb(21,22,18)] hover:pl-2 sm:grid-cols-[3rem_auto_1fr]"
             >
               <span
                 className="text-[rgb(114,116,107)] transition-colors duration-300 group-hover:text-[rgb(21,22,18)]"
@@ -74,7 +74,7 @@ export function DesktopPipelineSection() {
               </b>
               <i
                 aria-hidden="true"
-                className="not-italic border-b border-dashed border-b-[rgb(184,184,174)] transition-colors duration-300 group-hover:border-b-[rgb(21,22,18)]"
+                className="hidden not-italic border-b border-dashed border-b-[rgb(184,184,174)] transition-colors duration-300 group-hover:border-b-[rgb(21,22,18)] sm:block"
               />
             </div>
           ))}

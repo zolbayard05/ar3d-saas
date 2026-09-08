@@ -18,6 +18,8 @@ interface Beat {
   eyebrow?: string;
   heading: React.ReactNode;
   body: string;
+  /** Beat 0 only — the Chrome-extension mention isn't relevant on a phone; shown/hidden via lg: instead of body's own text. */
+  mobileBody?: string;
   align?: "left" | "right";
   /** First beat only — the huge stacked-line headline treatment, distinct from beats 2/3's smaller "scroll story" moments. */
   big?: boolean;
@@ -49,6 +51,7 @@ const BEATS: Beat[] = [
       </>
     ),
     body: "Chrome Extension ашиглан веб дээрх бүтээгдэхүүнийг интерактив 3D загвар болон гар утаснаасаа AR-аар туршиж үз.",
+    mobileBody: "Онлайн дэлгүүрийн зурган дээрх бүтээгдэхүүнийг өөрийн утаснаасаа шууд интерактив 3D загвар болгож, AR-аар өрөөндөө байрлуулж үз.",
   },
   {
     object: "sneaker",
@@ -182,7 +185,7 @@ export function DesktopHeroTumble() {
                 instead. Padding on this unconstrained row just shifts
                 everything right without shrinking anything. */}
             <div
-              className={`flex w-full pl-6 pr-6 lg:pl-[269px] lg:pr-16 ${beat.big ? "pt-[150px]" : ""} ${
+              className={`flex w-full pl-6 pr-6 lg:pl-[269px] lg:pr-16 ${beat.big ? "pt-20 lg:pt-[150px]" : ""} ${
                 beat.align === "right" ? "justify-end text-right" : "justify-start text-left"
               }`}
             >
@@ -243,10 +246,18 @@ export function DesktopHeroTumble() {
                       ? { maxWidth: "430px", fontSize: "16px", fontWeight: 400, lineHeight: "24px", color: "rgb(167, 168, 164)" }
                       : undefined
                   }
-                  className={beat.big ? undefined : "max-w-md text-body text-[#a7a8a4]"}
+                  className={`${beat.big ? "" : "max-w-md text-body text-[#a7a8a4]"} ${beat.mobileBody ? "hidden lg:block" : ""}`}
                 >
                   {beat.body}
                 </p>
+                {beat.mobileBody && (
+                  <p
+                    style={{ maxWidth: "430px", fontSize: "16px", fontWeight: 400, lineHeight: "24px", color: "rgb(167, 168, 164)" }}
+                    className="lg:hidden"
+                  >
+                    {beat.mobileBody}
+                  </p>
+                )}
                 {beat.big && (
                   <div className="flex flex-wrap items-center gap-5 pt-1">
                     <a
@@ -283,8 +294,8 @@ export function DesktopHeroTumble() {
                 mechanism, but the same "here's a real object, not a
                 photo" point. */}
             <div
-              className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-end ${
-                beat.object === "chair" ? "pr-6 lg:pr-[132px]" : "pr-6 lg:pr-[8vw]"
+              className={`pointer-events-none relative mt-8 flex items-center justify-center lg:absolute lg:inset-0 lg:mt-0 lg:justify-end ${
+                beat.object === "chair" ? "lg:pr-[132px]" : "lg:pr-[8vw]"
               }`}
               aria-hidden={beat.object !== "chair"}
             >
@@ -305,13 +316,13 @@ export function DesktopHeroTumble() {
                   // viewport width.
                   ...(beat.object === "chair"
                     ? {
-                        width: "max(240px, min(58vw, 800px, calc(100vw - 820px)))",
-                        height: "max(240px, min(58vw, 800px, calc(100vw - 820px)))",
+                        width: "clamp(160px, 50vw, max(240px, min(58vw, 800px, calc(100vw - 820px))))",
+                        height: "clamp(160px, 50vw, max(240px, min(58vw, 800px, calc(100vw - 820px))))",
                         filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))",
                       }
                     : {
-                        width: "max(200px, min(42vw, 580px, calc(92vw - 624px)))",
-                        height: "max(200px, min(42vw, 580px, calc(92vw - 624px)))",
+                        width: "clamp(140px, 42vw, max(200px, min(42vw, 580px, calc(92vw - 624px))))",
+                        height: "clamp(140px, 42vw, max(200px, min(42vw, 580px, calc(92vw - 624px))))",
                         filter: "drop-shadow(0 40px 50px rgb(0 0 0 / 0.6))",
                       }),
                 }}

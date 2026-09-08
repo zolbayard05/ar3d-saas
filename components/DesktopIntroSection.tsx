@@ -107,7 +107,7 @@ export function DesktopIntroSection() {
           ))}
         </div>
 
-        <div className="relative z-10 -mt-[21px] flex justify-center">
+        <div className="relative z-10 mt-6 flex justify-center sm:-mt-[21px]">
           <div
             className="inline-flex items-center uppercase"
             style={{

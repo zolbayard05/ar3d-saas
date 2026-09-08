@@ -62,7 +62,7 @@ export function DesktopPricingSection() {
             the single fact a first-time visitor most needs before the price
             grid below makes sense. */}
         <div
-          className="mb-16 flex w-fit items-center gap-3 rounded-full px-5 py-3"
+          className="mb-16 flex w-fit max-w-full items-center gap-3 rounded-full px-5 py-3"
           style={{ background: "rgb(20, 21, 17)", border: "1px solid rgb(48, 49, 46)" }}
         >
           <span

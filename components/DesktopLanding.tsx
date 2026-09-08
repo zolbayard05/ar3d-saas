@@ -16,10 +16,10 @@ import Link from "next/link";
 const NAV_LINK_STYLE = { fontSize: "11px", fontWeight: 400, color: "rgb(170, 170, 170)", lineHeight: "16.5px" };
 
 /**
- * Desktop's entire experience (app/page.tsx branches here for any non-mobile
- * UA — see lib/isMobileUserAgent.ts). Being rebuilt section by section per
- * the user's explicit request (2026-09-05) — only the hero is wired up so
- * far; the rest of the page intentionally isn't rendered yet.
+ * Desktop's entire experience (app/page.tsx renders this unconditionally
+ * for every visitor — see that file's own comment on why UA-based
+ * branching was removed). All 8 sections below are wired up; the whole
+ * page is responsive from ~375px phone widths up.
  *
  * Every style value below (colors, sizes, spacing) is copied verbatim from
  * getComputedStyle() run directly against the reference mockup's own
@@ -79,12 +79,15 @@ export async function DesktopLanding() {
             </a>
           </div>
           <div className="flex items-center gap-6">
-            <Link href="/login" className="hidden hover:text-[#f5f4ef] lg:block" style={NAV_LINK_STYLE}>
+            <Link href="/login" className="hover:text-[#f5f4ef]" style={NAV_LINK_STYLE}>
               Нэвтрэх
             </Link>
+            {/* Chrome extension isn't relevant on a phone — hidden below
+                lg:, matching the breakpoint the anchor-link cluster above
+                already uses. */}
             <DesktopWaitlistCta
               source="nav"
-              className="flex items-center gap-1.5 rounded-full bg-[#eeeee9] text-[#111111] hover:opacity-90"
+              className="hidden items-center gap-1.5 rounded-full bg-[#eeeee9] text-[#111111] hover:opacity-90 lg:flex"
               style={{ fontSize: "11px", fontWeight: 700, padding: "12px 16px", lineHeight: "16.5px" }}
             />
           </div>

@@ -11,6 +11,8 @@
 // with every other "Chrome-д нэмэх" on the page rather than pointing
 // anywhere fake.
 
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { DesktopWaitlistCta } from "@/components/DesktopWaitlistCta";
 
 const MUTED_TEXT = "rgb(203, 208, 191)";
@@ -43,16 +45,33 @@ export function DesktopFinalCta() {
             </em>
           </h2>
           <p
-            className="text-balance"
+            className="hidden text-balance lg:block"
             style={{ maxWidth: "480px", fontSize: "17px", fontWeight: 400, lineHeight: "25.5px", color: "rgb(181, 183, 173)", marginBottom: "32px" }}
           >
             Chrome Extension-ээ нэмээд, дурын онлайн дэлгүүрийн бүтээгдэхүүнийг шууд интерактив 3D болон AR-аар үзээрэй.
           </p>
+          <p
+            className="text-balance lg:hidden"
+            style={{ maxWidth: "480px", fontSize: "17px", fontWeight: 400, lineHeight: "25.5px", color: "rgb(181, 183, 173)", marginBottom: "32px" }}
+          >
+            Зургаа байршуулаад, секундын дотор бэлэн 3D загвар болон AR-аар шалгаарай.
+          </p>
+          {/* Chrome extension isn't relevant on a phone — the mobile CTA
+              reuses the old splash screen's own "Эхлэх" → /login copy
+              (that was literally its one job) instead. */}
           <DesktopWaitlistCta
             source="final-cta"
-            className="flex items-center gap-2 bg-[#eeeee9] uppercase text-[#111111] hover:opacity-90"
+            className="hidden items-center gap-2 bg-[#eeeee9] uppercase text-[#111111] hover:opacity-90 lg:flex"
             style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.33px", lineHeight: "16.5px", padding: "17px 20px" }}
           />
+          <Link
+            href="/login"
+            className="flex items-center gap-2 bg-[#eeeee9] uppercase text-[#111111] hover:opacity-90 lg:hidden"
+            style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.33px", lineHeight: "16.5px", padding: "17px 20px" }}
+          >
+            Эхлэх
+            <ArrowUpRight className="size-3.5" />
+          </Link>
         </div>
       </section>
 

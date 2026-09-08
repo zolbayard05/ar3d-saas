@@ -137,7 +137,7 @@ export function DesktopShowcaseSection() {
               onClick={() => setShowQrOverlay(false)}
             >
               <div
-                className="relative flex flex-col items-center gap-4 rounded-2xl px-9 py-8"
+                className="relative flex max-w-[calc(100vw-48px)] flex-col items-center gap-4 rounded-2xl px-6 py-6 sm:px-9 sm:py-8"
                 style={LIQUID_GLASS_STYLE}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -156,10 +156,10 @@ export function DesktopShowcaseSection() {
                     src={qrDataUrl}
                     alt={`${active.label} — утсаараа AR-аар үзэх QR код`}
                     className="rounded-xl bg-white p-3"
-                    style={{ width: "360px", height: "360px" }}
+                    style={{ width: "min(360px, 60vw)", height: "min(360px, 60vw)" }}
                   />
                 ) : (
-                  <div className="animate-pulse rounded-xl" style={{ width: "360px", height: "360px", background: "rgb(255 255 255 / 0.16)" }} />
+                  <div className="animate-pulse rounded-xl" style={{ width: "min(360px, 60vw)", height: "min(360px, 60vw)", background: "rgb(255 255 255 / 0.16)" }} />
                 )}
                 <p className="text-center" style={{ maxWidth: "300px", fontSize: "13px", lineHeight: "19px", color: "rgb(220, 222, 214)" }}>
                   Утасныхаа камераар уншуулаад {active.label.toLowerCase()}-г AR-аар өрөөндөө байрлуулж үзээрэй.

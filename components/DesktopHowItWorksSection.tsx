@@ -20,7 +20,15 @@ const MUTED_TEXT = "rgb(203, 208, 191)";
 
 const STEPS = [
   { num: "01", label: "Нээж үзэх", body: "Дурын дэмжигдсэн онлайн дэлгүүрийн сайт дээр бүтээгдэхүүнээ үз." },
-  { num: "02", label: "Идэвхжүүлэх", body: "Realify3D Chrome Extension-ийг ажиллуул." },
+  {
+    num: "02",
+    label: "Идэвхжүүлэх",
+    body: "Realify3D Chrome Extension-ийг ажиллуул.",
+    // Chrome extension isn't relevant on a phone — mobile gets its own
+    // copy for this one step instead (dual-rendered below via lg:).
+    mobileLabel: "Зураг оруулах",
+    mobileBody: "Ганц эсвэл хэд хэдэн өнцгөөс авсан зургаа шууд аппад оруул.",
+  },
   { num: "03", label: "Судлах", body: "Бүтээгдэхүүнийг 3D-ээр эргүүлж, ойртуулж, дэлгэрэнгүй хар." },
   { num: "04", label: "AR-аар турших", body: "Боломжтой бүтээгдэхүүнийг өөрийн орчинд AR-аар турш." },
 ];
@@ -68,12 +76,15 @@ export function DesktopHowItWorksSection() {
         >
           Дөрвөн алхам.
           <br />
-          <em className="not-italic" style={{ color: MUTED_TEXT, fontWeight: 450 }}>
+          <em className="hidden not-italic lg:inline" style={{ color: MUTED_TEXT, fontWeight: 450 }}>
             Нэг өргөтгөл.
+          </em>
+          <em className="not-italic lg:hidden" style={{ color: MUTED_TEXT, fontWeight: 450 }}>
+            Нэг апп.
           </em>
         </h2>
 
-        <div className="relative grid gap-0 sm:grid-cols-[3rem_1fr]">
+        <div className="relative grid grid-cols-[3rem_1fr] gap-0">
           {/* The connecting line — a static muted track, plus a bright
               fill segment whose height tracks activeIdx. Positioned to
               run through the row numbers' own column. */}
@@ -112,17 +123,33 @@ export function DesktopHowItWorksSection() {
                 }}
               >
                 <p
-                  className="uppercase transition-colors duration-500"
+                  className={`uppercase transition-colors duration-500 ${step.mobileLabel ? "hidden lg:block" : ""}`}
                   style={{ fontSize: "16px", fontWeight: 650, letterSpacing: "0.02em", color: i === activeIdx ? "#f5f4ef" : "rgb(150, 152, 145)" }}
                 >
                   {step.label}
                 </p>
+                {step.mobileLabel && (
+                  <p
+                    className="uppercase transition-colors duration-500 lg:hidden"
+                    style={{ fontSize: "16px", fontWeight: 650, letterSpacing: "0.02em", color: i === activeIdx ? "#f5f4ef" : "rgb(150, 152, 145)" }}
+                  >
+                    {step.mobileLabel}
+                  </p>
+                )}
                 <p
-                  className="mt-1 transition-colors duration-500"
+                  className={`mt-1 transition-colors duration-500 ${step.mobileBody ? "hidden lg:block" : ""}`}
                   style={{ maxWidth: "420px", fontSize: "15px", lineHeight: "22px", color: i === activeIdx ? "rgb(203, 208, 191)" : "rgb(115, 117, 111)" }}
                 >
                   {step.body}
                 </p>
+                {step.mobileBody && (
+                  <p
+                    className="mt-1 transition-colors duration-500 lg:hidden"
+                    style={{ maxWidth: "420px", fontSize: "15px", lineHeight: "22px", color: i === activeIdx ? "rgb(203, 208, 191)" : "rgb(115, 117, 111)" }}
+                  >
+                    {step.mobileBody}
+                  </p>
+                )}
               </div>
             </div>
           ))}
