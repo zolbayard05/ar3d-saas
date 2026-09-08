@@ -5,19 +5,28 @@
 // for the method.
 //
 // A desktop visitor has no AR hardware, so the in-panel "AR-аар харах"
-// button no longer calls model-viewer's activateAR() (that only ever did
-// anything on a phone anyway) — it reveals a QR overlay, styled like the
-// nav's own Liquid Glass capsule (DesktopLanding.tsx), right over the
-// viewer. Scanning it lands on app/ar/[item]/page.tsx (phone-only route),
-// same as the sidebar's own QR. Shown for every item — each has a real
-// .usdz (lib/arShowcaseItems.ts), so every item's phone page offers the
+// button can't call model-viewer's activateAR() there — it reveals a QR
+// overlay instead, styled like the nav's own Liquid Glass capsule
+// (DesktopLanding.tsx), right over the viewer. Scanning it lands on
+// app/ar/[item]/page.tsx (phone-only route), same as the sidebar's own QR.
+// A visitor already ON a phone has no reason to scan a QR pointing at the
+// very page they're looking at, though — there, the same button calls
+// activateAR() directly on the in-panel viewer instead, exactly like
+// ArLaunchView.tsx's own "AR-аар байрлуулах" button does. isMobileUserAgent
+// (the same UA check proxy.ts/isMobileUserAgent.ts already use elsewhere)
+// decides which of the two this button does; a resized-narrow desktop
+// browser window doesn't gain a camera, so this is real device detection,
+// not a CSS breakpoint. Shown for every item — each has a real .usdz
+// (lib/arShowcaseItems.ts), so every item's phone page offers the
 // AR-placement button, not just a web viewer.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ArrowUpRight, X } from "lucide-react";
 import { buildLogoQr } from "@/lib/qr";
 import { AR_SHOWCASE_ITEMS as ITEMS } from "@/lib/arShowcaseItems";
+import { isMobileUserAgent } from "@/lib/isMobileUserAgent";
+import type { DesktopArViewerHandle } from "@/components/DesktopArViewer";
 
 const DesktopArViewer = dynamic(
   () => import("@/components/DesktopArViewer").then((m) => m.DesktopArViewer),
@@ -37,6 +46,8 @@ const LIQUID_GLASS_STYLE = {
 export function DesktopShowcaseSection() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [showQrOverlay, setShowQrOverlay] = useState(false);
+  const [isMobile] = useState(() => isMobileUserAgent(typeof navigator !== "undefined" ? navigator.userAgent : ""));
+  const viewerRef = useRef<DesktopArViewerHandle>(null);
   const active = ITEMS[activeIdx];
 
   // Keyed to the item it was generated for, not just the data URL itself —
@@ -86,6 +97,7 @@ export function DesktopShowcaseSection() {
           </div>
 
           <DesktopArViewer
+            ref={viewerRef}
             key={active.key}
             src={active.src}
             iosSrc={active.iosSrc}
@@ -116,7 +128,7 @@ export function DesktopShowcaseSection() {
               ))}
             </div>
             <button
-              onClick={() => setShowQrOverlay(true)}
+              onClick={() => (isMobile ? viewerRef.current?.activateAR() : setShowQrOverlay(true))}
               className="flex items-center gap-2 bg-[#eeeee9] text-[#111111] hover:opacity-90"
               style={{ fontSize: "13px", fontWeight: 400, padding: "12px 16px" }}
             >
