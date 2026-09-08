@@ -123,6 +123,27 @@ async function clearPendingImageIfMatches(srcUrl) {
   }
 }
 
+// Session storage (realifyPendingImage/realifyActiveGeneration/
+// realifyLastResult/realifyLastError) is keyed by nothing but the browser
+// session — it's NOT scoped to whichever token happens to be connected, and
+// none of it used to get cleared just because the token changed. Right-click
+// a product image under one account, then connect a different token (or
+// reconnect the same one via "Токен солих"), and boot() would resurrect that
+// old pending image/result immediately — with no right-click having
+// happened under the new connection at all, indistinguishable from images
+// "appearing on their own." Called from both the "Холбох" flow and
+// forgetToken() so every token change starts from a genuinely clean state.
+async function clearStaleSessionState() {
+  await chrome.storage.session.remove([
+    "realifyPendingImage",
+    "realifyActiveGeneration",
+    "realifyLastResult",
+    "realifyLastError",
+  ]);
+  chrome.action.setBadgeText({ text: "" });
+  chrome.runtime.sendMessage({ type: "realify-track-stop" }).catch(() => {});
+}
+
 // The popup is a normal browser popup: clicking anywhere outside it closes
 // it immediately, which used to also kill the in-memory polling loop in
 // pollUntilReady() below — the generation itself kept running server-side
@@ -178,6 +199,7 @@ const VIEWS = {
         onclick: async () => {
           const value = input.value.trim();
           if (!value) return;
+          await clearStaleSessionState();
           await setToken(value);
           state = { view: "boot" };
           render();
@@ -283,7 +305,7 @@ const VIEWS = {
       children.push(
         el("p", {
           class: "hint",
-          text: "Ойролцоох бусад өнцгийн зураг олдлоо — нэмэхийг хүссэн зургаа сонго:",
+          text: "Тохирохгүй зургийг хасаарай:",
         }),
         grid,
       );
@@ -463,6 +485,7 @@ const VIEWS = {
 
 async function forgetToken() {
   await clearToken();
+  await clearStaleSessionState();
   state = { view: "need-token" };
   render();
 }
@@ -899,12 +922,9 @@ async function boot() {
     render();
     return;
   }
-  // Nothing pre-selected — a nearby gallery thumbnail only joins the
-  // generation once the user explicitly taps it below (see the angle-grid
-  // tiles in "ready-to-generate"). Auto-including every scanned candidate
-  // made it look like images were "appearing on their own" right after
-  // connecting a token / right-clicking, before the user chose anything.
-  state = { view: "ready-to-generate", image: { ...image, selected: [] } };
+  // Auto-select all candidates — classify-angles drops the ones that don't fit.
+  const autoSelected = (image.candidates || []).slice(0, MAX_EXTRA_ANGLES).map((c) => c.src);
+  state = { view: "ready-to-generate", image: { ...image, selected: autoSelected } };
   render();
 }
 
