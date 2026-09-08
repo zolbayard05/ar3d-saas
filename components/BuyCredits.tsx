@@ -2,10 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Zap } from "lucide-react";
+import { ArrowLeft, Sparkles, Zap } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/utils";
 import { CREDIT_PACKS, applyFirstPurchaseDiscount } from "@/lib/creditPacks";
+
+// Same three lines DesktopPricingSection.tsx's own PACK_COPY uses on the
+// landing page — kept as a separate local copy rather than a shared
+// import since that file is intentionally token-exempt/raw-hex (see its
+// own header comment) while this one is token-only; duplicating three
+// short strings is simpler than threading a shared constant across that
+// styling boundary.
+const PACK_COPY: Record<string, string> = {
+  "pack-5": "Түргэн турших, цөөн загвар хийхэд.",
+  "pack-15": "Ихэнх хэрэглэгчийн сонголт.",
+  "pack-40": "Байнга ашигладаг, олон загвар хэрэгтэй бол.",
+};
 
 export interface BuyCreditsProps {
   /** Resolved server-side (app/(app)/credits/page.tsx) via lib/checkout.ts's isFirstPurchaseEligible — the same check startCheckout() itself gates the real charge on, so this never shows a price the actual wire.mn checkout won't honor. */
@@ -75,15 +88,48 @@ export function BuyCredits({ isFirstPurchaseEligible }: BuyCreditsProps) {
       </div>
 
       <div className="flex flex-col gap-4 px-4 pt-2 lg:mx-auto lg:w-full lg:max-w-xl lg:px-0 lg:pt-6">
-        <p className="text-body font-semibold text-text">Кредит нэмэх</p>
-        <p className="text-small text-text-muted">
-          1 кредит = 1 3D загвар (GLB + USDZ, AR-д бэлэн).
-        </p>
+        <div className="flex flex-col gap-1">
+          <p className="text-heading font-semibold text-text">Кредит нэмэх</p>
+          <p className="text-small text-text-muted">
+            1 кредит = 1 бэлэн 3D загвар — GLB + USDZ, AR-д шууд бэлэн.
+          </p>
+        </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* First-purchase discount banner — only rendered when the server
+            (app/(app)/credits/page.tsx) resolved this specific user as
+            eligible, so it's never shown alongside a price that doesn't
+            actually carry the discount. */}
+        {isFirstPurchaseEligible && (
+          <div className="flex items-center gap-3 rounded-card border border-success/25 bg-success/10 px-4 py-3">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success/20 text-success">
+              <Sparkles className="size-4" />
+            </span>
+            <p className="text-small text-text">
+              Эхний худалдан авалтад{" "}
+              <span className="font-semibold text-success">−50%</span> хямдрал идэвхтэй байна.
+            </p>
+          </div>
+        )}
+
+        {/* grid-cols-1 base — with the richer per-card content added below
+            (rate line + description), a half-width column on a phone
+            wraps the credit-count pill onto 2 lines (reproduced live at
+            173px). Bento 2-col only from sm: (640px) up, where there's
+            room for it. grid-flow-dense there too — default sparse
+            placement left the two col-span-1 packs each alone in their
+            own row with a same-color empty cell beside them (invisible
+            against the dark background, but real dead space — reproduced
+            live via getBoundingClientRect: an unused 328px gap next to
+            both). Dense backfills pack-40 into that hole next to pack-5
+            instead, so both narrow packs actually sit side by side. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:grid-flow-dense">
           {CREDIT_PACKS.map((pack) => {
             const pending = pendingPackId === pack.id;
             const disabled = pendingPackId !== null;
+            const displayAmountMnt = isFirstPurchaseEligible
+              ? applyFirstPurchaseDiscount(pack.amountMnt)
+              : pack.amountMnt;
+            const perCredit = Math.round(displayAmountMnt / pack.credits);
 
             return (
               <button
@@ -92,8 +138,8 @@ export function BuyCredits({ isFirstPurchaseEligible }: BuyCreditsProps) {
                 onClick={() => handleBuy(pack.id)}
                 disabled={disabled}
                 className={cn(
-                  "relative flex flex-col justify-between gap-4 overflow-hidden rounded-card border border-glass-border bg-surface-hover p-5 text-left shadow-glass-card transition-opacity hover:opacity-90 disabled:opacity-40",
-                  pack.highlight ? "col-span-2" : "col-span-1",
+                  "group relative flex flex-col gap-4 overflow-hidden rounded-card border border-glass-border bg-surface-hover p-5 text-left shadow-glass-card transition-all hover:border-glass-border-hover hover:opacity-90 disabled:opacity-40",
+                  pack.highlight ? "sm:col-span-2" : "sm:col-span-1",
                 )}
               >
                 {/* Corner glow (2026-08-29, glow/glass redesign) — a very
@@ -105,56 +151,51 @@ export function BuyCredits({ isFirstPurchaseEligible }: BuyCreditsProps) {
                 <div
                   aria-hidden="true"
                   className={cn(
-                    "pointer-events-none absolute -top-10 -right-8 size-32 rounded-full blur-2xl",
+                    "pointer-events-none absolute -top-10 -right-8 size-32 rounded-full blur-2xl transition-opacity group-hover:opacity-100",
                     pack.highlight ? "bg-glow-soft" : "bg-glow-faint",
                   )}
                 />
-                <div className="relative flex items-start justify-between">
+                <div className="relative flex items-start justify-between gap-2">
                   {/* Was bg-accent-text/10 — near-black at 10% opacity on an
                       already-dark card, functionally invisible. Glass pill
                       (glow-soft fill + hairline border) so this badge is
                       actually visible, matching the design proposal. */}
-                  <span className="flex items-center gap-1 rounded-full border border-glass-border bg-glow-soft px-2 py-0.5 text-small text-text">
+                  <span className="flex items-center gap-1 whitespace-nowrap rounded-full border border-glass-border bg-glow-soft px-2 py-0.5 text-small text-text">
                     <Zap className="size-3.5" />
-                    {pack.credits}
+                    {pack.credits} кредит
                   </span>
-                  {pack.highlight && (
-                    <span className="text-small uppercase tracking-wide text-text-muted">
-                      Түгээмэл
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {isFirstPurchaseEligible && <Badge variant="success">−50%</Badge>}
+                    {pack.highlight && <Badge variant="accent">Түгээмэл</Badge>}
+                  </div>
                 </div>
+
                 {pending ? (
                   <Spinner size="sm" />
-                ) : isFirstPurchaseEligible ? (
-                  <span className="relative flex flex-col gap-1">
-                    <span className="flex items-center gap-2">
-                      <span className="text-small text-text-muted line-through">
-                        {pack.amountMnt.toLocaleString("mn-MN")}₮
-                      </span>
-                      <span className="text-small font-semibold uppercase tracking-wide text-success">
-                        -50%
-                      </span>
-                    </span>
-                    <span
-                      className={cn(
-                        "flex items-center gap-2 font-medium text-success",
-                        pack.highlight ? "text-heading" : "text-body",
-                      )}
-                    >
-                      {applyFirstPurchaseDiscount(pack.amountMnt).toLocaleString("mn-MN")}₮
-                    </span>
-                  </span>
                 ) : (
-                  <span
-                    className={cn(
-                      "relative flex items-center gap-2 font-medium text-text",
-                      pack.highlight ? "text-heading" : "text-body",
-                    )}
-                  >
-                    {pack.amountMnt.toLocaleString("mn-MN")}₮
-                  </span>
+                  <div className="relative flex flex-col gap-0.5">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      {isFirstPurchaseEligible && (
+                        <span className="text-small text-text-muted line-through">
+                          {pack.amountMnt.toLocaleString("mn-MN")}₮
+                        </span>
+                      )}
+                      <span
+                        className={cn(
+                          "font-semibold text-text",
+                          pack.highlight ? "text-heading" : "text-body",
+                        )}
+                      >
+                        {displayAmountMnt.toLocaleString("mn-MN")}₮
+                      </span>
+                    </div>
+                    <p className="text-small text-text-muted">
+                      ~{perCredit.toLocaleString("mn-MN")}₮ / загвар
+                    </p>
+                  </div>
                 )}
+
+                <p className="relative text-small text-text-muted">{PACK_COPY[pack.id]}</p>
               </button>
             );
           })}
