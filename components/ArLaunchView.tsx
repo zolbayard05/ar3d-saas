@@ -16,7 +16,7 @@ const DesktopArViewer = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="flex flex-1 items-center justify-center"
+        className="absolute inset-0 flex items-center justify-center"
         style={{
           background:
             "radial-gradient(circle at 50% 38%, var(--color-surface-hover), var(--color-bg) 75%)",
@@ -40,8 +40,15 @@ export function ArLaunchView({ item }: { item: ArShowcaseItem }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
-      <div className="flex flex-1">
-        <DesktopArViewer ref={viewerRef} src={item.src} iosSrc={item.iosSrc} alt={item.alt} className="size-full" />
+      {/* `relative` + `absolute inset-0` on the viewer, not `flex` + `size-full`
+          — model-viewer's shadow-DOM `:host` sets `contain: strict`, which
+          makes a percentage `height:100%` resolve to 0 inside a flex row
+          (reproduced live: computed 390x0, model loaded but zero pixels to
+          draw into). Same fix shape DesktopShowcaseSection.tsx already uses
+          for this exact component; ModelDetail.tsx hit the same class of bug
+          and worked around it with aspect-ratio instead — see its comment. */}
+      <div className="relative flex-1">
+        <DesktopArViewer ref={viewerRef} src={item.src} iosSrc={item.iosSrc} alt={item.alt} className="absolute inset-0 size-full" />
       </div>
 
       <div className="relative flex flex-col gap-2 px-4 pb-8 pt-2">
