@@ -87,7 +87,26 @@ export function BuyCredits({ isFirstPurchaseEligible }: BuyCreditsProps) {
         </Link>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 pt-2 lg:mx-auto lg:w-full lg:max-w-xl lg:px-0 lg:pt-6">
+      {/* This screen's own content was previously a plain (non-scrolling)
+          flex-col sibling of the header above — invisible on desktop
+          (where the viewport is usually tall enough to fit everything) but
+          the app shell itself has no page-level scroll at all (app/(app)/
+          layout.tsx is `fixed inset-0`), so on a phone where the content
+          genuinely doesn't fit (confirmed live on an iPhone 12 Pro,
+          390x844: the third pack card was cut off with no way to reach
+          it), there was no way to scroll to the rest. overflow-y-auto here
+          — same two-level header+scrollable-body pattern LibraryFeed.tsx/
+          HomeFeed.tsx already use — plus --bottom-nav-reserve (styles/
+          tokens.css) so the last card clears the floating BottomNav dock
+          instead of sitting behind it. No visible scrollbar either way —
+          app/globals.css hides scrollbars globally. */}
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-2 lg:mx-auto lg:w-full lg:max-w-xl lg:px-0 lg:pt-6"
+        style={{
+          paddingBottom:
+            "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve) + var(--install-bar-reserve, 0px))",
+        }}
+      >
         <div className="flex flex-col gap-1">
           <p className="text-heading font-semibold text-text">Кредит нэмэх</p>
           <p className="text-small text-text-muted">
