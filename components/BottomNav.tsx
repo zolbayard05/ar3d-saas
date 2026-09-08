@@ -48,10 +48,18 @@ export function BottomNav({ hasActiveJob }: BottomNavProps) {
             aria-label={label}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "pointer-events-auto relative flex size-14 items-center justify-center rounded-lg border transition-all duration-150 active:scale-95",
+              // Real Liquid Glass (Apple WWDC 2025 material — same recipe
+              // DesktopLanding.tsx's nav capsule and DesktopShowcaseSection's
+              // QR overlay already use on the landing page, ported to this
+              // app's token system instead of that family's raw hex): actual
+              // backdrop-blur+saturate of whatever's scrolling underneath
+              // this floating dock, not just an opaque tinted fill — the
+              // translucency only reads as "glass" with real feed content
+              // moving behind it, which is exactly this button's situation.
+              "pointer-events-auto relative flex size-14 items-center justify-center rounded-lg border backdrop-blur-xl backdrop-saturate-150 transition-all duration-150 active:scale-95",
               active
-                ? "border-transparent bg-accent text-accent-text shadow-md"
-                : "border-glass-border bg-nav-fill text-text-muted shadow-glass-card hover:text-text",
+                ? "border-glass-border-hover bg-accent/90 text-accent-text shadow-md"
+                : "border-glass-border bg-nav-fill/70 text-text-muted shadow-glass-card hover:border-glass-border-hover hover:text-text",
             )}
           >
             <Icon className="size-6" />

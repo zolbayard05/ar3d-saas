@@ -49,10 +49,15 @@ export function Sidebar({ hasActiveJob, userId }: SidebarProps) {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2.5 text-body font-medium transition-colors",
+              // No backdrop-blur here (unlike BottomNav's floating dock) —
+              // this row sits inside the sidebar's own opaque bg-bg panel
+              // (Sidebar.tsx's <nav>), nothing dynamic ever moves behind it
+              // to blur, so a rim-light border is the honest amount of
+              // "glass" this spot actually earns.
+              "flex items-center gap-3 rounded-md border px-3 py-2.5 text-body font-medium transition-colors",
               active
-                ? "bg-glow-soft text-text"
-                : "text-text-muted hover:bg-glow-faint hover:text-text",
+                ? "border-glass-border bg-glow-soft text-text"
+                : "border-transparent text-text-muted hover:bg-glow-faint hover:text-text",
             )}
           >
             <span className="relative flex">
