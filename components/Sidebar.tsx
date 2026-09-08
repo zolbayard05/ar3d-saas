@@ -49,8 +49,10 @@ export function Sidebar({ hasActiveJob, userId }: SidebarProps) {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2.5 text-body hover:bg-surface-hover",
-              active ? "text-text" : "text-text-muted",
+              "flex items-center gap-3 rounded-md px-3 py-2.5 text-body font-medium transition-colors",
+              active
+                ? "bg-glow-soft text-text"
+                : "text-text-muted hover:bg-glow-faint hover:text-text",
             )}
           >
             <span className="relative flex">

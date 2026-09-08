@@ -47,11 +47,19 @@ export function BottomNav({ hasActiveJob }: BottomNavProps) {
             href={href}
             aria-label={label}
             aria-current={active ? "page" : undefined}
-            className="pointer-events-auto relative flex size-14 items-center justify-center rounded-lg bg-nav-fill"
+            className={cn(
+              "pointer-events-auto relative flex size-14 items-center justify-center rounded-lg border transition-all duration-150 active:scale-95",
+              active
+                ? "border-transparent bg-accent text-accent-text shadow-md"
+                : "border-glass-border bg-nav-fill text-text-muted shadow-glass-card hover:text-text",
+            )}
           >
-            <Icon className={cn("size-6", active ? "text-text" : "text-text-muted")} />
+            <Icon className="size-6" />
             {isCreate && hasActiveJob && (
-              <span className="absolute right-2.5 top-2.5 size-1.5 bg-text" aria-hidden="true" />
+              <span
+                className={cn("absolute right-2.5 top-2.5 size-1.5", active ? "bg-accent-text" : "bg-text")}
+                aria-hidden="true"
+              />
             )}
           </Link>
         );
