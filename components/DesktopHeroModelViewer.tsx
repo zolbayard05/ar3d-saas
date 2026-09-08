@@ -9,6 +9,19 @@ export interface DesktopHeroModelViewerProps {
   className?: string;
   /** Fires once model-viewer's own native "load" event fires — lets a caller (e.g. DesktopCategoriesSection's hover crossfade) know the model is actually ready to show, not just mounted. */
   onLoad?: () => void;
+  /**
+   * Starting state for the auto-rotate attribute — defaults to true (this
+   * component's original, only behavior). DesktopHeroTumble.tsx's crossfade
+   * toggles this imperatively afterward via a direct DOM attribute mutation
+   * (bypassing React, same reason its pointer-events toggling does), but
+   * that only happens on a scroll event; since this component itself
+   * mounts asynchronously behind next/dynamic (rule 11), an inactive beat's
+   * instance can otherwise sit fully auto-rotating — wasted per-frame GPU
+   * work — for as long as the visitor takes to scroll at all after page
+   * load. Passing the correct initial value here (i === 0 in the hero)
+   * closes that gap instead of relying on a later correction.
+   */
+  autoRotate?: boolean;
 }
 
 /**
@@ -28,7 +41,7 @@ export interface DesktopHeroModelViewerProps {
  * next/dynamic, which doesn't reliably forward refs to a lazily-loaded
  * component.
  */
-export function DesktopHeroModelViewer({ src, alt, className, onLoad }: DesktopHeroModelViewerProps) {
+export function DesktopHeroModelViewer({ src, alt, className, onLoad, autoRotate = true }: DesktopHeroModelViewerProps) {
   const ref = useRef<HTMLElement>(null);
 
   // React's JSX onLoad prop maps to a real native-event listener only for
@@ -49,7 +62,7 @@ export function DesktopHeroModelViewer({ src, alt, className, onLoad }: DesktopH
       src={src}
       alt={alt}
       camera-controls
-      auto-rotate
+      {...(autoRotate ? { "auto-rotate": true } : {})}
       auto-rotate-delay={0}
       rotation-per-second="18deg"
       disable-zoom

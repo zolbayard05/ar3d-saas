@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { ChevronDown, PlayCircle } from "lucide-react";
-import { DesktopMockupObject } from "@/components/DesktopMockupObject";
+import { DesktopMockupObject, type DesktopMockupObjectHandle } from "@/components/DesktopMockupObject";
 import { DesktopVideoDialog } from "@/components/DesktopVideoDialog";
 
 // "Хэрхэн ажилладагийг үзэх" opens this exact demo video rather than
@@ -92,6 +92,11 @@ export function DesktopHeroTumble() {
   // actually stops an invisible beat's object from eating clicks meant for
   // the visible one underneath.
   const objectRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // The chair's own imperative pause/resume handle (see
+  // DesktopMockupObjectHandle) — sneaker/backpack are handled by directly
+  // toggling the <model-viewer> auto-rotate attribute instead, queried via
+  // objectRefs the same way pointer-events already is below.
+  const mockupRefs = useRef<(DesktopMockupObjectHandle | null)[]>([]);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -117,12 +122,40 @@ export function DesktopHeroTumble() {
     // real momentum/wheel scrolling moves scrollY on essentially every
     // frame, so this still doesn't fire mid-scroll; it's a two-frame
     // safety margin, not a timing budget.
+    //
+    // That frame-counting heuristic alone is NOT reliable on touch/
+    // momentum-scrolling platforms (iOS/Android), though — reproduced live
+    // as "snap doesn't work on mobile": a phone's native inertia scroll
+    // can have brief low-velocity lulls where scrollY barely changes
+    // between two frames well before momentum has actually finished, so
+    // the heuristic fires early, calls scrollTo, and the browser's own
+    // still-ongoing native momentum immediately fights/overrides it —
+    // net effect, nothing visibly happens. The scrollend event (supported
+    // in all current mobile/desktop browsers) is the browser's own
+    // authoritative "every bit of scrolling, including inertia, has now
+    // fully settled" signal — calling scrollTo there never has native
+    // momentum left to fight. Both mechanisms call the same trySnap()
+    // below and can't double-fire (guarded by settledAtCurrentPosition);
+    // the rAF path stays as a fast desktop-wheel/trackpad path and a
+    // fallback for the rare browser without scrollend.
     let lastF = 0;
     let lastP = 0;
     let lastScrollY = window.scrollY;
     let stillFrames = 0;
     let settledAtCurrentPosition = true;
     let rafId = 0;
+
+    function trySnap() {
+      if (!wrapper || settledAtCurrentPosition || lastP <= 0 || lastP >= 1) return;
+      const nearest = Math.round(lastF);
+      settledAtCurrentPosition = true;
+      if (Math.abs(lastF - nearest) < 0.02) return;
+      const targetTotal = wrapper.offsetHeight - window.innerHeight;
+      if (targetTotal <= 0) return;
+      const targetP = nearest / (BEATS.length - 1);
+      const wrapperTop = wrapper.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: wrapperTop + targetP * targetTotal, behavior: "smooth" });
+    }
 
     function onScroll() {
       if (!wrapper) return;
@@ -149,16 +182,28 @@ export function DesktopHeroTumble() {
         // beat still intercepts pointer events over an earlier, visible
         // one (opacity:0 doesn't stop hit-testing). Only the most-visible
         // beat should be interactive at any scroll position.
-        el.style.pointerEvents = op > 0.5 ? "auto" : "none";
+        const active = op > 0.5;
+        el.style.pointerEvents = active ? "auto" : "none";
         const objectEl = objectRefs.current[i];
         if (objectEl) {
-          objectEl.style.pointerEvents = op > 0.5 ? "auto" : "none";
+          objectEl.style.pointerEvents = active ? "auto" : "none";
           // <model-viewer> (sneaker/backpack) forces pointer-events: auto
           // on itself internally, which wins over the wrapper's value
           // above — has to be overridden directly on the element itself.
           const modelViewer = objectEl.querySelector("model-viewer") as HTMLElement | null;
-          if (modelViewer) modelViewer.style.pointerEvents = op > 0.5 ? "auto" : "none";
+          if (modelViewer) {
+            modelViewer.style.pointerEvents = active ? "auto" : "none";
+            // Every beat's object stays mounted simultaneously (only
+            // opacity distinguishes the active one), so model-viewer's own
+            // off-screen auto-pause never kicks in — all 3 sit inside the
+            // same on-screen rect regardless of visibility. Dropping
+            // auto-rotate on the inactive ones stops their continuous
+            // per-frame WebGL redraw (real cost on mobile GPUs, and the
+            // main cause of general scroll jank on the hero).
+            modelViewer.toggleAttribute("auto-rotate", active);
+          }
         }
+        mockupRefs.current[i]?.setActive(active);
       });
 
       // A real scroll event means motion is still happening — reset the
@@ -171,27 +216,19 @@ export function DesktopHeroTumble() {
       const y = window.scrollY;
       stillFrames = y === lastScrollY ? stillFrames + 1 : 0;
       lastScrollY = y;
-
-      if (!settledAtCurrentPosition && stillFrames >= 2 && lastP > 0 && lastP < 1 && wrapper) {
-        const nearest = Math.round(lastF);
-        if (Math.abs(lastF - nearest) >= 0.02) {
-          const targetTotal = wrapper.offsetHeight - window.innerHeight;
-          if (targetTotal > 0) {
-            const targetP = nearest / (BEATS.length - 1);
-            const wrapperTop = wrapper.getBoundingClientRect().top + window.scrollY;
-            window.scrollTo({ top: wrapperTop + targetP * targetTotal, behavior: "smooth" });
-          }
-        }
-        settledAtCurrentPosition = true;
-      }
+      if (stillFrames >= 2) trySnap();
       rafId = requestAnimationFrame(tick);
     }
 
+    const supportsScrollEnd = "onscrollend" in window;
+
     window.addEventListener("scroll", onScroll, { passive: true });
+    if (supportsScrollEnd) window.addEventListener("scrollend", trySnap);
     onScroll();
     rafId = requestAnimationFrame(tick);
     return () => {
       window.removeEventListener("scroll", onScroll);
+      if (supportsScrollEnd) window.removeEventListener("scrollend", trySnap);
       cancelAnimationFrame(rafId);
     };
   }, []);
@@ -394,6 +431,9 @@ export function DesktopHeroTumble() {
               >
                 {beat.object === "chair" && (
                   <DesktopMockupObject
+                    ref={(el) => {
+                      mockupRefs.current[i] = el;
+                    }}
                     objUrl="/icons/mockup/chair.obj"
                     textureUrl="/icons/mockup/chair_diffuse.png"
                     metalness={0.3}
@@ -403,10 +443,10 @@ export function DesktopHeroTumble() {
                   />
                 )}
                 {beat.object === "sneaker" && (
-                  <DesktopHeroModelViewer src="/icons/mockup/sneaker.glb" alt="Гутал" className="size-full" />
+                  <DesktopHeroModelViewer src="/icons/mockup/sneaker.glb" alt="Гутал" className="size-full" autoRotate={i === 0} />
                 )}
                 {beat.object === "backpack" && (
-                  <DesktopHeroModelViewer src="/icons/mockup/backpack.glb" alt="Цүнх" className="size-full" />
+                  <DesktopHeroModelViewer src="/icons/mockup/backpack.glb" alt="Цүнх" className="size-full" autoRotate={i === 0} />
                 )}
               </div>
             </div>

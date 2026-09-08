@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 
 // A previous version of this component used this repo's own `three` npm
 // dependency and translated a reference mockup's r134 API calls to their
@@ -83,19 +83,35 @@ export interface DesktopMockupObjectProps {
   swaySeed?: number;
 }
 
-export function DesktopMockupObject({
-  objUrl,
-  textureUrl,
-  metalness,
-  roughness,
-  className,
-  mode,
-  cameraY = 0.4,
-  cameraZ = 5.6,
-  renderMode = "shaded",
-  swaySeed,
-}: DesktopMockupObjectProps) {
+export interface DesktopMockupObjectHandle {
+  /**
+   * Skips the WebGL render call (and rotation advance) entirely while
+   * inactive, rather than tearing down/rebuilding the scene — this is a
+   * real per-frame GPU cost (this component runs its own full Three.js
+   * renderer), and DesktopHeroTumble.tsx's crossfade keeps every beat's
+   * object mounted simultaneously (only opacity distinguishes the active
+   * one), so without this an off-screen-looking, fully-transparent object
+   * still renders every frame forever. Imperative, not a prop, for the
+   * same reason DesktopHeroTumble.tsx's pointer-events toggling already
+   * bypasses React — this needs to update on every scroll tick without
+   * triggering a re-render.
+   */
+  setActive: (active: boolean) => void;
+}
+
+export const DesktopMockupObject = forwardRef<DesktopMockupObjectHandle, DesktopMockupObjectProps>(
+  function DesktopMockupObject(
+    { objUrl, textureUrl, metalness, roughness, className, mode, cameraY = 0.4, cameraZ = 5.6, renderMode = "shaded", swaySeed },
+    ref,
+  ) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef(true);
+
+  useImperativeHandle(ref, () => ({
+    setActive: (active: boolean) => {
+      activeRef.current = active;
+    },
+  }), []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -255,6 +271,11 @@ export function DesktopMockupObject({
         const now = performance.now();
         const dt = now - lastFrameTime;
         lastFrameTime = now;
+        // Skip the actual GPU work (rotation advance + WebGL draw call)
+        // while this beat isn't the visible one — see
+        // DesktopMockupObjectHandle's own comment for why. lastFrameTime
+        // still updates above so dt doesn't spike once reactivated.
+        if (!activeRef.current) return;
         if (mode !== "scroll") miniT += RADIANS_PER_MS * dt;
         // Small idle side-to-side sway (not a full turntable spin) — sin
         // wave, not a continuously increasing angle.
@@ -290,4 +311,5 @@ export function DesktopMockupObject({
   }, [objUrl, textureUrl, mode, renderMode, swaySeed]);
 
   return <div ref={containerRef} className={className} />;
-}
+  },
+);
