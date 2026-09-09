@@ -78,7 +78,7 @@ export function ResultStep({ model, onSaved, onDeleted }: ResultStepProps) {
           type="button"
           onClick={() => void handleDelete()}
           disabled={deleting}
-          className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-surface-hover text-body font-semibold uppercase tracking-wide text-text hover:opacity-90 disabled:opacity-50"
+          className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full border border-glass-border bg-glow-faint text-body font-semibold uppercase tracking-wide text-text shadow-glass-card transition-all duration-150 active:scale-[0.98] hover:border-glass-border-hover hover:bg-glow-soft disabled:opacity-50"
         >
           {deleting ? <Spinner size="sm" /> : <Trash2 className="size-5" />}
           Устгах
@@ -87,7 +87,7 @@ export function ResultStep({ model, onSaved, onDeleted }: ResultStepProps) {
           type="button"
           onClick={onSaved}
           disabled={deleting}
-          className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-50"
+          className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card transition-all duration-150 active:scale-[0.98] hover:bg-accent-hover hover:shadow-md disabled:opacity-50"
         >
           <Check className="size-5" />
           Хадгалах

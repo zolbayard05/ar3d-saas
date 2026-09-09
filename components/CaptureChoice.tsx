@@ -98,7 +98,7 @@ export function CaptureChoice({
             type="button"
             onClick={() => onModeChange(null)}
             disabled={creating}
-            className="self-start text-small text-text-muted underline underline-offset-2 hover:text-text disabled:opacity-50"
+            className="self-start text-small text-text-muted underline underline-offset-2 transition-transform active:scale-95 hover:text-text disabled:opacity-50"
           >
             ← Горим солих
           </button>
@@ -158,7 +158,7 @@ export function CaptureChoice({
         type="button"
         onClick={onCreate}
         disabled={!hasPhoto || creating || busy}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-sm bg-accent text-small font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover disabled:opacity-40"
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-sm bg-accent text-small font-semibold uppercase tracking-wide text-accent-text shadow-card transition-all duration-150 active:scale-[0.98] hover:bg-accent-hover hover:shadow-md disabled:opacity-40"
       >
         {creating ? (
           <Spinner size="sm" />
@@ -198,7 +198,7 @@ function ModeCard({ icon, title, description, onClick }: ModeCardProps) {
     <button
       type="button"
       onClick={onClick}
-      className="flex items-start gap-3 rounded-sm bg-surface-hover p-4 text-left hover:opacity-90"
+      className="flex items-start gap-3 rounded-sm border border-glass-border bg-glow-faint p-4 text-left shadow-glass-card transition-all duration-150 active:scale-[0.98] hover:border-glass-border-hover hover:bg-glow-soft"
     >
       <span className="flex size-10 shrink-0 items-center justify-center rounded-sm bg-surface text-text">{icon}</span>
       <span className="flex flex-col gap-0.5">
@@ -258,7 +258,7 @@ function PhotoTile({
           onClick={onRemove}
           disabled={disabled}
           aria-label={`${placeholderLabel} хасах`}
-          className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-bg/80 text-text hover:bg-bg disabled:opacity-50"
+          className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-bg/80 text-text backdrop-blur-md transition-transform active:scale-90 hover:bg-bg disabled:opacity-50"
         >
           <X className="size-4" />
         </button>
@@ -272,7 +272,7 @@ function PhotoTile({
       onClick={() => inputRef.current?.click()}
       disabled={disabled}
       className={cn(
-        "flex flex-col items-center justify-center gap-2 rounded-sm bg-surface-hover text-text-muted hover:opacity-90 disabled:opacity-50",
+        "flex flex-col items-center justify-center gap-2 rounded-sm border border-glass-border bg-glow-faint text-text-muted shadow-glass-card transition-all duration-150 active:scale-[0.98] hover:border-glass-border-hover hover:bg-glow-soft disabled:opacity-50",
         className,
       )}
     >

@@ -230,7 +230,7 @@ function StatusLine({
               event.preventDefault();
               onRetry(model);
             }}
-            className="w-fit text-small uppercase tracking-wide text-text underline underline-offset-2"
+            className="w-fit text-small uppercase tracking-wide text-text underline underline-offset-2 transition-transform active:scale-95"
           >
             Дахин оролдох
           </button>
@@ -240,7 +240,7 @@ function StatusLine({
               event.preventDefault();
               if (await deleteModel(model.id)) onDelete(model);
             }}
-            className="w-fit text-small uppercase tracking-wide text-text-muted underline underline-offset-2 hover:text-text"
+            className="w-fit text-small uppercase tracking-wide text-text-muted underline underline-offset-2 transition-transform active:scale-95 hover:text-text"
           >
             Устгах
           </button>

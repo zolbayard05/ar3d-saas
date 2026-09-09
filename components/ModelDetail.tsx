@@ -122,7 +122,7 @@ export function ModelDetail({
         <Link
           href={hasSession ? "/dashboard" : "/"}
           aria-label="Буцах"
-          className="text-text-muted hover:text-text"
+          className="text-text-muted transition-transform active:scale-90 hover:text-text"
         >
           <ArrowLeft className="size-5" />
         </Link>
@@ -130,7 +130,7 @@ export function ModelDetail({
           type="button"
           onClick={handleShare}
           aria-label="Хуваалцах"
-          className="text-text-muted hover:text-text"
+          className="text-text-muted transition-transform active:scale-90 hover:text-text"
         >
           <Share2 className="size-5" />
         </button>
@@ -209,7 +209,7 @@ export function ModelDetail({
                 type="button"
                 onClick={() => setShareOpen((open) => !open)}
                 aria-expanded={shareOpen}
-                className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+                className="flex flex-col items-center gap-2 text-text-muted transition-transform active:scale-95 hover:text-text"
               >
                 <QrCode className="size-5" />
                 <span className="text-small uppercase tracking-wide">
@@ -220,7 +220,7 @@ export function ModelDetail({
                 type="button"
                 onClick={() => setScaleOpen((open) => !open)}
                 aria-expanded={scaleOpen}
-                className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+                className="flex flex-col items-center gap-2 text-text-muted transition-transform active:scale-95 hover:text-text"
               >
                 <Ruler className="size-5" />
                 <span className="text-small uppercase tracking-wide">
@@ -243,7 +243,7 @@ export function ModelDetail({
                     href={`/api/uploads/${model.source_image_key}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+                    className="flex flex-col items-center gap-2 text-text-muted transition-transform active:scale-95 hover:text-text"
                   >
                     <ImageIcon className="size-5" />
                     <span className="text-small uppercase tracking-wide">
@@ -253,7 +253,7 @@ export function ModelDetail({
                   <a
                     href={buildModelUrl(model.glb_url as string)}
                     download
-                    className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+                    className="flex flex-col items-center gap-2 text-text-muted transition-transform active:scale-95 hover:text-text"
                   >
                     <Download className="size-5" />
                     <span className="text-small uppercase tracking-wide">
@@ -263,7 +263,7 @@ export function ModelDetail({
                   <a
                     href={buildModelUrl(model.usdz_url as string)}
                     download
-                    className="flex flex-col items-center gap-2 text-text-muted hover:text-text"
+                    className="flex flex-col items-center gap-2 text-text-muted transition-transform active:scale-95 hover:text-text"
                   >
                     <Download className="size-5" />
                     <span className="text-small uppercase tracking-wide">
@@ -325,7 +325,7 @@ export function ModelDetail({
               <button
                 type="button"
                 onClick={() => arViewerRef.current?.activateAR()}
-                className="relative flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card hover:bg-accent-hover"
+                className="relative flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-body font-semibold uppercase tracking-wide text-accent-text shadow-card transition-all duration-150 active:scale-[0.98] hover:bg-accent-hover hover:shadow-md"
               >
                 <Box className="size-5" />
                 Өрөөндөө байрлуулах
@@ -353,7 +353,7 @@ function DeleteAction({
       onClick={onDelete}
       disabled={deleting}
       className={cn(
-        "text-small uppercase tracking-wide text-text-muted underline underline-offset-2 hover:text-text disabled:opacity-50",
+        "text-small uppercase tracking-wide text-text-muted underline underline-offset-2 transition-transform active:scale-95 hover:text-text disabled:opacity-50",
         className,
       )}
     >

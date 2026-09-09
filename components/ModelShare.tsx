@@ -111,7 +111,7 @@ export function ModelShare() {
         <button
           type="button"
           onClick={() => void handleCopy()}
-          className="flex flex-1 items-center justify-center gap-2 rounded-md bg-surface-hover py-2.5 text-small font-semibold text-text hover:opacity-90"
+          className="flex flex-1 items-center justify-center gap-2 rounded-md border border-glass-border bg-glow-faint py-2.5 text-small font-semibold text-text shadow-glass-card transition-all duration-150 active:scale-[0.98] hover:border-glass-border-hover hover:bg-glow-soft"
         >
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
           {copied ? "Хуулагдлаа" : "Хуулах"}
@@ -119,7 +119,7 @@ export function ModelShare() {
         <button
           type="button"
           onClick={() => void handleNativeShare()}
-          className="flex flex-1 items-center justify-center gap-2 rounded-md bg-surface-hover py-2.5 text-small font-semibold text-text hover:opacity-90"
+          className="flex flex-1 items-center justify-center gap-2 rounded-md border border-glass-border bg-glow-faint py-2.5 text-small font-semibold text-text shadow-glass-card transition-all duration-150 active:scale-[0.98] hover:border-glass-border-hover hover:bg-glow-soft"
         >
           <Share2 className="size-4" />
           Хуваалцах
@@ -128,7 +128,7 @@ export function ModelShare() {
           <button
             type="button"
             onClick={() => void handleSaveQr()}
-            className="flex flex-1 items-center justify-center gap-2 rounded-md bg-surface-hover py-2.5 text-small font-semibold text-text hover:opacity-90"
+            className="flex flex-1 items-center justify-center gap-2 rounded-md border border-glass-border bg-glow-faint py-2.5 text-small font-semibold text-text shadow-glass-card transition-all duration-150 active:scale-[0.98] hover:border-glass-border-hover hover:bg-glow-soft"
           >
             <Download className="size-4" />
             Хадгалах
