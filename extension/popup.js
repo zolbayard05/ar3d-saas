@@ -461,12 +461,37 @@ const VIEWS = {
 
   buy() {
     const items = [el("button", { class: "link", onclick: () => void boot(), text: "← Буцах" })];
-    state.packs.forEach((pack) => {
+
+    // Mirrors components/BuyCredits.tsx's own first-purchase-discount
+    // banner — state.firstPurchaseEligible/pack.discountedAmountMnt both
+    // come straight from app/api/extension/credit-packs/route.ts, which
+    // resolves the same isFirstPurchaseEligible() check startCheckout()
+    // itself gates the real wire.mn charge on, so this never previews a
+    // discount the actual checkout won't honor.
+    if (state.firstPurchaseEligible) {
       items.push(
-        el("button", {
-          onclick: () => void buyPack(pack.id),
-          text: `${pack.credits} кредит — ${pack.amountMnt.toLocaleString("mn-MN")}₮`,
-        }),
+        el("div", { class: "discount-banner" }, [
+          el("span", { text: "Эхний худалдан авалтад −50% хямдрал идэвхтэй байна." }),
+        ]),
+      );
+    }
+
+    state.packs.forEach((pack) => {
+      const priceRow = state.firstPurchaseEligible
+        ? [
+            el("span", { class: "pack-price-strike", text: `${pack.amountMnt.toLocaleString("mn-MN")}₮` }),
+            el("span", { text: `${pack.discountedAmountMnt.toLocaleString("mn-MN")}₮` }),
+            el("span", { class: "discount-badge", text: "−50%" }),
+          ]
+        : [el("span", { text: `${pack.amountMnt.toLocaleString("mn-MN")}₮` })];
+
+      items.push(
+        el("button", { onclick: () => void buyPack(pack.id) }, [
+          el("div", { class: "pack-button-content" }, [
+            el("span", { text: `${pack.credits} кредит` }),
+            el("span", { class: "pack-price-row" }, priceRow),
+          ]),
+        ]),
       );
     });
     return el("div", { class: "card" }, items);
@@ -541,15 +566,18 @@ async function openBuyView() {
   state = { view: "loading" };
   render();
   try {
-    // Public/unauthenticated (app/api/extension/credit-packs/route.ts — no
-    // user-specific data, just current pricing) — plain fetch, not api(),
-    // which would attach a Bearer token this endpoint doesn't check and
-    // apply 401 handling that doesn't apply here either.
-    const res = await fetch(`${REALIFY_API_BASE}/api/extension/credit-packs`);
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error || `Багцуудыг ачаалахад алдаа гарлаа (${res.status})`);
-    state = { view: "buy", packs: body.packs || [] };
+    // The route works without a token too (falls back to plain,
+    // non-personalized packs), but this view only ever shows once a token
+    // is connected (see the nav button's own show condition below), so
+    // attaching it via api() lets the route resolve the caller and
+    // preview the real first-purchase-discount price lib/checkout.ts's
+    // startCheckout() will actually charge — same as the web app's own
+    // BuyCredits.tsx. The route never 401s just for a missing/bad token,
+    // so api()'s 401-handling branch is dead here in practice, not a risk.
+    const body = await api("/api/extension/credit-packs");
+    state = { view: "buy", packs: body.packs || [], firstPurchaseEligible: !!body.firstPurchaseEligible };
   } catch (err) {
+    if (err.message === "unauthorized") return; // already rendered need-token
     state = { view: "error", message: err.message || "Багцуудыг ачаалахад алдаа гарлаа." };
   }
   render();

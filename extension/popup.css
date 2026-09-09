@@ -301,6 +301,49 @@ button.link:hover {
   font-size: var(--text-sm);
 }
 
+/* First-purchase discount (2026-09-09) — grayscale only, same "no new
+   hue" rule this file's own header comment states (.angle-badge is the
+   one deliberate exception, not this) — the discounted price/badge read
+   via weight/contrast/strikethrough alone, not a green accent. */
+.discount-banner {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.pack-button-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+}
+
+.pack-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-weight: 400;
+}
+
+.pack-price-strike {
+  color: var(--text-faint);
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+.discount-badge {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 0 6px;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
 .progress {
   display: flex;
   flex-direction: column;
