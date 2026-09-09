@@ -112,19 +112,9 @@ async function clearPendingImage() {
   await chrome.storage.session.remove("realifyPendingImage");
   chrome.action.setBadgeText({ text: "" });
 }
-// Only clears storage if it still holds the image this call thinks it's
-// clearing — a right-click on a new image elsewhere can overwrite
-// realifyPendingImage while a previous submission is still in flight, and
-// that unrelated new selection must survive this call.
-async function clearPendingImageIfMatches(srcUrl) {
-  const current = await getPendingImage();
-  if (current && current.srcUrl === srcUrl) {
-    await clearPendingImage();
-  }
-}
-
-// Session storage (realifyPendingImage/realifyActiveGeneration/
-// realifyLastResult/realifyLastError) is keyed by nothing but the browser
+// Session storage (realifyPendingImage/realifySubmitting/
+// realifyActiveGeneration/realifyLastResult/realifyLastError) is keyed by
+// nothing but the browser
 // session — it's NOT scoped to whichever token happens to be connected, and
 // none of it used to get cleared just because the token changed. Right-click
 // a product image under one account, then connect a different token (or
@@ -136,6 +126,7 @@ async function clearPendingImageIfMatches(srcUrl) {
 async function clearStaleSessionState() {
   await chrome.storage.session.remove([
     "realifyPendingImage",
+    "realifySubmitting",
     "realifyActiveGeneration",
     "realifyLastResult",
     "realifyLastError",
@@ -155,9 +146,6 @@ async function clearStaleSessionState() {
 async function getActiveGeneration() {
   const { realifyActiveGeneration } = await chrome.storage.session.get("realifyActiveGeneration");
   return realifyActiveGeneration || null;
-}
-async function setActiveGeneration(modelId) {
-  await chrome.storage.session.set({ realifyActiveGeneration: { modelId, startedAt: Date.now() } });
 }
 async function clearActiveGeneration() {
   await chrome.storage.session.remove("realifyActiveGeneration");
@@ -607,49 +595,9 @@ async function buyPack(packId) {
 
 // ------------------------------------------------------------- generate
 
-function readImageDimensions(blob) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      resolve({ width: img.naturalWidth || null, height: img.naturalHeight || null });
-      URL.revokeObjectURL(url);
-    };
-    img.onerror = () => {
-      resolve({ width: null, height: null });
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
-  });
-}
-
-// Best-effort upload of one additional angle. Returns { key, width, height },
-// or null on any failure (download, format, size, upload) — never aborts
-// the whole generation.
-async function downloadAndUploadImage(url) {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    const contentType = RealifyLib.guessContentType(blob.type, url);
-    if (!contentType) return null;
-    if (blob.size > RealifyLib.MAX_UPLOAD_BYTES) return null;
-
-    const { width, height } = await readImageDimensions(blob);
-    const presign = await api("/api/extension/upload-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contentType, contentLength: blob.size }),
-    });
-    const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
-    if (!putRes.ok) return null;
-    return { key: presign.key, width, height };
-  } catch (err) {
-    console.warn("Realify: extra angle upload failed, continuing without it", err);
-    return null;
-  }
-}
-
+// The actual upload/generate network sequence now runs in background.js
+// (survives this popup closing — see that file's own comment on why,
+// 2026-09-09), not here. This just hands off and waits.
 async function startGeneration() {
   const srcUrl = state.image.srcUrl;
   const selectedAngles = state.image.selected || [];
@@ -658,146 +606,40 @@ async function startGeneration() {
   // Cheap, URL-only check before spending a network round trip: Chrome's
   // contextMenus API can't filter which images get the menu item by
   // format, so this is the earliest point a clearly-unsupported image
-  // (favicon, SVG/GIF icon, ...) can be caught.
+  // (favicon, SVG/GIF icon, ...) can be caught. Kept here too (background.js
+  // re-checks it independently) purely so a popup that's still open gets
+  // this specific error instantly instead of waiting on a round trip to the
+  // service worker for something we already know client-side.
   if (RealifyLib.hasKnownUnsupportedExtension(srcUrl)) {
     state = { view: "error", message: "Энэ зургийн формат дэмжигдэхгүй (JPEG/PNG/WEBP л дэмжигдэнэ). Бүтээгдэхүүний жинхэнэ зурган дээр right-click хийнэ үү." };
     render();
     return;
   }
 
-  state = { view: "working", message: "Зургийг татаж байна…", image };
+  state = { view: "working", message: "Илгээж байна…", image };
   render();
 
-  try {
-    // host_permissions in manifest.json covers http(s)://*/* specifically
-    // so this fetch bypasses page CORS regardless of the image host's own
-    // headers — without that grant, a cross-origin fetch() rejects with a
-    // bare "Failed to fetch" (no useful detail), which is why the catch
-    // below rewrites that specific case into an actionable message rather
-    // than surfacing the raw browser error.
-    let imgRes;
-    try {
-      imgRes = await fetch(srcUrl);
-    } catch {
-      throw new Error("Энэ зургийг татаж чадсангүй (сүлжээ/CORS). Extension шинэчлэгдсэн эсэхийг chrome://extensions дээрээс шалгаад дахин оролдоно уу.");
-    }
-    if (!imgRes.ok) throw new Error("Энэ зургийг татаж чадсангүй. Өөр зураг дээр оролдоно уу.");
-    const blob = await imgRes.blob();
+  const response = await chrome.runtime
+    .sendMessage({ type: "realify-submit", srcUrl, selectedAngles })
+    .catch((err) => ({ ok: false, error: err?.message || "Алдаа гарлаа." }));
 
-    const contentType = RealifyLib.guessContentType(blob.type, srcUrl);
-    if (!contentType) throw new Error("Дэмжигдэхгүй зургийн формат (JPEG/PNG/WEBP л дэмжигдэнэ).");
-
-    // Checked here, right after download, rather than letting
-    // /api/extension/upload-url's own MAX_UPLOAD_BYTES check catch it —
-    // that would mean the full (possibly large) download already
-    // happened for nothing before the user sees any error.
-    if (blob.size > RealifyLib.MAX_UPLOAD_BYTES) {
-      throw new Error(`Зураг хэт том байна (${(blob.size / 1024 / 1024).toFixed(1)}MB, ${RealifyLib.MAX_UPLOAD_BYTES / 1024 / 1024}MB хүртэл). Өөр зураг дээр оролдоно уу.`);
-    }
-
-    const { width, height } = await readImageDimensions(blob);
-
-    state = { view: "working", message: "Хуулж байна…", image };
+  // If the popup closed while background.js was still working, execution
+  // never resumes here at all — harmless, since background.js has already
+  // durably persisted the real outcome (realifySubmitting →
+  // realifyActiveGeneration/realifyLastError) by the time it responds.
+  if (!response?.ok) {
+    if (response?.error === "unauthorized") return; // background.js already cleared the token; next boot() lands on need-token
+    state = { view: "error", message: response?.error || "Алдаа гарлаа." };
     render();
-    const presign = await api("/api/extension/upload-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contentType, contentLength: blob.size }),
-    });
-
-    const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
-    if (!putRes.ok) throw new Error("Хуулахад алдаа гарлаа.");
-
-    const uploads = [{ key: presign.key, width, height }];
-    if (selectedAngles.length > 0) {
-      state = { view: "working", message: "Нэмэлт өнцгүүдийг хуулж байна…", image };
-      render();
-      // Sequential, not Promise.all: each one is a presign + PUT pair against
-      // the same per-user upload-url endpoint — no need to race them for a
-      // handful of extra images, and it keeps the "Хуулж байна" message
-      // meaningful rather than firing them all at once with no ordering.
-      for (const url of selectedAngles) {
-        const uploaded = await downloadAndUploadImage(url);
-        if (uploaded) uploads.push(uploaded);
-      }
-    }
-
-    let sourceImageKey = uploads[0].key;
-    let sourceImageWidth = uploads[0].width;
-    let sourceImageHeight = uploads[0].height;
-    let sourceImageKeyLeft;
-    let sourceImageKeyBack;
-    let sourceImageKeyRight;
-
-    // Classify failure falls back to "right-clicked photo as front" — never blocks generation.
-    if (uploads.length > 1) {
-      state = { view: "working", message: "Зургуудыг ялгаж байна…", image };
-      render();
-      try {
-        const classifyBody = await api("/api/extension/classify-angles", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ keys: uploads.map((u) => u.key) }),
-        });
-        const slots = classifyBody.slots;
-        if (slots?.front) {
-          sourceImageKey = slots.front;
-          sourceImageKeyLeft = slots.left || undefined;
-          sourceImageKeyBack = slots.back || undefined;
-          sourceImageKeyRight = slots.right || undefined;
-          const frontUpload = uploads.find((u) => u.key === sourceImageKey);
-          sourceImageWidth = frontUpload ? frontUpload.width : sourceImageWidth;
-          sourceImageHeight = frontUpload ? frontUpload.height : sourceImageHeight;
-        } else {
-          image.singleAngleNote = true;
-        }
-      } catch (err) {
-        if (err.message === "unauthorized") throw err; // already rendered need-token
-        console.warn("Realify: classify-angles failed, falling back to the right-clicked photo as front", err);
-        image.singleAngleNote = true;
-      }
-    }
-
-    // pollUntilReady's own tick() takes over with a real elapsed-time
-    // message the moment actual polling starts, right below — this is only
-    // shown for the brief request itself.
-    state = { view: "working", message: "Эхлүүлж байна…", image };
-    render();
-    const gen = await api("/api/extension/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sourceImageKey,
-        idempotencyKey: crypto.randomUUID(),
-        sourceImageWidth,
-        sourceImageHeight,
-        sourceImageKeyLeft,
-        sourceImageKeyBack,
-        sourceImageKeyRight,
-      }),
-    });
-
-    // The job is now submitted and running server-side regardless of what
-    // this popup does next — record it BEFORE polling starts so closing the
-    // popup mid-poll (which happens the instant the user clicks anywhere
-    // outside it) leaves something for boot() to resume, not a dead end.
-    // Also drop the pending-image association: re-clicking "3D болгох" from
-    // a stale "ready-to-generate" screen would otherwise submit the same
-    // photo a second time and spend a second credit.
-    await setActiveGeneration(gen.modelId);
-    // Hands off to background.js's own independent poll (chrome.alarms —
-    // survives this popup closing, which local polling below can't) so the
-    // result still surfaces as a badge + OS notification even if the user
-    // never reopens the popup themselves.
-    chrome.runtime.sendMessage({ type: "realify-track-start" }).catch(() => {});
-    await clearPendingImageIfMatches(srcUrl);
-
-    await pollUntilReady(gen.modelId, image);
-  } catch (err) {
-    if (err.message === "unauthorized") return; // already rendered need-token
-    state = { view: "error", message: err.message || "Алдаа гарлаа." };
-    render();
+    return;
   }
+
+  // background.js's own classify-angles call decided this, not anything
+  // visible here — carried through the response so a popup that stayed
+  // open still shows the same "single angle used" note on the done screen
+  // that it always has.
+  if (response.singleAngleNote) image.singleAngleNote = true;
+  await pollUntilReady(response.modelId, image);
 }
 
 function formatElapsed(totalSeconds) {
@@ -808,8 +650,9 @@ function formatElapsed(totalSeconds) {
 }
 
 // trueStartedAt: when the underlying generation actually started (from
-// realifyActiveGeneration.startedAt — persisted by setActiveGeneration at
-// submission time), NOT necessarily when THIS call to pollUntilReady began.
+// realifyActiveGeneration.startedAt — persisted by background.js's
+// handleSubmit at submission time), NOT necessarily when THIS call to
+// pollUntilReady began.
 // Reopening the popup calls this again from boot()'s resume path, and the
 // elapsed clock shown should read total real time, not reset to 0:00 just
 // because the popup was closed for a while — the generation itself never
@@ -926,14 +769,31 @@ async function boot() {
     return;
   }
 
+  // background.js's realify-submit handler may still be mid-upload right
+  // now (this is the actual bug fix, 2026-09-09): the popup that started it
+  // closed before that handler finished, so none of realifyActiveGeneration/
+  // realifyLastResult/realifyLastError exist yet — only this transient
+  // marker does. Without this check, reopening here would fall all the way
+  // through to the pending-image screen below and look like the submission
+  // never happened, inviting a second, paid resubmission of the same photo.
+  // No polling loop needed — this is a short-lived holding screen; the next
+  // popup open re-runs boot() from scratch and will have moved on to
+  // active/done/error by then.
+  const { realifySubmitting } = await chrome.storage.session.get("realifySubmitting");
+  if (realifySubmitting) {
+    state = { view: "working", message: "Илгээж байна…" };
+    render();
+    return;
+  }
+
   // A generation submitted from a previous, now-closed popup takes
   // priority over any newly-captured pending image — resume tracking it
-  // rather than silently abandoning it (see setActiveGeneration's comment).
+  // rather than silently abandoning it (see pollUntilReady's own comment).
   const active = await getActiveGeneration();
   if (active) {
     try {
-      // active.startedAt (set by setActiveGeneration at submission time) is
-      // when the generation truly began — passed through so the elapsed
+      // active.startedAt (set by background.js's handleSubmit at submission
+      // time) is when the generation truly began — passed through so the elapsed
       // clock reads real total time instead of resetting to 0:00 just
       // because the popup was closed for a while.
       await pollUntilReady(active.modelId, undefined, active.startedAt);

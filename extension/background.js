@@ -5,9 +5,10 @@
 // contexts:["image"] hands us info.srcUrl directly from the browser's own
 // context-menu machinery, so there's nothing to inject into the page to
 // get it. host_permissions in manifest.json is broad (http(s)://*/*) —
-// popup.js's own image-fetch step is what actually needs that, to bypass
-// per-site CORS when downloading an arbitrary product photo.
-importScripts("config.js");
+// this file's own upload/generate step (see "realify-submit" below) is
+// what actually needs that, to bypass per-site CORS when downloading an
+// arbitrary product photo.
+importScripts("config.js", "lib.js");
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -203,13 +204,228 @@ async function getToken() {
   return realifyToken || null;
 }
 
-chrome.runtime.onMessage.addListener((message) => {
+// ---------------------------------------------------------------------
+// Generation submission (2026-09-09) — moved here from popup.js after a
+// real user report: closing the popup (any click outside it, e.g.
+// switching back to the shopping tab the photo came from) while a
+// submission's own upload/generate round trip was still in flight killed
+// it silently — popup.js's execution context, including any in-flight
+// fetch(), is destroyed the instant the popup closes. Reopening then
+// found none of realifyActiveGeneration/realifyLastResult/realifyLastError
+// set, and fell through to the still-present realifyPendingImage, showing
+// "ready to generate" again — risking a genuine second paid generation for
+// the same photo. Running the whole sequence here instead means it
+// survives popup closure the same way checkActiveGeneration's own
+// alarm-driven tracking below already does; only the *handoff message*
+// from popup.js needs the popup to still be open, not the work itself.
+// ---------------------------------------------------------------------
+
+async function bgApi(path, options, token) {
+  const res = await fetch(`${REALIFY_API_BASE}${path}`, {
+    ...options,
+    headers: { ...(options?.headers || {}), Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) {
+    // Not popup.js's api(): there's no popup state to redirect to
+    // "need-token" here. Clearing the token is enough — the next boot()
+    // (whenever the popup is next opened) checks it first, ahead of any
+    // of the session-storage keys this function touches.
+    await chrome.storage.local.remove("realifyToken");
+    throw new Error("unauthorized");
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Алдаа гарлаа (${res.status})`);
+  return body;
+}
+
+// DOM-free equivalent of popup.js's readImageDimensions — `new Image()`
+// isn't available in a service worker, `createImageBitmap` is.
+async function bgReadImageDimensions(blob) {
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const dims = { width: bitmap.width || null, height: bitmap.height || null };
+    bitmap.close();
+    return dims;
+  } catch {
+    return { width: null, height: null };
+  }
+}
+
+// Best-effort upload of one additional angle — mirrors popup.js's own
+// downloadAndUploadImage exactly, built on the two helpers above instead.
+async function bgDownloadAndUploadImage(url, token) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const contentType = RealifyLib.guessContentType(blob.type, url);
+    if (!contentType) return null;
+    if (blob.size > RealifyLib.MAX_UPLOAD_BYTES) return null;
+
+    const { width, height } = await bgReadImageDimensions(blob);
+    const presign = await bgApi(
+      "/api/extension/upload-url",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contentType, contentLength: blob.size }) },
+      token,
+    );
+    const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
+    if (!putRes.ok) return null;
+    return { key: presign.key, width, height };
+  } catch {
+    return null;
+  }
+}
+
+// The actual submission — same sequence popup.js's old startGeneration()
+// ran inline, unchanged step for step, just running here instead.
+async function handleSubmit({ srcUrl, selectedAngles }) {
+  await chrome.storage.session.set({ realifySubmitting: { srcUrl, startedAt: Date.now() } });
+
+  try {
+    const token = await getToken();
+    if (!token) throw new Error("unauthorized");
+
+    if (RealifyLib.hasKnownUnsupportedExtension(srcUrl)) {
+      throw new Error(
+        "Энэ зургийн формат дэмжигдэхгүй (JPEG/PNG/WEBP л дэмжигдэнэ). Бүтээгдэхүүний жинхэнэ зурган дээр right-click хийнэ үү.",
+      );
+    }
+
+    let imgRes;
+    try {
+      imgRes = await fetch(srcUrl);
+    } catch {
+      throw new Error(
+        "Энэ зургийг татаж чадсангүй (сүлжээ/CORS). Extension шинэчлэгдсэн эсэхийг chrome://extensions дээрээс шалгаад дахин оролдоно уу.",
+      );
+    }
+    if (!imgRes.ok) throw new Error("Энэ зургийг татаж чадсангүй. Өөр зураг дээр оролдоно уу.");
+    const blob = await imgRes.blob();
+
+    const contentType = RealifyLib.guessContentType(blob.type, srcUrl);
+    if (!contentType) throw new Error("Дэмжигдэхгүй зургийн формат (JPEG/PNG/WEBP л дэмжигдэнэ).");
+    if (blob.size > RealifyLib.MAX_UPLOAD_BYTES) {
+      throw new Error(
+        `Зураг хэт том байна (${(blob.size / 1024 / 1024).toFixed(1)}MB, ${RealifyLib.MAX_UPLOAD_BYTES / 1024 / 1024}MB хүртэл). Өөр зураг дээр оролдоно уу.`,
+      );
+    }
+
+    const { width, height } = await bgReadImageDimensions(blob);
+
+    const presign = await bgApi(
+      "/api/extension/upload-url",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contentType, contentLength: blob.size }) },
+      token,
+    );
+    const putRes = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
+    if (!putRes.ok) throw new Error("Хуулахад алдаа гарлаа.");
+
+    const uploads = [{ key: presign.key, width, height }];
+    for (const url of selectedAngles || []) {
+      const uploaded = await bgDownloadAndUploadImage(url, token);
+      if (uploaded) uploads.push(uploaded);
+    }
+
+    let sourceImageKey = uploads[0].key;
+    let sourceImageWidth = uploads[0].width;
+    let sourceImageHeight = uploads[0].height;
+    let sourceImageKeyLeft;
+    let sourceImageKeyBack;
+    let sourceImageKeyRight;
+    let singleAngleNote = false;
+
+    if (uploads.length > 1) {
+      try {
+        const classifyBody = await bgApi(
+          "/api/extension/classify-angles",
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ keys: uploads.map((u) => u.key) }) },
+          token,
+        );
+        const slots = classifyBody.slots;
+        if (slots?.front) {
+          sourceImageKey = slots.front;
+          sourceImageKeyLeft = slots.left || undefined;
+          sourceImageKeyBack = slots.back || undefined;
+          sourceImageKeyRight = slots.right || undefined;
+          const frontUpload = uploads.find((u) => u.key === sourceImageKey);
+          sourceImageWidth = frontUpload ? frontUpload.width : sourceImageWidth;
+          sourceImageHeight = frontUpload ? frontUpload.height : sourceImageHeight;
+        } else {
+          singleAngleNote = true;
+        }
+      } catch (err) {
+        if (err.message === "unauthorized") throw err;
+        singleAngleNote = true;
+      }
+    }
+
+    const gen = await bgApi(
+      "/api/extension/generate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceImageKey,
+          idempotencyKey: crypto.randomUUID(),
+          sourceImageWidth,
+          sourceImageHeight,
+          sourceImageKeyLeft,
+          sourceImageKeyBack,
+          sourceImageKeyRight,
+        }),
+      },
+      token,
+    );
+
+    // Same handoff realify-track-start used to do from popup.js — now done
+    // directly, plus an immediate check rather than waiting for the first
+    // 30s alarm tick.
+    await chrome.storage.session.set({
+      realifyActiveGeneration: { modelId: gen.modelId, startedAt: Date.now(), singleAngleNote },
+    });
+    await chrome.storage.session.remove(["realifySubmitting", "realifyPendingImage"]);
+    chrome.action.setBadgeText({ text: "" });
+    chrome.alarms.create(POLL_ALARM, { periodInMinutes: POLL_PERIOD_MINUTES });
+    void checkActiveGeneration();
+
+    return { ok: true, modelId: gen.modelId, singleAngleNote };
+  } catch (err) {
+    await chrome.storage.session.remove("realifySubmitting");
+    if (err.message === "unauthorized") {
+      // Token already cleared (bgApi, or the check above) — the next
+      // boot() lands on "need-token" on its own; no error to show on top.
+      return { ok: false, error: "unauthorized" };
+    }
+    const message = err.message || "Алдаа гарлаа.";
+    // Deliberately does NOT touch realifyPendingImage — never silently
+    // discard the user's captured photo without their own explicit
+    // dismiss (resetToIdle() in popup.js already clears both together
+    // when the user actually acts). Genuine improvement over the old
+    // inline flow: a pre-submission failure's message used to live only
+    // in the popup's own in-memory state and was lost if the popup closed
+    // right after; now it survives.
+    await chrome.storage.session.set({ realifyLastError: message });
+    chrome.action.setBadgeText({ text: "!" });
+    chrome.action.setBadgeBackgroundColor({ color: "#e5484d" });
+    return { ok: false, error: message };
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "realify-track-start") {
     chrome.alarms.create(POLL_ALARM, { periodInMinutes: POLL_PERIOD_MINUTES });
     void checkActiveGeneration();
-  } else if (message?.type === "realify-track-stop") {
-    chrome.alarms.clear(POLL_ALARM);
+    return false;
   }
+  if (message?.type === "realify-track-stop") {
+    chrome.alarms.clear(POLL_ALARM);
+    return false;
+  }
+  if (message?.type === "realify-submit") {
+    handleSubmit(message).then(sendResponse);
+    return true; // keep the channel open for the async sendResponse above
+  }
+  return false;
 });
 
 // Also resumes tracking if the browser (and this service worker with it)
