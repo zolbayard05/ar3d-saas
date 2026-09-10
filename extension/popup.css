@@ -165,6 +165,13 @@ p {
 .icon.danger {
   color: var(--danger);
 }
+/* Nav bar's credits badge (extension/popup.js's renderBrandBar) — the
+   default 40px .icon size is for the big centered status icons
+   (loading/success/error), far too large for a small pill button. */
+.icon.xs {
+  width: 12px;
+  height: 12px;
+}
 
 .heading {
   margin: 0;

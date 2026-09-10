@@ -47,7 +47,16 @@ function renderBrandBar() {
   navCreditsButton.hidden = !show;
   navModelsButton.hidden = !show;
   if (show) {
-    navCreditsButton.textContent = connectedCredits != null ? `${connectedCredits} кр.` : "…";
+    // Icon (not the plain "N кр." text this used to be) so this badge reads
+    // as the same credits affordance as the rest of the product, which
+    // always pairs a count with the bolt icon rather than a unit
+    // abbreviation — icon() itself lives further down this file, called
+    // here even though it's defined below (function declarations hoist).
+    navCreditsButton.innerHTML = "";
+    navCreditsButton.appendChild(icon("zap", "xs"));
+    navCreditsButton.appendChild(
+      el("span", { text: connectedCredits != null ? String(connectedCredits) : "…" }),
+    );
   }
 }
 
@@ -78,6 +87,11 @@ const ICON_PATHS = {
   check: '<circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/>',
   warning:
     '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  // Same credits icon the web app uses everywhere (Sidebar.tsx, BuyCredits.tsx,
+  // DesktopPricingSection.tsx's lucide-react Zap) — the nav bar's "N кр."
+  // plain-text badge read as visually inconsistent with the rest of the
+  // product, which always pairs a credit count with this bolt icon.
+  zap: '<path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/>',
 };
 function icon(name, cls) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
