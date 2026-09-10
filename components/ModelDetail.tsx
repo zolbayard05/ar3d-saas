@@ -84,6 +84,7 @@ export function ModelDetail({
   const [scale, setScale] = useModelScale(model.id, model.scale, isOwner);
   const [scaleOpen, setScaleOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const arViewerRef = useRef<ARViewerHandle>(null);
   const router = useRouter();
@@ -260,17 +261,20 @@ export function ModelDetail({
                 one. */}
               {isOwner && (
                 <>
-                  <a
-                    href={`/api/uploads/${model.source_image_key}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  {/* Toggles an inline preview (below the AR button, direct
+                      request) instead of opening a new tab — same pattern
+                      as the Хуваалцах/Хэмжээ pills. */}
+                  <button
+                    type="button"
+                    onClick={() => setPhotoOpen((open) => !open)}
+                    aria-expanded={photoOpen}
                     className={ACTION_BUTTON_CLASS}
                   >
                     <ImageIcon className="size-5" />
                     <span className="text-small uppercase tracking-wide">
                       Эх зураг
                     </span>
-                  </a>
+                  </button>
                   <a
                     href={buildModelUrl(model.glb_url as string)}
                     download
@@ -352,6 +356,23 @@ export function ModelDetail({
                 Өрөөндөө байрлуулах
               </button>
             </div>
+
+            {/* Эх зураг inline preview (direct request) — sits below the AR
+                button rather than opening a new tab. Capped height +
+                object-contain so an arbitrary-resolution source photo never
+                blows out the column's width; bg-bg fills any letterboxing
+                so a non-full-bleed photo still reads as sitting in a frame,
+                not on a mismatched background. */}
+            {isOwner && photoOpen && (
+              <div className="overflow-hidden rounded-2xl border border-glass-border bg-glow-soft shadow-liquid-glass backdrop-blur-xl backdrop-saturate-150">
+                {/* eslint-disable-next-line @next/next/no-img-element -- private, per-user uploads bucket route, not a static/optimizable asset */}
+                <img
+                  src={`/api/uploads/${model.source_image_key}`}
+                  alt="Эх зураг"
+                  className="max-h-72 w-full bg-bg object-contain"
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
