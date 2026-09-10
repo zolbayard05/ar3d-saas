@@ -143,6 +143,11 @@ export function DesktopHeroTumble() {
     let lastScrollY = window.scrollY;
     let settledAtCurrentPosition = true;
     let rafId = 0;
+    // +1 scrolling down/forward, -1 up/backward, 0 = not yet observed any
+    // motion. Set from the last real scrollY delta (tick(), below) and left
+    // alone while scrolling is paused/settling, so it still reflects "which
+    // way was the user headed" at the moment they stopped.
+    let lastDirection = 0;
 
     // Minimum time (ms) scrollY must sit still before a stop is treated as
     // real, not just the natural gap between two notches of a plain
@@ -161,7 +166,23 @@ export function DesktopHeroTumble() {
 
     function trySnap() {
       if (!wrapper || settledAtCurrentPosition || lastP <= 0 || lastP >= 1) return;
-      const nearest = Math.round(lastF);
+      // Direction-biased, not plain nearest-neighbor: reported directly
+      // that stopping partway toward the next beat kept snapping BACK to
+      // the one being left, even though the next beat had visibly started
+      // fading in. Plain Math.round only commits forward past the 50%
+      // mark; any forward scroll motion short of that reverted. Now any
+      // forward progress at all (however small) while still heading
+      // forward commits to the next beat instead — only actually
+      // reversing scroll direction settles back toward the lower one.
+      const base = Math.floor(lastF);
+      const frac = lastF - base;
+      // Backward stops (and the "no progress yet" case) keep plain
+      // nearest-neighbor rounding — that already does the right thing
+      // whichever side of 50% it lands on, and there's no complaint about
+      // that direction. Only forward stops are special-cased: any forward
+      // progress at all commits to the next beat, never rounds back down
+      // to the one being left.
+      const nearest = frac >= 0.02 && lastDirection >= 0 ? base + 1 : Math.round(lastF);
       settledAtCurrentPosition = true;
       if (Math.abs(lastF - nearest) < 0.02) return;
       const targetTotal = wrapper.offsetHeight - window.innerHeight;
@@ -230,6 +251,7 @@ export function DesktopHeroTumble() {
       const now = performance.now();
       const y = window.scrollY;
       if (y !== lastScrollY) {
+        lastDirection = y > lastScrollY ? 1 : -1;
         lastScrollY = y;
         lastMoveAt = now;
       }
