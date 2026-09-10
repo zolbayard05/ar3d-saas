@@ -143,46 +143,40 @@ export function DesktopHeroTumble() {
     let lastScrollY = window.scrollY;
     let settledAtCurrentPosition = true;
     let rafId = 0;
-    // +1 scrolling down/forward, -1 up/backward, 0 = not yet observed any
-    // motion. Set from the last real scrollY delta (tick(), below) and left
-    // alone while scrolling is paused/settling, so it still reflects "which
-    // way was the user headed" at the moment they stopped.
-    let lastDirection = 0;
+    // Which beat f was resting at when the CURRENT scroll gesture began
+    // (captured in onScroll, the instant it sees settledAtCurrentPosition
+    // flip from true to false). trySnap below judges direction from net
+    // displacement against this — f - restBeat — rather than the sign of
+    // the very last per-frame scrollY delta. That last-frame-delta approach
+    // (tried first) was NOT reliable: trackpad momentum commonly ends with
+    // a tiny reverse micro-bounce in its final frame or two as it
+    // decelerates, which flipped the recorded "direction" to backward right
+    // before the gesture actually settled — even though the whole gesture
+    // was clearly forward — and made trySnap fall back to plain
+    // nearest-round (reverting on any <50% forward progress). Reported
+    // directly, still reproducing after that fix: ANY forward scroll,
+    // however small, kept snapping back. Net displacement from the beat the
+    // gesture started at isn't fooled by one bad trailing frame.
+    let restBeat = 0;
 
     // Minimum time (ms) scrollY must sit still before a stop is treated as
     // real, not just the natural gap between two notches of a plain
-    // (non-precision) mouse wheel. The previous 2-frame (~32ms) threshold
-    // was shorter than that gap — scrolling one notch at a time (exactly
-    // "incomplete/stepped" scrolling, reported directly: partial scrolling
-    // never reached the next beat, it kept snapping back) tripped the
-    // stillness check between individual notches, before the cumulative
-    // scroll had crossed the halfway point toward the next beat, so trySnap
-    // kept reverting to the beat the user was trying to scroll away from.
-    // Time-based rather than frame-count so this behaves the same
-    // regardless of display refresh rate (a 2-frame threshold is ~16ms on a
-    // 120Hz display, tighter still).
+    // (non-precision) mouse wheel. Time-based rather than frame-count so
+    // this behaves the same regardless of display refresh rate.
     const STILL_MS = 140;
     let lastMoveAt = performance.now();
 
     function trySnap() {
       if (!wrapper || settledAtCurrentPosition || lastP <= 0 || lastP >= 1) return;
-      // Direction-biased, not plain nearest-neighbor: reported directly
-      // that stopping partway toward the next beat kept snapping BACK to
-      // the one being left, even though the next beat had visibly started
-      // fading in. Plain Math.round only commits forward past the 50%
-      // mark; any forward scroll motion short of that reverted. Now any
-      // forward progress at all (however small) while still heading
-      // forward commits to the next beat instead — only actually
-      // reversing scroll direction settles back toward the lower one.
-      const base = Math.floor(lastF);
-      const frac = lastF - base;
-      // Backward stops (and the "no progress yet" case) keep plain
-      // nearest-neighbor rounding — that already does the right thing
-      // whichever side of 50% it lands on, and there's no complaint about
-      // that direction. Only forward stops are special-cased: any forward
-      // progress at all commits to the next beat, never rounds back down
-      // to the one being left.
-      const nearest = frac >= 0.02 && lastDirection >= 0 ? base + 1 : Math.round(lastF);
+      // Any net displacement from the gesture's starting beat commits a
+      // full step in that direction — never reverts to the beat being
+      // left, however little of the scroll actually happened. Math.ceil/
+      // Math.floor of lastF itself (not restBeat) so a single fast/long
+      // gesture that crosses more than one beat still lands on the right
+      // one, not just restBeat±1.
+      const delta = lastF - restBeat;
+      const nearest =
+        Math.abs(delta) < 0.02 ? restBeat : delta > 0 ? Math.ceil(lastF - 0.02) : Math.floor(lastF + 0.02);
       settledAtCurrentPosition = true;
       if (Math.abs(lastF - nearest) < 0.02) return;
       const targetTotal = wrapper.offsetHeight - window.innerHeight;
@@ -203,6 +197,11 @@ export function DesktopHeroTumble() {
       // scroll range, not 0..BEATS.length (which left the last beat
       // fading OUT by the time scroll finished).
       const f = p * (BEATS.length - 1);
+      // Capture the resting beat right as a new gesture begins (still
+      // settled from the previous one, about to flip false below) — this
+      // is "where trySnap should measure net displacement from" for
+      // whatever gesture is about to happen.
+      if (settledAtCurrentPosition) restBeat = Math.round(lastF);
       lastF = f;
       lastP = p;
       beatRefs.current.forEach((el, i) => {
@@ -251,7 +250,6 @@ export function DesktopHeroTumble() {
       const now = performance.now();
       const y = window.scrollY;
       if (y !== lastScrollY) {
-        lastDirection = y > lastScrollY ? 1 : -1;
         lastScrollY = y;
         lastMoveAt = now;
       }
