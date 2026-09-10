@@ -117,17 +117,11 @@ export function HomeFeed({ initialModels }: { initialModels: ModelRow[] }) {
           // BottomNav there, so there's nothing bottom-docked left to
           // clear) — a responsive CSS variable rather than a Tailwind lg:
           // class because this composes into a `style` prop alongside
-          // env()/var(--install-bar-reserve), which Tailwind's arbitrary
-          // values can't express and which a class could never override
-          // anyway (inline style always wins specificity over a class,
-          // variant or not). var(--install-bar-reserve) is 0px whenever
-          // components/InstallPrompt.tsx isn't showing a bar (it clears the
-          // property on unmount/hide) — see that file's
-          // setFeedBottomReserve; InstallPrompt is itself mobile-only, so
-          // this term is always 0 at lg+ regardless.
+          // env(), which Tailwind's arbitrary values can't express and
+          // which a class could never override anyway (inline style always
+          // wins specificity over a class, variant or not).
           style={{
-            paddingBottom:
-              "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve) + var(--install-bar-reserve, 0px))",
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve))",
           }}
         >
           {/* lg:my-auto — vertical auto-margin centering, not

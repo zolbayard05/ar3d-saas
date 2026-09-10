@@ -193,11 +193,8 @@ export function LibraryFeed({
         // clearing BottomNav, and 2.5rem at lg+ (Sidebar replaces
         // BottomNav there — see HomeFeed.tsx's identical comment on why
         // this has to be a CSS variable rather than a Tailwind lg: class).
-        // var(--install-bar-reserve) is 0px whenever
-        // components/InstallPrompt.tsx isn't showing a bar.
         style={{
-          paddingBottom:
-            "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve) + var(--install-bar-reserve, 0px))",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve))",
         }}
       >
         {/* lg:my-auto — same auto-margin centering as HomeFeed.tsx (see its

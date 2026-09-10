@@ -103,8 +103,7 @@ export function BuyCredits({ isFirstPurchaseEligible }: BuyCreditsProps) {
       <div
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-2 lg:mx-auto lg:w-full lg:max-w-xl lg:px-0 lg:pt-6"
         style={{
-          paddingBottom:
-            "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve) + var(--install-bar-reserve, 0px))",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + var(--bottom-nav-reserve))",
         }}
       >
         <div className="flex flex-col gap-1">

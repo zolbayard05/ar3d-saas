@@ -95,8 +95,8 @@
    * clearing BottomNav on mobile (6rem) but NOT at lg+, where Sidebar
    * replaces it and there's nothing bottom-docked to clear. This has to be
    * a responsive CSS variable rather than a Tailwind lg: class because it
-   * composes into a `style` prop alongside env()/var(--install-bar-reserve)
-   * — arbitrary calc() Tailwind can't express, and a lg: utility class can
+   * composes into a `style` prop alongside env(safe-area-inset-bottom) —
+   * arbitrary calc() Tailwind can't express, and a lg: utility class can
    * never win against a plain inline style's specificity regardless of
    * variant, so the breakpoint has to live in the variable's own value.
    */

@@ -317,18 +317,7 @@ export function ModelDetail({
               </div>
             )}
 
-            {/* Bottom padding grows by --install-bar-reserve (InstallPrompt.tsx)
-              whenever that fixed-position banner is actually showing — this
-              screen has no scroll container of its own to carry that
-              reserve the way HomeFeed/LibraryFeed do, so the AR button was
-              sitting directly underneath the banner instead. 1rem matches
-              the previous flat pb-4 baseline when no banner is up. */}
-            <div
-              className="relative mt-auto flex flex-col gap-2 pt-2 lg:pt-6"
-              style={{
-                paddingBottom: "calc(1rem + var(--install-bar-reserve, 0px))",
-              }}
-            >
+            <div className="relative mt-auto flex flex-col gap-2 pb-4 pt-2 lg:pt-6">
               {/* Breathing glow behind the AR CTA (2026-08-29, glow/glass
                   redesign) — same animate-breathe + radial-ellipse idiom as
                   ARViewer.tsx's own presence ring, reused here rather than a
