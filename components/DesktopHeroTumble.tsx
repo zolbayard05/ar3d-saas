@@ -141,9 +141,23 @@ export function DesktopHeroTumble() {
     let lastF = 0;
     let lastP = 0;
     let lastScrollY = window.scrollY;
-    let stillFrames = 0;
     let settledAtCurrentPosition = true;
     let rafId = 0;
+
+    // Minimum time (ms) scrollY must sit still before a stop is treated as
+    // real, not just the natural gap between two notches of a plain
+    // (non-precision) mouse wheel. The previous 2-frame (~32ms) threshold
+    // was shorter than that gap — scrolling one notch at a time (exactly
+    // "incomplete/stepped" scrolling, reported directly: partial scrolling
+    // never reached the next beat, it kept snapping back) tripped the
+    // stillness check between individual notches, before the cumulative
+    // scroll had crossed the halfway point toward the next beat, so trySnap
+    // kept reverting to the beat the user was trying to scroll away from.
+    // Time-based rather than frame-count so this behaves the same
+    // regardless of display refresh rate (a 2-frame threshold is ~16ms on a
+    // 120Hz display, tighter still).
+    const STILL_MS = 140;
+    let lastMoveAt = performance.now();
 
     function trySnap() {
       if (!wrapper || settledAtCurrentPosition || lastP <= 0 || lastP >= 1) return;
@@ -206,17 +220,20 @@ export function DesktopHeroTumble() {
         mockupRefs.current[i]?.setActive(active);
       });
 
-      // A real scroll event means motion is still happening — reset the
-      // frame-stillness count and allow the next stop to trigger a snap.
-      stillFrames = 0;
+      // A real scroll event means motion is still happening — allow the
+      // next genuine stop to trigger a snap. tick() below tracks the actual
+      // idle timer off its own per-frame scrollY comparison, not this.
       settledAtCurrentPosition = false;
     }
 
     function tick() {
+      const now = performance.now();
       const y = window.scrollY;
-      stillFrames = y === lastScrollY ? stillFrames + 1 : 0;
-      lastScrollY = y;
-      if (stillFrames >= 2) trySnap();
+      if (y !== lastScrollY) {
+        lastScrollY = y;
+        lastMoveAt = now;
+      }
+      if (now - lastMoveAt >= STILL_MS) trySnap();
       rafId = requestAnimationFrame(tick);
     }
 
