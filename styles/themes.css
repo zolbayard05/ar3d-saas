@@ -100,6 +100,21 @@
     0 8px 28px -8px var(--color-glow-strong),
     inset 0 1px 0 rgb(255 255 255 / 0.09);
 
+  /* True "liquid glass" pill/button shadow (2026-09-10, ModelDetail.tsx
+   * action buttons) — distinct from --shadow-glass-card's near-invisible
+   * 0.05 top highlight: a real elevation drop shadow plus a bright rim
+   * highlight along the top edge and a faint dark line along the bottom,
+   * reading as a lit, curved glass edge rather than a flat translucent
+   * fill. Paired with backdrop-blur-xl backdrop-saturate-150 (Tailwind
+   * defaults, applied directly in the component) for the frosted-glass
+   * material itself — this token is only the shadow/highlight half.
+   */
+  --shadow-liquid-glass:
+    0 8px 24px rgb(0 0 0 / 0.35),
+    0 1px 2px rgb(0 0 0 / 0.2),
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    inset 0 -1px 0 rgb(0 0 0 / 0.08);
+
   /* 2026-09-03 — the one deliberately CHROMATIC token in this file,
    * against every other rule/comment above ("no accent hue anywhere",
    * glow layer "deliberately hue-free"). Product asked to match a specific

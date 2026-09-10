@@ -53,6 +53,7 @@
   --shadow-card: var(--shadow-card);
   --shadow-glass-card: var(--shadow-glass-card);
   --shadow-glow-ring: var(--shadow-glow-ring);
+  --shadow-liquid-glass: var(--shadow-liquid-glass);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);

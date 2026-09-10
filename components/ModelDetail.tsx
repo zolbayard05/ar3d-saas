@@ -52,16 +52,20 @@ const ARViewer = dynamic(
 // The secondary actions (scale, original photo, download-as-GLB,
 // download-as-USDZ — download is split into two rather than one ambiguous
 // button, since GLB and USDZ serve different people: GLB for anything
-// generic, USDZ for someone specifically after their own iOS AR) sit inside
-// one glass-card surface (2026-09-10 redesign) rather than floating
-// unstyled on the page background — same visual register as everything
-// else on the page; the AR button is still the one high-contrast,
-// full-width, bottom-docked element. That gap in weight is deliberate —
-// Tripo's reference product treats AR as one of five equal icons, and
-// that's exactly what this page must not do, since AR is the entire point
-// of this product.
+// generic, USDZ for someone specifically after their own iOS AR) are each
+// their own free-floating "liquid glass" pill (2026-09-10 redesign, direct
+// request) rather than one shared card containing plain icons — every pill
+// carries its own frosted-glass material (backdrop-blur-xl +
+// backdrop-saturate-150, a translucent fill, a bright rim highlight along
+// its top edge via --shadow-liquid-glass) instead of the flatter, no-blur
+// --shadow-glass-card treatment used elsewhere in the app (ModelCard.tsx/
+// BuyCredits.tsx) — visually distinct on purpose, not a drop-in reuse of
+// that language. The AR button is still the one high-contrast, full-width,
+// bottom-docked, solid (not glass) element — Tripo's reference product
+// treats AR as one of five equal icons, and that's exactly what this page
+// must not do, since AR is the entire point of this product.
 const ACTION_BUTTON_CLASS =
-  "flex flex-col items-center gap-2 rounded-md px-3 py-2 text-text-muted transition-all duration-150 active:scale-95 hover:bg-glow-soft hover:text-text";
+  "flex flex-col items-center gap-2 rounded-2xl border border-glass-border bg-glow-soft px-4 py-3 text-text-muted shadow-liquid-glass backdrop-blur-xl backdrop-saturate-150 transition-all duration-200 active:scale-95 hover:border-glass-border-hover hover:bg-glow-strong hover:text-text";
 
 export function ModelDetail({
   initialModel,
@@ -209,95 +213,92 @@ export function ModelDetail({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 lg:w-96 lg:flex-none lg:gap-5 lg:px-0 lg:pt-0">
-            {/* Glass-card treatment (2026-09-10) — reuses the same
-                border-glass-border/bg-glow-faint/shadow-glass-card idiom as
-                ModelCard.tsx/BuyCredits.tsx rather than the bare icon+label
-                row this used to be, so this column reads as one designed
-                surface instead of floating text on the page background. */}
-            <div className="flex flex-col gap-4 rounded-card border border-glass-border bg-glow-faint p-4 shadow-glass-card">
-              {formatDimensionsCm(model) && (
-                <p className="text-small uppercase tracking-wide text-text-muted">
-                  {formatDimensionsCm(model)}
-                </p>
-              )}
+            {formatDimensionsCm(model) && (
+              <span className="inline-flex w-fit items-center rounded-full border border-glass-border bg-glow-soft px-4 py-2 text-small uppercase tracking-wide text-text-muted shadow-liquid-glass backdrop-blur-xl backdrop-saturate-150">
+                {formatDimensionsCm(model)}
+              </span>
+            )}
 
-              <div className="flex items-center justify-around lg:justify-start lg:gap-1">
-                {/* Not owner-gated — the URL being shared is the current page's
-                  own, already visible to whoever's looking at this button. */}
-                <button
-                  type="button"
-                  onClick={() => setShareOpen((open) => !open)}
-                  aria-expanded={shareOpen}
-                  className={ACTION_BUTTON_CLASS}
-                >
-                  <QrCode className="size-5" />
-                  <span className="text-small uppercase tracking-wide">
-                    Хуваалцах
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScaleOpen((open) => !open)}
-                  aria-expanded={scaleOpen}
-                  className={ACTION_BUTTON_CLASS}
-                >
-                  <Ruler className="size-5" />
-                  <span className="text-small uppercase tracking-wide">
-                    Хэмжээ
-                  </span>
-                </button>
-                {/* Original photo and both downloads are owner-only: the source
-                  photo lives in the private `uploads` bucket behind its own
-                  ownership check (app/api/uploads/[...key]/route.ts), so for
-                  anyone but the owner this link would already 404/401 — hiding
-                  it isn't a new restriction, it's not showing a link that was
-                  already broken for this viewer. GLB/USDZ do serve from the
-                  public models bucket (rule 6) and would technically work for
-                  any viewer, but the download affordance itself is scoped to
-                  the owner as a deliberate product choice, not a data-access
-                  one. */}
-                {isOwner && (
-                  <>
-                    <a
-                      href={`/api/uploads/${model.source_image_key}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={ACTION_BUTTON_CLASS}
-                    >
-                      <ImageIcon className="size-5" />
-                      <span className="text-small uppercase tracking-wide">
-                        Эх зураг
-                      </span>
-                    </a>
-                    <a
-                      href={buildModelUrl(model.glb_url as string)}
-                      download
-                      className={ACTION_BUTTON_CLASS}
-                    >
-                      <Download className="size-5" />
-                      <span className="text-small uppercase tracking-wide">
-                        GLB
-                      </span>
-                    </a>
-                    <a
-                      href={buildModelUrl(model.usdz_url as string)}
-                      download
-                      className={ACTION_BUTTON_CLASS}
-                    >
-                      <Download className="size-5" />
-                      <span className="text-small uppercase tracking-wide">
-                        USDZ
-                      </span>
-                    </a>
-                  </>
-                )}
-              </div>
+            {/* Each action its own free-floating liquid-glass pill (direct
+                request) rather than one shared card — flex-wrap so 5 pills
+                (owner view) still reflow cleanly at narrow widths instead
+                of overflowing or shrinking illegibly. */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Not owner-gated — the URL being shared is the current page's
+                own, already visible to whoever's looking at this button. */}
+              <button
+                type="button"
+                onClick={() => setShareOpen((open) => !open)}
+                aria-expanded={shareOpen}
+                className={ACTION_BUTTON_CLASS}
+              >
+                <QrCode className="size-5" />
+                <span className="text-small uppercase tracking-wide">
+                  Хуваалцах
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setScaleOpen((open) => !open)}
+                aria-expanded={scaleOpen}
+                className={ACTION_BUTTON_CLASS}
+              >
+                <Ruler className="size-5" />
+                <span className="text-small uppercase tracking-wide">
+                  Хэмжээ
+                </span>
+              </button>
+              {/* Original photo and both downloads are owner-only: the source
+                photo lives in the private `uploads` bucket behind its own
+                ownership check (app/api/uploads/[...key]/route.ts), so for
+                anyone but the owner this link would already 404/401 — hiding
+                it isn't a new restriction, it's not showing a link that was
+                already broken for this viewer. GLB/USDZ do serve from the
+                public models bucket (rule 6) and would technically work for
+                any viewer, but the download affordance itself is scoped to
+                the owner as a deliberate product choice, not a data-access
+                one. */}
+              {isOwner && (
+                <>
+                  <a
+                    href={`/api/uploads/${model.source_image_key}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={ACTION_BUTTON_CLASS}
+                  >
+                    <ImageIcon className="size-5" />
+                    <span className="text-small uppercase tracking-wide">
+                      Эх зураг
+                    </span>
+                  </a>
+                  <a
+                    href={buildModelUrl(model.glb_url as string)}
+                    download
+                    className={ACTION_BUTTON_CLASS}
+                  >
+                    <Download className="size-5" />
+                    <span className="text-small uppercase tracking-wide">
+                      GLB
+                    </span>
+                  </a>
+                  <a
+                    href={buildModelUrl(model.usdz_url as string)}
+                    download
+                    className={ACTION_BUTTON_CLASS}
+                  >
+                    <Download className="size-5" />
+                    <span className="text-small uppercase tracking-wide">
+                      USDZ
+                    </span>
+                  </a>
+                </>
+              )}
             </div>
 
             {shareOpen && <ModelShare />}
 
             {scaleOpen && (
-              <div className="rounded-card border border-glass-border bg-glow-faint p-4 shadow-glass-card">
+              <div className="rounded-2xl border border-glass-border bg-glow-soft p-4 shadow-liquid-glass backdrop-blur-xl backdrop-saturate-150">
                 <ModelScaleControl scale={scale} onScaleChange={setScale} />
               </div>
             )}
