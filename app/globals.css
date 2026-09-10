@@ -74,6 +74,8 @@
 
   --max-width-lightbox: var(--max-width-lightbox);
   --max-height-lightbox: var(--max-height-lightbox);
+
+  --height-detail-viewer: var(--height-detail-viewer);
 }
 
 /* Plain @theme (not @theme inline) — this declares a genuinely NEW value

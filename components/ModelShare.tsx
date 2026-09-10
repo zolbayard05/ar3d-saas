@@ -92,7 +92,7 @@ export function ModelShare() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 px-4 pb-4">
+    <div className="flex flex-col items-center gap-4 px-4 pb-4 lg:px-0">
       {qrDataUrl ? (
         // Baked-in white background (light: "#ffffff" above) so this reads
         // as a self-contained scan card against the dark page — no wrapper

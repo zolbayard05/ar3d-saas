@@ -110,10 +110,28 @@
    * max-h-lightbox, never a raw arbitrary vw/vh value. */
   --max-width-lightbox: 90vw;
   --max-height-lightbox: 90vh;
+
+  /* ModelDetail.tsx's model-viewer pane (2026-09-10) — the mobile
+   * aspect-[4/5] portrait ratio was also being applied at lg+ desktop
+   * widths, where the pane is much wider than a phone screen, so
+   * height = width * 1.25 forces a box taller than the actual viewport
+   * (the app shell is `fixed inset-0`, app/(app)/layout.tsx — nothing
+   * scrolls to reveal the rest), clipping the model at the top and
+   * bottom. `auto` here is a no-op on mobile, where the aspect-ratio class
+   * still governs height; only the lg override below changes anything.
+   */
+  --height-detail-viewer: auto;
 }
 
 @media (min-width: 1024px) {
   :root {
     --bottom-nav-reserve: 2.5rem;
+
+    /* 100dvh minus the h-12 header bar above the pane (3rem) minus the
+     * row's own lg:pt-6 top gap (1.5rem) — the real remaining vertical
+     * budget, so model-viewer's own auto-fit camera can frame the whole
+     * object instead of it running off the top/bottom edge.
+     */
+    --height-detail-viewer: calc(100dvh - 3rem - 1.5rem);
   }
 }

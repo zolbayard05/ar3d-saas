@@ -9,7 +9,7 @@ export function DetailSkeleton() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="h-12 shrink-0" />
       <div className="flex min-h-0 flex-1 flex-col lg:mx-auto lg:w-full lg:max-w-feed lg:flex-row lg:items-start lg:gap-10 lg:px-6 lg:pt-6">
-        <div className="aspect-[4/5] w-full animate-pulse bg-surface-hover lg:flex-1 lg:rounded-card" />
+        <div className="aspect-[4/5] w-full animate-pulse bg-surface-hover lg:aspect-auto lg:h-detail-viewer lg:flex-1 lg:rounded-card" />
 
         <div className="flex flex-col gap-6 px-4 pt-4 lg:w-96 lg:flex-none lg:px-0">
           <div className="flex flex-col gap-2">
