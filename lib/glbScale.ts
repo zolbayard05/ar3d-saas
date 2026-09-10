@@ -40,9 +40,23 @@ import draco3d from "draco3dgltf";
  * uniform number applied equally on all three axes.
  */
 export async function bakeGlbScale(input: Buffer, factor: number): Promise<Buffer> {
+  // Both directions needed, not just the decoder: reading a Draco-
+  // compressed GLB only requires decoding it into memory, but writeBinary
+  // below re-encodes it right back to Draco on the way out (the mesh
+  // primitives still reference KHR_draco_mesh_compression after the scale
+  // edit, since only the node transform changed) — decoder-only threw
+  // "[KHR_draco_mesh_compression] Please install extension dependency,
+  // draco3d.encoder" on every real (Draco-compressed) model, caught live
+  // when this had never actually succeeded end-to-end before: the webhook's
+  // own sizeModel() call site swallows this in a try/catch and just leaves
+  // scale unset, so it was failing silently there, and the user-facing
+  // rescale route surfaced it as a generic "Failed to apply scale" error.
   const io = new NodeIO()
     .registerExtensions([KHRDracoMeshCompression])
-    .registerDependencies({ "draco3d.decoder": await draco3d.createDecoderModule() });
+    .registerDependencies({
+      "draco3d.decoder": await draco3d.createDecoderModule(),
+      "draco3d.encoder": await draco3d.createEncoderModule(),
+    });
   const doc = await io.readBinary(input);
 
   const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
