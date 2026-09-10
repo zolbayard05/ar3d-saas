@@ -42,10 +42,6 @@ export function DesktopPipelineSection() {
           }}
         >
           Бэлэн бүтээгдэхүүнд зориулсан.
-          <br />
-          <em className="not-italic" style={{ color: "rgb(203, 208, 191)", fontWeight: 450 }}>
-            Прототип чанар биш.
-          </em>
         </h2>
 
         <div>
